@@ -1,7 +1,6 @@
-
 from cat.auth.permissions import AuthPermission, AuthResource
 from cat.auth.connection import WebSocketAuth
-from fastapi import APIRouter, WebSocket, WebSocketDisconnect, Depends
+from fastapi import APIRouter, WebSocket, WebSocketDisconnect, Depends, Request
 from fastapi.concurrency import run_in_threadpool
 
 from cat.looking_glass.stray_cat import StrayCat
@@ -28,8 +27,9 @@ async def receive_message(websocket: WebSocket, stray: StrayCat):
 @router.websocket("/ws")
 @router.websocket("/ws/{user_id}")
 async def websocket_endpoint(
+    request: Request,
     websocket: WebSocket,
-    stray=Depends(WebSocketAuth(AuthResource.CONVERSATION, AuthPermission.WRITE)),
+    stray: StrayCat = Depends(WebSocketAuth(AuthResource.CONVERSATION, AuthPermission.WRITE)),
 ):
     """
     Endpoint to handle incoming WebSocket connections by user id, process messages, and check for messages.
@@ -42,7 +42,9 @@ async def websocket_endpoint(
         await receive_message(websocket, stray)
     except WebSocketDisconnect:
         # Handle the event where the user disconnects their WebSocket.
-        stray._StrayCat__ws = None
+        stray.ws = None
         log.info("WebSocket connection closed")
-    # finally:
-    #     del strays[user_id]
+    finally:
+        # remove the StrayCat related to the user_id, if idle
+        if stray.is_idle:
+            del request.app.state.strays[stray.user_id]

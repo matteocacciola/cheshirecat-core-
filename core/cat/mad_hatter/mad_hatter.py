@@ -6,30 +6,24 @@ import traceback
 from copy import deepcopy
 from typing import List, Dict
 
-from cat.log import log
-
-import cat.utils as utils
-from cat.utils import singleton
-
 from cat.db import crud
 from cat.db.models import Setting
-
+from cat.log import log
 from cat.mad_hatter.plugin_extractor import PluginExtractor
 from cat.mad_hatter.plugin import Plugin
 from cat.mad_hatter.decorators.hook import CatHook
 from cat.mad_hatter.decorators.tool import CatTool
-
 from cat.experimental.form import CatForm
+import cat.utils as utils
 
 
 # This class is responsible for plugins functionality:
 # - loading
 # - prioritizing
 # - executing
-@singleton
 class MadHatter:
     # loads and execute plugins
-    # - enter into the plugin folder and loads everthing
+    # - enter into the plugin folder and loads everything
     #   that is decorated or named properly
     # - orders plugged in hooks by name and priority
     # - exposes functionality to the cat

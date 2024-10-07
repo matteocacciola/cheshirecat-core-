@@ -1,7 +1,8 @@
 import time
 from typing import List
+
 from cat.utils import BaseModelDict
-from cat.convo.messages import Role, UserMessage, ModelInteraction
+from cat.convo.messages import Role, UserMessage, ModelInteraction, MessageWhy
 from cat.experimental.form import CatForm
 
 
@@ -35,7 +36,7 @@ class WorkingMemory(BaseModelDict):
     # track models usage
     model_interactions: List[ModelInteraction] = []
 
-    def update_conversation_history(self, who, message, why={}):
+    def update_conversation_history(self, who, message, why: MessageWhy | None = None):
         """Update the conversation history.
 
         The methods append to the history key the last three conversation turns.
@@ -46,8 +47,13 @@ class WorkingMemory(BaseModelDict):
             Who said the message. Can either be `Human` or `AI`.
         message : str
             The message said.
+        why : MessageWhy, optional
+            The reason why the message was said. Default is None.
 
         """
+
+        why = why.model_dump() if why else {}
+
         # append latest message in conversation
         # TODO: Message should be of type CatMessage or UserMessage. For retrocompatibility we put a new key
         # we are sure that who is not change in the current call

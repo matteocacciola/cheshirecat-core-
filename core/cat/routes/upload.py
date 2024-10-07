@@ -20,7 +20,7 @@ from fastapi import (
 from cat.auth.connection import HTTPAuth
 from cat.auth.permissions import AuthPermission, AuthResource
 from cat.log import log
-
+from cat.looking_glass.stray_cat import StrayCat
 
 # TODOV2:
 # - add proper request and response pydantic models
@@ -55,14 +55,14 @@ async def upload_file(
         description="Metadata to be stored with each chunk (e.g. author, category, etc.). "
                     "Since we are passing this along side form data, must be a JSON string (use `json.dumps(metadata)`)."
     ),
-    stray=Depends(HTTPAuth(AuthResource.UPLOAD, AuthPermission.WRITE)),
+    stray: StrayCat = Depends(HTTPAuth(AuthResource.UPLOAD, AuthPermission.WRITE)),
 ) -> Dict:
     """Upload a file containing text (.txt, .md, .pdf, etc.). File content will be extracted and segmented into chunks.
     Chunks will be then vectorized and stored into documents memory.
 
     Note
     ----------
-    `chunk_size`, `chunk_overlap` anad `metadata` must be passed as form data.
+    `chunk_size`, `chunk_overlap` and `metadata` must be passed as form data.
     This is necessary because the HTTP protocol does not allow file uploads to be sent as JSON.
 
     Example
@@ -153,7 +153,7 @@ class UploadURLConfig(BaseModel):
 async def upload_url(
     background_tasks: BackgroundTasks,
     upload_config: UploadURLConfig,
-    stray=Depends(HTTPAuth(AuthResource.UPLOAD, AuthPermission.WRITE)),
+    stray: StrayCat = Depends(HTTPAuth(AuthResource.UPLOAD, AuthPermission.WRITE)),
 ):
     """Upload a url. Website content will be extracted and segmented into chunks.
     Chunks will be then vectorized and stored into documents memory."""
@@ -191,7 +191,7 @@ async def upload_memory(
     request: Request,
     file: UploadFile,
     background_tasks: BackgroundTasks,
-    stray=Depends(HTTPAuth(AuthResource.MEMORY, AuthPermission.WRITE)),
+    stray: StrayCat = Depends(HTTPAuth(AuthResource.MEMORY, AuthPermission.WRITE)),
 ) -> Dict:
     """Upload a memory json file to the cat memory"""
 
@@ -224,7 +224,7 @@ async def upload_memory(
 @router.get("/allowed-mimetypes")
 async def get_allowed_mimetypes(
     request: Request,
-    stray=Depends(HTTPAuth(AuthResource.UPLOAD, AuthPermission.WRITE)),
+    stray: StrayCat = Depends(HTTPAuth(AuthResource.UPLOAD, AuthPermission.WRITE)),
 ) -> Dict:
     """Retrieve the allowed mimetypes that can be ingested by the Rabbit Hole"""
 

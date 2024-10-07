@@ -3,14 +3,12 @@ import time
 import json
 import mimetypes
 import httpx
-from typing import List, Union
+from typing import List
 from urllib.parse import urlparse
 from urllib.error import HTTPError
-
 from starlette.datastructures import UploadFile
 from langchain.docstore.document import Document
 from qdrant_client.http import models
-
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 from langchain_community.document_loaders.parsers.pdf import PDFMinerParser
 from langchain_community.document_loaders.parsers.generic import MimeTypeBasedParser
@@ -18,11 +16,10 @@ from langchain_community.document_loaders.parsers.txt import TextParser
 from langchain_community.document_loaders.parsers.html.bs4 import BS4HTMLParser
 from langchain.document_loaders.blob_loaders.schema import Blob
 
-from cat.utils import singleton
+from cat.looking_glass.stray_cat import StrayCat
 from cat.log import log
 
 
-@singleton
 class RabbitHole:
     """Manages content ingestion. I'm late... I'm late!"""
 
@@ -60,15 +57,13 @@ class RabbitHole:
             "rabbithole_instantiates_splitter", self.__text_splitter, cat=self.__cat
         )
 
-    def ingest_memory(
-            self,
-            stray,
-            file: UploadFile
-        ):
+    def ingest_memory(self, stray: StrayCat, file: UploadFile):
         """Upload memories to the declarative memory from a JSON file.
 
         Parameters
         ----------
+        stray : StrayCat
+            StrayCat instance.
         file : UploadFile
             File object sent via `rabbithole/memory` hook.
 
@@ -126,11 +121,11 @@ class RabbitHole:
 
     def ingest_file(
         self,
-        stray,
-        file: Union[str, UploadFile],
+        stray: StrayCat,
+        file: str | UploadFile,
         chunk_size: int | None = None,
         chunk_overlap: int | None = None,
-        metadata: dict = {}
+        metadata: dict = None
     ):
         """Load a file in the Cat's declarative memory.
 
@@ -139,6 +134,8 @@ class RabbitHole:
 
         Parameters
         ----------
+        stray : StrayCat
+            StrayCat instance.
         file : str, UploadFile
             The file can be a path passed as a string or an `UploadFile` object if the document is ingested using the
             `rabbithole` endpoint.
@@ -166,6 +163,7 @@ class RabbitHole:
             chunk_size=chunk_size,
             chunk_overlap=chunk_overlap
         )
+        metadata = metadata or {}
 
         # store in memory
         if isinstance(file, str):
@@ -177,8 +175,8 @@ class RabbitHole:
 
     def file_to_docs(
         self,
-        stray,
-        file: Union[str, UploadFile],
+        stray: StrayCat,
+        file: str | UploadFile,
         chunk_size: int | None = None,
         chunk_overlap: int | None = None
     ) -> List[Document]:
@@ -189,6 +187,8 @@ class RabbitHole:
 
         Parameters
         ----------
+        stray : StrayCat
+            StrayCat instance.
         file : str, UploadFile
             The file can be either a string path if loaded programmatically, a FastAPI `UploadFile`
             if coming from the `/rabbithole/` endpoint or a URL if coming from the `/rabbithole/web` endpoint.
@@ -208,6 +208,8 @@ class RabbitHole:
         Currently supported files are `.txt`, `.pdf`, `.md` and web pages.
 
         """
+
+        file_bytes = None
 
         # Check type of incoming file.
         if isinstance(file, UploadFile):
@@ -245,9 +247,13 @@ class RabbitHole:
                     file_bytes = f.read()
         else:
             raise ValueError(f"{type(file)} is not a valid type.")
+
+        if not file_bytes:
+            raise ValueError(f"Something went wrong with the file {source}")
+
         return self.string_to_docs(
             stray=stray,
-            file_bytes=file_bytes,
+            file_bytes=file_bytes.decode("utf-8"),
             source=source,
             content_type=content_type,
             chunk_size=chunk_size,
@@ -256,7 +262,7 @@ class RabbitHole:
 
     def string_to_docs(
         self,
-        stray,
+        stray: StrayCat,
         file_bytes: str,
         source: str = None,
         content_type: str = "text/plain",
@@ -270,6 +276,8 @@ class RabbitHole:
 
         Parameters
         ----------
+        stray : StrayCat
+            StrayCat instance.
         file_bytes : str
             The string to be converted.
         source: str
@@ -311,12 +319,12 @@ class RabbitHole:
         return docs
 
     def store_documents(
-            self,
-            stray,
-            docs: List[Document],
-            source: str, # TODOV2: is this necessary?
-            metadata: dict = {}
-        ) -> None:
+        self,
+        stray: StrayCat,
+        docs: List[Document],
+        source: str, # TODO V2: is this necessary?
+        metadata: dict = None
+    ) -> None:
         """Add documents to the Cat's declarative memory.
 
         This method loops a list of Langchain `Document` and adds some metadata. Namely, the source filename and the
@@ -324,6 +332,8 @@ class RabbitHole:
 
         Parameters
         ----------
+        stray : StrayCat
+            StrayCat instance.
         docs : List[Document]
             List of Langchain `Document` to be inserted in the Cat's declarative memory.
         source : str
@@ -347,6 +357,8 @@ class RabbitHole:
         docs = stray.mad_hatter.execute_hook(
             "before_rabbithole_stores_documents", docs, cat=stray
         )
+
+        metadata = metadata or {}
 
         # classic embed
         time_last_notification = time.time()
@@ -409,7 +421,9 @@ class RabbitHole:
 
         Parameters
         ----------
-        text : str
+        stray : StrayCat
+            StrayCat instance.
+        text : list[Document]
             Content of the loaded file.
         chunk_size : int
             Number of tokens in each document chunk.

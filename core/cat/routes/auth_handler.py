@@ -1,31 +1,30 @@
 from typing import Dict
 from fastapi import Request, APIRouter, Body, HTTPException, Depends
 
-from cat.db import crud, models
-from cat.factory.auth_handler import get_auth_handlers_schemas
 from cat.auth.connection import HTTPAuth
 from cat.auth.permissions import AuthPermission, AuthResource
+from cat.db import crud, models
+from cat.factory.auth_handler import get_auth_handlers_schemas
+from cat.looking_glass.stray_cat import StrayCat
 
 router = APIRouter()
 
 AUTH_HANDLER_SELECTED_NAME = "auth_handler_selected"
-
 AUTH_HANDLER_CATEGORY = "auth_handler_factory"
 
 
-@router.get(
-    "/settings",
-    dependencies=[Depends(HTTPAuth(AuthResource.AUTH_HANDLER, AuthPermission.LIST))],
-)
-def get_auth_handler_settings(request: Request) -> Dict:
+@router.get("/settings")
+def get_auth_handler_settings(
+    request: Request, stray: StrayCat = Depends(HTTPAuth(AuthResource.AUTH_HANDLER, AuthPermission.LIST))
+) -> Dict:
     """Get the list of the AuthHandlers"""
 
     # get selected AuthHandler
-    selected = crud.get_setting_by_name(name=AUTH_HANDLER_SELECTED_NAME)
+    selected = crud.get_setting_by_name(name=AUTH_HANDLER_SELECTED_NAME, user_id=stray.user_id)
     if selected is not None:
         selected = selected["value"]["name"]
 
-    saved_settings = crud.get_settings_by_category(category=AUTH_HANDLER_CATEGORY)
+    saved_settings = crud.get_settings_by_category(category=AUTH_HANDLER_CATEGORY, user_id=stray.user_id)
     saved_settings = {s["name"]: s for s in saved_settings}
 
     settings = []
@@ -49,11 +48,12 @@ def get_auth_handler_settings(request: Request) -> Dict:
     }
 
 
-@router.get(
-    "/settings/{auth_handler_name}",
-    dependencies=[Depends(HTTPAuth(AuthResource.AUTH_HANDLER, AuthPermission.READ))],
-)
-def get_auth_handler_setting(request: Request, auth_handler_name: str) -> Dict:
+@router.get("/settings/{auth_handler_name}")
+def get_auth_handler_setting(
+    request: Request,
+    auth_handler_name: str,
+    stray: StrayCat = Depends(HTTPAuth(AuthResource.AUTH_HANDLER, AuthPermission.LIST))
+) -> Dict:
     """Get the settings of a specific AuthHandler"""
 
     AUTH_HANDLER_SCHEMAS = get_auth_handlers_schemas()
@@ -67,7 +67,7 @@ def get_auth_handler_setting(request: Request, auth_handler_name: str) -> Dict:
             },
         )
 
-    setting = crud.get_setting_by_name(name=auth_handler_name)
+    setting = crud.get_setting_by_name(name=auth_handler_name, user_id=stray.user_id)
     schema = AUTH_HANDLER_SCHEMAS[auth_handler_name]
 
     if setting is None:
@@ -78,13 +78,11 @@ def get_auth_handler_setting(request: Request, auth_handler_name: str) -> Dict:
     return {"name": auth_handler_name, "value": setting, "schema": schema}
 
 
-@router.put(
-    "/settings/{auth_handler_name}",
-    dependencies=[Depends(HTTPAuth(AuthResource.AUTH_HANDLER, AuthPermission.EDIT))],
-)
+@router.put("/settings/{auth_handler_name}")
 def upsert_authenticator_setting(
     request: Request,
     auth_handler_name: str,
+    stray: StrayCat = Depends(HTTPAuth(AuthResource.AUTH_HANDLER, AuthPermission.LIST)),
     payload: Dict = Body(...),
 ) -> Dict:
     """Upsert the settings of a specific AuthHandler"""
@@ -103,7 +101,8 @@ def upsert_authenticator_setting(
     crud.upsert_setting_by_name(
         models.Setting(
             name=auth_handler_name, value=payload, category=AUTH_HANDLER_CATEGORY
-        )
+        ),
+        user_id=stray.user_id,
     )
 
     crud.upsert_setting_by_name(
@@ -111,7 +110,8 @@ def upsert_authenticator_setting(
             name=AUTH_HANDLER_SELECTED_NAME,
             value={"name": auth_handler_name},
             category=AUTH_HANDLER_CATEGORY,
-        )
+        ),
+        user_id=stray.user_id,
     )
 
     request.app.state.ccat.load_auth()

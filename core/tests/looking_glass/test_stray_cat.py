@@ -1,14 +1,15 @@
 import pytest
 import asyncio
 
+from cat.auth.permissions import AuthUserInfo
+from cat.convo.messages import MessageWhy, CatMessage
 from cat.looking_glass.stray_cat import StrayCat
 from cat.memory.working_memory import WorkingMemory
-from cat.convo.messages import MessageWhy, CatMessage
 
 
 @pytest.fixture
-def stray(client):
-    yield StrayCat(user_id="Alice", main_loop=asyncio.new_event_loop())
+def stray(client) -> StrayCat:
+    yield StrayCat(user_data=AuthUserInfo(id="user_alice", name="Alice"), main_loop=asyncio.new_event_loop())
 
 
 def test_stray_initialization(stray):

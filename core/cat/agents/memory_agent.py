@@ -7,11 +7,13 @@ from langchain_core.output_parsers.string import StrOutputParser
 from cat.looking_glass.callbacks import NewTokenHandler, ModelInteractionHandler
 from cat.agents import BaseAgent, AgentOutput
 from cat import utils
+from cat.looking_glass.stray_cat import StrayCat
 
 
 class MemoryAgent(BaseAgent):
-
-    async def execute(self, stray, prompt_prefix, prompt_suffix) -> AgentOutput:
+    async def execute(self, stray: StrayCat, *args, **kwargs) -> AgentOutput:
+        prompt_prefix = kwargs.get("prompt_prefix", "")
+        prompt_suffix = kwargs.get("prompt_suffix", "")
 
         prompt_variables = stray.working_memory.agent_input.model_dump()
         sys_prompt = prompt_prefix + prompt_suffix
@@ -31,7 +33,7 @@ class MemoryAgent(BaseAgent):
         chain = (
             prompt
             | RunnableLambda(lambda x: utils.langchain_log_prompt(x, "MAIN PROMPT"))
-            | stray._llm
+            | stray.llm
             | RunnableLambda(lambda x: utils.langchain_log_output(x, "MAIN PROMPT OUTPUT"))
             | StrOutputParser()
         )

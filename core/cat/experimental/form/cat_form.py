@@ -3,6 +3,7 @@ from enum import Enum
 from typing import List, Dict
 from pydantic import BaseModel, ValidationError
 
+from cat.looking_glass.stray_cat import StrayCat
 from cat.utils import parse_json
 from cat.log import log
 
@@ -26,7 +27,7 @@ class CatForm:  # base model of forms
     triggers_map = None
     _autopilot = False
 
-    def __init__(self, cat) -> None:
+    def __init__(self, cat: StrayCat) -> None:
         self._state = CatFormState.INCOMPLETE
         self._model: Dict = {}
 
@@ -36,7 +37,7 @@ class CatForm:  # base model of forms
         self._missing_fields: List[str] = []
 
     @property
-    def cat(self):
+    def cat(self) -> StrayCat:
         return self._cat
 
     def submit(self, form_data) -> str:
@@ -63,7 +64,7 @@ JSON:
     "confirm": """
 
         # Queries the LLM and check if user is agree or not
-        response = self.cat.llm(confirm_prompt)
+        response = self.cat.llm_response(confirm_prompt)
         return "true" in response.lower()
 
     # Check if the user wants to exit the form
@@ -99,7 +100,7 @@ JSON:
     "exit": """
 
         # Queries the LLM and check if user is agree or not
-        response = self.cat.llm(check_exit_prompt)
+        response = self.cat.llm_response(check_exit_prompt)
         return "true" in response.lower()
 
     # Execute the dialogue step
@@ -195,12 +196,12 @@ JSON:
 """
         return out
 
-    # Extract model informations from user message
+    # Extract model information from user message
     def extract(self):
         prompt = self.extraction_prompt()
         log.debug(prompt)
 
-        json_str = self.cat.llm(prompt)
+        json_str = self.cat.llm_response(prompt)
 
         log.debug(f"Form JSON after parser:\n{json_str}")
 

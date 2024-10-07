@@ -1,8 +1,6 @@
 import pytest
-
 from langchain_community.llms import BaseLLM
 from langchain_core.embeddings import Embeddings
-
 
 from cat.looking_glass.cheshire_cat import CheshireCat
 from cat.mad_hatter.mad_hatter import MadHatter
@@ -19,30 +17,20 @@ def get_class_from_decorated_singleton(singleton):
 
 @pytest.fixture
 def cheshire_cat(client):
-    yield CheshireCat()  # don't panic, it's a singleton
+    yield CheshireCat()
 
 
 def test_main_modules_loaded(cheshire_cat):
-    assert isinstance(
-        cheshire_cat.mad_hatter, get_class_from_decorated_singleton(MadHatter)
-    )
-
-    assert isinstance(
-        cheshire_cat.rabbit_hole, get_class_from_decorated_singleton(RabbitHole)
-    )
-
-    # TODO: this should be singleton too
+    assert isinstance(cheshire_cat.mad_hatter, MadHatter)
+    assert isinstance(cheshire_cat.rabbit_hole, RabbitHole)
     assert isinstance(cheshire_cat.memory, LongTermMemory)
-
     assert isinstance(cheshire_cat.main_agent, MainAgent)
-
-    assert isinstance(cheshire_cat._llm, BaseLLM)
-
+    assert isinstance(cheshire_cat.llm, BaseLLM)
     assert isinstance(cheshire_cat.embedder, Embeddings)
 
 
 def test_default_llm_loaded(cheshire_cat):
-    assert isinstance(cheshire_cat._llm, LLMDefault)
+    assert isinstance(cheshire_cat.llm, LLMDefault)
 
     out = cheshire_cat.llm("Hey")
     assert "You did not configure a Language Model" in out

@@ -5,6 +5,7 @@ from cat.auth.permissions import AuthPermission, AuthResource
 from cat.auth.connection import HTTPAuth
 
 from cat.convo.messages import CatMessage
+from cat.looking_glass.stray_cat import StrayCat
 
 router = APIRouter()
 
@@ -12,7 +13,7 @@ router = APIRouter()
 # server status
 @router.get("/")
 async def home(
-    stray=Depends(HTTPAuth(AuthResource.STATUS, AuthPermission.READ)),
+    stray: StrayCat = Depends(HTTPAuth(AuthResource.STATUS, AuthPermission.READ)),
 ) -> Dict:
     """Server status"""
     with open("pyproject.toml", "rb") as f:
@@ -24,7 +25,7 @@ async def home(
 @router.post("/message", response_model=CatMessage)
 async def message_with_cat(
     payload: Dict = Body({"text": "hello!"}),
-    stray=Depends(HTTPAuth(AuthResource.CONVERSATION, AuthPermission.WRITE)),
+    stray: StrayCat = Depends(HTTPAuth(AuthResource.CONVERSATION, AuthPermission.WRITE)),
 ) -> Dict:
     """Get a response from the Cat"""
     answer = await stray({"user_id": stray.user_id, **payload})

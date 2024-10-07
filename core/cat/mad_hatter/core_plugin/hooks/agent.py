@@ -52,7 +52,7 @@ def agent_fast_reply(fast_reply, cat) -> Union[None, Dict]:
 
     Example 1: can't talk about this topic
     ```python
-    # here you could use cat._llm to do topic evaluation
+    # here you could use cat.llm to do topic evaluation
     if "dog" in agent_input["input"]:
         return {
             "output": "You went out of topic. Can't talk about dog."
@@ -79,7 +79,7 @@ def agent_allowed_tools(allowed_tools: List[str], cat) -> List[str]:
     Allows to decide which tools end up in the *Agent* prompt.
 
     To decide, you can filter the list of tools' names, but you can also check the context in `cat.working_memory`
-    and launch custom chains with `cat._llm`.
+    and launch custom chains with `cat.llm`.
 
     Parameters
     ---------

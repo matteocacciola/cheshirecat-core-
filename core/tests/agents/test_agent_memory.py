@@ -1,7 +1,5 @@
 import time
-
 from langchain.docstore.document import Document
-
 
 
 def test_format_agent_input_on_empty_memory(main_agent, stray):
@@ -14,7 +12,6 @@ def test_format_agent_input_on_empty_memory(main_agent, stray):
 
 
 def test_format_agent_input(main_agent, stray):
-
     # episodic and declarative memories are present
     stray = fill_working_memory(stray)
 

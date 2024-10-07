@@ -35,7 +35,7 @@ def get_full_permissions() -> Dict[AuthResource, List[AuthPermission]]:
     return perms
 
 
-def get_base_permissions() -> Dict[AuthResource, List[AuthPermission]]:
+def get_base_permissions() -> Dict[str, list[str]]:
     """
     Returns the default permissions for new users (chat only!).
     """
@@ -50,12 +50,10 @@ def get_base_permissions() -> Dict[AuthResource, List[AuthPermission]]:
 class AuthUserInfo(BaseModelDict):
     """
     Class to represent token content after the token has been decoded.
-    Will be creted by AuthHandler(s) to standardize their output.
+    Will be created by AuthHandler(s) to standardize their output.
     Core will use this object to retrieve or create a StrayCat (session)
     """
 
-    # TODOAUTH: id & username can be confused when is time to retrieve or create a StrayCat
-    # (id should be used)
     id: str
     name: str
 

@@ -8,6 +8,7 @@ from cat.factory.embedder import get_allowed_embedder_models, get_embedders_sche
 from cat.db import crud, models
 from cat.log import log
 from cat import utils
+from cat.looking_glass.stray_cat import StrayCat
 
 router = APIRouter()
 
@@ -25,7 +26,7 @@ EMBEDDER_SELECTED_NAME = "embedder_selected"
 @router.get("/settings")
 def get_embedders_settings(
     request: Request,
-    stray=Depends(HTTPAuth(AuthResource.EMBEDDER, AuthPermission.LIST)),
+    stray: StrayCat = Depends(HTTPAuth(AuthResource.EMBEDDER, AuthPermission.LIST)),
 ) -> Dict:
     """Get the list of the Embedders"""
 
@@ -43,7 +44,7 @@ def get_embedders_settings(
             if isinstance(ccat.embedder, embedder_config_class._pyclass.default):
                 selected = embedder_config_class.__name__
 
-    saved_settings = crud.get_settings_by_category(category=EMBEDDER_CATEGORY)
+    saved_settings = crud.get_settings_by_category(category=EMBEDDER_CATEGORY, user_id=stray.user_id)
     saved_settings = {s["name"]: s for s in saved_settings}
 
     settings = []
@@ -72,7 +73,7 @@ def get_embedders_settings(
 def get_embedder_settings(
     request: Request,
     languageEmbedderName: str,
-    stray=Depends(HTTPAuth(AuthResource.EMBEDDER, AuthPermission.READ)),
+    stray: StrayCat = Depends(HTTPAuth(AuthResource.EMBEDDER, AuthPermission.READ)),
 ) -> Dict:
     """Get settings and schema of the specified Embedder"""
 
@@ -87,7 +88,7 @@ def get_embedder_settings(
             },
         )
 
-    setting = crud.get_setting_by_name(name=languageEmbedderName)
+    setting = crud.get_setting_by_name(name=languageEmbedderName, user_id=stray.user_id)
     schema = EMBEDDER_SCHEMAS[languageEmbedderName]
 
     if setting is None:
@@ -103,12 +104,12 @@ def upsert_embedder_setting(
     request: Request,
     languageEmbedderName: str,
     payload: Dict = Body({"openai_api_key": "your-key-here"}),
-    stray=Depends(HTTPAuth(AuthResource.EMBEDDER, AuthPermission.EDIT)),
+    stray: StrayCat = Depends(HTTPAuth(AuthResource.EMBEDDER, AuthPermission.EDIT)),
 ) -> Dict:
     """Upsert the Embedder setting"""
 
     EMBEDDER_SCHEMAS = get_embedders_schemas()
-    # check that languageModelName is a valid name
+    # check that languageEmbedderName is a valid name
     allowed_configurations = list(EMBEDDER_SCHEMAS.keys())
     if languageEmbedderName not in allowed_configurations:
         raise HTTPException(
@@ -119,15 +120,14 @@ def upsert_embedder_setting(
         )
 
     # get selected config if any
-    selected = crud.get_setting_by_name(name=EMBEDDER_SELECTED_NAME)
-    if selected is not None:
-        current_settings = crud.get_setting_by_name(name=selected["value"]["name"])
+    selected = crud.get_setting_by_name(name=EMBEDDER_SELECTED_NAME, user_id=stray.user_id)
 
     # create the setting and upsert it
     final_setting = crud.upsert_setting_by_name(
         models.Setting(
             name=languageEmbedderName, category=EMBEDDER_CATEGORY, value=payload
-        )
+        ),
+        user_id=stray.user_id
     )
 
     crud.upsert_setting_by_name(
@@ -135,7 +135,8 @@ def upsert_embedder_setting(
             name=EMBEDDER_SELECTED_NAME,
             category=EMBEDDER_SELECTED_CATEGORY,
             value={"name": languageEmbedderName},
-        )
+        ),
+        user_id=stray.user_id
     )
 
     status = {"name": languageEmbedderName, "value": final_setting["value"]}
@@ -148,25 +149,29 @@ def upsert_embedder_setting(
         ccat.load_memory()
     except Exception as e:
         log.error(e)
-        crud.delete_settings_by_category(category=EMBEDDER_SELECTED_CATEGORY)
-        crud.delete_settings_by_category(category=EMBEDDER_CATEGORY)
+        crud.delete_settings_by_category(category=EMBEDDER_SELECTED_CATEGORY, user_id=stray.user_id)
+        crud.delete_settings_by_category(category=EMBEDDER_CATEGORY, user_id=stray.user_id)
 
         # if a selected config is present, restore it
         if selected is not None:
+            current_settings = crud.get_setting_by_name(name=selected["value"]["name"], user_id=stray.user_id)
+
             languageEmbedderName = selected["value"]["name"]
             crud.upsert_setting_by_name(
                 models.Setting(
                     name=languageEmbedderName,
                     category=EMBEDDER_CATEGORY,
                     value=current_settings["value"],
-                )
+                ),
+                user_id=stray.user_id
             )
             crud.upsert_setting_by_name(
                 models.Setting(
                     name=EMBEDDER_SELECTED_NAME,
                     category=EMBEDDER_SELECTED_CATEGORY,
                     value={"name": languageEmbedderName},
-                )
+                ),
+                user_id=stray.user_id
             )
             # reload llm and embedder of the cat
             ccat.load_natural_language()

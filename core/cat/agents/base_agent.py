@@ -1,8 +1,9 @@
 from typing import List
 from abc import ABC, abstractmethod
 
-
+from cat.looking_glass.stray_cat import StrayCat
 from cat.utils import BaseModelDict
+
 
 class AgentOutput(BaseModelDict):
     output: str | None = None
@@ -11,7 +12,6 @@ class AgentOutput(BaseModelDict):
 
 
 class BaseAgent(ABC):
-
     @abstractmethod
-    async def execute(*args, **kwargs) -> AgentOutput:
+    async def execute(self, stray: StrayCat, *args, **kwargs) -> AgentOutput:
         pass

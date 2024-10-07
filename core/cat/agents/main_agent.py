@@ -4,7 +4,7 @@ from datetime import timedelta
 
 from langchain.docstore.document import Document
 
-from cat.mad_hatter.mad_hatter import MadHatter
+from cat.looking_glass.stray_cat import StrayCat
 from cat.looking_glass import prompts
 from cat.utils import verbal_timedelta, BaseModelDict
 from cat.env import get_env
@@ -19,14 +19,11 @@ class MainAgent(BaseAgent):
     """
 
     def __init__(self):
-        self.mad_hatter = MadHatter()
-
+        self.verbose = False
         if get_env("CCAT_LOG_LEVEL") in ["DEBUG", "INFO"]:
             self.verbose = True
-        else:
-            self.verbose = False
 
-    async def execute(self, stray) -> AgentOutput:
+    async def execute(self, stray: StrayCat, *args, **kwargs) -> AgentOutput:
         """Execute the agents.
 
         Returns
@@ -39,7 +36,7 @@ class MainAgent(BaseAgent):
         #   Info will be extracted from working memory
         # Note: agent_input works both as a dict and as an object
         agent_input : BaseModelDict = self.format_agent_input(stray)
-        agent_input = self.mad_hatter.execute_hook(
+        agent_input = stray.mad_hatter.execute_hook(
             "before_agent_starts", agent_input, cat=stray
         )
 
@@ -48,7 +45,7 @@ class MainAgent(BaseAgent):
 
         # should we run the default agents?
         fast_reply = {}
-        fast_reply = self.mad_hatter.execute_hook(
+        fast_reply = stray.mad_hatter.execute_hook(
             "agent_fast_reply", fast_reply, cat=stray
         )
         if isinstance(fast_reply, AgentOutput):
@@ -57,10 +54,10 @@ class MainAgent(BaseAgent):
             return AgentOutput(**fast_reply)
 
         # obtain prompt parts from plugins
-        prompt_prefix = self.mad_hatter.execute_hook(
+        prompt_prefix = stray.mad_hatter.execute_hook(
             "agent_prompt_prefix", prompts.MAIN_PROMPT_PREFIX, cat=stray
         )
-        prompt_suffix = self.mad_hatter.execute_hook(
+        prompt_suffix = stray.mad_hatter.execute_hook(
             "agent_prompt_suffix", prompts.MAIN_PROMPT_SUFFIX, cat=stray
         )
 
@@ -76,14 +73,14 @@ class MainAgent(BaseAgent):
         memory_agent = MemoryAgent()
         memory_agent_out : AgentOutput = await memory_agent.execute(
             # TODO: should all agents only receive stray?
-            stray, prompt_prefix, prompt_suffix
+            stray, prompt_prefix=prompt_prefix, prompt_suffix=prompt_suffix
         )
 
         memory_agent_out.intermediate_steps += procedures_agent_out.intermediate_steps
 
         return memory_agent_out
 
-    def format_agent_input(self, stray):
+    def format_agent_input(self, stray: StrayCat):
         """Format the input for the Agent.
 
         The method formats the strings of recalled memories and chat history that will be provided to the Langchain
@@ -219,5 +216,3 @@ class MainAgent(BaseAgent):
             memory_content = ""
 
         return memory_content
-
-

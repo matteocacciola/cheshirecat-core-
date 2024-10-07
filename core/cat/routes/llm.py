@@ -8,10 +8,11 @@ from cat.factory.llm import get_llms_schemas
 from cat.db import crud, models
 from cat.log import log
 from cat import utils
+from cat.looking_glass.stray_cat import StrayCat
 
 router = APIRouter()
 
-# general LLM settings are saved in settigns table under this category
+# general LLM settings are saved in settings table under this category
 LLM_SELECTED_CATEGORY = "llm"
 
 # llm type and config are saved in settings table under this category
@@ -24,17 +25,17 @@ LLM_SELECTED_NAME = "llm_selected"
 # get configured LLMs and configuration schemas
 @router.get("/settings")
 def get_llms_settings(
-    stray=Depends(HTTPAuth(AuthResource.LLM, AuthPermission.LIST)),
+    stray: StrayCat = Depends(HTTPAuth(AuthResource.LLM, AuthPermission.LIST)),
 ) -> Dict:
     """Get the list of the Large Language Models"""
     LLM_SCHEMAS = get_llms_schemas()
 
     # get selected LLM, if any
-    selected = crud.get_setting_by_name(name=LLM_SELECTED_NAME)
+    selected = crud.get_setting_by_name(name=LLM_SELECTED_NAME, user_id=stray.user_id)
     if selected is not None:
         selected = selected["value"]["name"]
 
-    saved_settings = crud.get_settings_by_category(category=LLM_CATEGORY)
+    saved_settings = crud.get_settings_by_category(category=LLM_CATEGORY, user_id=stray.user_id)
     saved_settings = {s["name"]: s for s in saved_settings}
 
     settings = []
@@ -63,7 +64,7 @@ def get_llms_settings(
 def get_llm_settings(
     request: Request,
     languageModelName: str,
-    stray=Depends(HTTPAuth(AuthResource.LLM, AuthPermission.READ)),
+    stray: StrayCat = Depends(HTTPAuth(AuthResource.LLM, AuthPermission.READ)),
 ) -> Dict:
     """Get settings and schema of the specified Large Language Model"""
     LLM_SCHEMAS = get_llms_schemas()
@@ -78,7 +79,7 @@ def get_llm_settings(
             },
         )
 
-    setting = crud.get_setting_by_name(name=languageModelName)
+    setting = crud.get_setting_by_name(name=languageModelName, user_id=stray.user_id)
     schema = LLM_SCHEMAS[languageModelName]
 
     if setting is None:
@@ -94,7 +95,7 @@ def upsert_llm_setting(
     request: Request,
     languageModelName: str,
     payload: Dict = Body({"openai_api_key": "your-key-here"}),
-    stray=Depends(HTTPAuth(AuthResource.LLM, AuthPermission.EDIT)),
+    stray: StrayCat = Depends(HTTPAuth(AuthResource.LLM, AuthPermission.EDIT)),
 ) -> Dict:
     """Upsert the Large Language Model setting"""
     LLM_SCHEMAS = get_llms_schemas()
@@ -111,15 +112,12 @@ def upsert_llm_setting(
 
     # create the setting and upsert it
     final_setting = crud.upsert_setting_by_name(
-        models.Setting(name=languageModelName, category=LLM_CATEGORY, value=payload)
+        models.Setting(name=languageModelName, category=LLM_CATEGORY, value=payload), user_id=stray.user_id
     )
 
     crud.upsert_setting_by_name(
-        models.Setting(
-            name=LLM_SELECTED_NAME,
-            category=LLM_SELECTED_CATEGORY,
-            value={"name": languageModelName},
-        )
+        models.Setting(name=LLM_SELECTED_NAME, category=LLM_SELECTED_CATEGORY, value={"name": languageModelName}),
+        user_id=stray.user_id
     )
 
     status = {"name": languageModelName, "value": final_setting["value"]}
@@ -135,8 +133,8 @@ def upsert_llm_setting(
         ccat.load_memory()
     except Exception as e:
         log.error(e)
-        crud.delete_settings_by_category(category=LLM_SELECTED_CATEGORY)
-        crud.delete_settings_by_category(category=LLM_CATEGORY)
+        crud.delete_settings_by_category(category=LLM_SELECTED_CATEGORY, user_id=stray.user_id)
+        crud.delete_settings_by_category(category=LLM_CATEGORY, user_id=stray.user_id)
         raise HTTPException(
             status_code=400, detail={"error": utils.explicit_error_message(e)}
         )

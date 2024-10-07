@@ -4,9 +4,7 @@ from pytz import utc
 import jwt
 
 from cat.db.crud import get_users
-from cat.auth.permissions import (
-    AuthPermission, AuthResource, AuthUserInfo, get_base_permissions, get_full_permissions
-)
+from cat.auth.permissions import AuthPermission, AuthResource, AuthUserInfo, get_base_permissions, get_full_permissions
 from cat.auth.auth_utils import is_jwt, check_password
 from cat.env import get_env
 from cat.log import log
@@ -33,11 +31,10 @@ class BaseAuthHandler(ABC):  # TODOAUTH: pydantic model?
             return await self.authorize_user_from_jwt(
                 credential, auth_resource, auth_permission
             )
-        else:
-            # API_KEY auth
-            return await self.authorize_user_from_key(
-                user_id, credential, auth_resource, auth_permission
-            )
+        # API_KEY auth
+        return await self.authorize_user_from_key(
+            user_id, credential, auth_resource, auth_permission
+        )
 
     @abstractmethod
     async def authorize_user_from_jwt(
@@ -60,7 +57,6 @@ class BaseAuthHandler(ABC):  # TODOAUTH: pydantic model?
 
 # Core auth handler, verify token on local idp
 class CoreAuthHandler(BaseAuthHandler):
-
     async def authorize_user_from_jwt(
         self, token: str, auth_resource: AuthResource, auth_permission: AuthPermission
     ) -> AuthUserInfo | None:

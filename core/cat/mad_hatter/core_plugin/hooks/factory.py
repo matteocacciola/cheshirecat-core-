@@ -1,5 +1,6 @@
 from typing import List
 
+from cat.factory.crud_source import CrudSettings
 from cat.factory.llm import LLMSettings
 from cat.factory.embedder import EmbedderSettings
 from cat.factory.auth_handler import AuthHandlerConfig
@@ -36,6 +37,23 @@ def factory_allowed_embedders(allowed: List[EmbedderSettings], cat) -> List:
     -------
     supported : List of EmbedderSettings classes
         list of allowed embedders
+    """
+    return allowed
+
+
+@hook(priority=0)
+def factory_allowed_crud_sources(allowed: List[CrudSettings], cat) -> List:
+    """Hook to extend support of crud sources.
+
+    Parameters
+    ---------
+    allowed : List of CrudSettings classes
+        list of allowed crud sources
+
+    Returns
+    -------
+    supported : List of CrudSettings classes
+        list of allowed crud sources
     """
     return allowed
 

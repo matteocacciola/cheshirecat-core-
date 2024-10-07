@@ -8,7 +8,8 @@ from cat.db import crud
 from cat.auth.permissions import AuthPermission, AuthResource, get_base_permissions
 from cat.auth.auth_utils import hash_password
 from cat.auth.connection import HTTPAuth
-
+from cat.db.crud import get_users
+from cat.looking_glass.stray_cat import StrayCat
 
 router = APIRouter()
 
@@ -33,11 +34,12 @@ class UserResponse(UserBase):
 @router.post("/", response_model=UserResponse)
 def create_user(
     new_user: UserCreate,
-    users_db = Depends(crud.get_users),
-    stray=Depends(HTTPAuth(AuthResource.USERS, AuthPermission.WRITE)),
+    stray: StrayCat = Depends(HTTPAuth(AuthResource.USERS, AuthPermission.WRITE)),
 ):
+    users_db = get_users(user_id=stray.user_id)
+
     # check for user duplication with shameful loop
-    for id, u in users_db.items():
+    for u in users_db.values():
         if u["username"] == new_user.username:
             raise HTTPException(
                 status_code=403,
@@ -49,29 +51,29 @@ def create_user(
         
     # create user
     new_id = str(uuid4())
-    users_db[new_id] = {
-        "id": new_id,
-        **new_user.model_dump()
-    }
-    crud.update_users(users_db)
+    users_db[new_id] = {"id": new_id, **new_user.model_dump()}
+    crud.update_users(users_db, user_id=stray.user_id)
+
     return users_db[new_id]
 
 @router.get("/", response_model=List[UserResponse])
 def read_users(
     skip: int = 0,
     limit: int = 100,
-    users_db = Depends(crud.get_users),
-    stray=Depends(HTTPAuth(AuthResource.USERS, AuthPermission.LIST)),
+    stray: StrayCat = Depends(HTTPAuth(AuthResource.USERS, AuthPermission.LIST)),
 ):
+    users_db = get_users(user_id=stray.user_id)
+
     users = list(users_db.values())[skip: skip + limit]
     return users
 
 @router.get("/{user_id}", response_model=UserResponse)
 def read_user(
     user_id: str,
-    users_db = Depends(crud.get_users),
-    stray=Depends(HTTPAuth(AuthResource.USERS, AuthPermission.READ)),
+    stray: StrayCat = Depends(HTTPAuth(AuthResource.USERS, AuthPermission.READ)),
 ):
+    users_db = get_users(user_id=stray.user_id)
+
     if user_id not in users_db:
         raise HTTPException(status_code=404, detail={"error": "User not found"})
     return users_db[user_id]
@@ -80,9 +82,10 @@ def read_user(
 def update_user(
     user_id: str,
     user: UserUpdate,
-    users_db = Depends(crud.get_users),
-    stray=Depends(HTTPAuth(AuthResource.USERS, AuthPermission.EDIT)),
+    stray: StrayCat = Depends(HTTPAuth(AuthResource.USERS, AuthPermission.EDIT)),
 ):
+    users_db = get_users(user_id=stray.user_id)
+
     if user_id not in users_db:
         raise HTTPException(status_code=404, detail={"error": "User not found"})
     
@@ -91,18 +94,20 @@ def update_user(
         user.password = hash_password(user.password)
     updated_user = stored_user | user.model_dump(exclude_unset=True)
     users_db[user_id] = updated_user
-    crud.update_users(users_db)
+
+    crud.update_users(users_db, user_id=stray.user_id)
     return updated_user
 
 @router.delete("/{user_id}", response_model=UserResponse)
 def delete_user(
     user_id: str,
-    users_db = Depends(crud.get_users),
-    stray=Depends(HTTPAuth(AuthResource.USERS, AuthPermission.DELETE)),
+    stray: StrayCat = Depends(HTTPAuth(AuthResource.USERS, AuthPermission.DELETE)),
 ):
+    users_db = get_users(user_id=stray.user_id)
+
     if user_id not in users_db:
         raise HTTPException(status_code=404, detail={"error": "User not found"})
     
     user = users_db.pop(user_id)
-    crud.update_users(users_db)
+    crud.update_users(users_db, user_id=stray.user_id)
     return user

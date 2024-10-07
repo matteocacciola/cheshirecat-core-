@@ -11,17 +11,15 @@ from pydantic import PydanticDeprecatedSince20
 from qdrant_client import QdrantClient
 from fastapi.testclient import TestClient
 
-
+from cat.auth.permissions import AuthUserInfo
 from cat.looking_glass.cheshire_cat import CheshireCat
 from cat.looking_glass.stray_cat import StrayCat
-from cat.db.database import Database
+from cat.db.crud_source import CrudSourceSettings
 import cat.utils as utils
 from cat.memory.vector_memory import VectorMemory
 from cat.mad_hatter.plugin import Plugin
 from cat.main import cheshire_cat_api
 from tests.utils import create_mock_plugin_zip
-
-
 
 
 # substitute classes' methods where necessary for testing purposes
@@ -36,9 +34,9 @@ def mock_classes(monkeypatch):
 
     # Use a different json settings db
     def mock_get_file_name(self, *args, **kwargs):
-        return "tests/mocks/metadata-test.json"
+        return "tests/mocks/crud-test.json"
 
-    monkeypatch.setattr(Database().__class__, "get_file_name", mock_get_file_name)
+    monkeypatch.setattr(CrudSourceSettings().__class__, "get_file_name", mock_get_file_name)
 
     # Use mock utils plugin folder
     def get_test_plugin_folder():
@@ -139,9 +137,9 @@ def main_agent(client):
 # fixture to have available an instance of StrayCat
 @pytest.fixture
 def stray(client):
-    user_id = "Alice"
-    stray_cat = StrayCat(user_id=user_id, main_loop=asyncio.new_event_loop())
-    stray_cat.working_memory.user_message_json = {"user_id": user_id, "text": "meow"}
+    user = AuthUserInfo(id="user_alice", name="Alice")
+    stray_cat = StrayCat(user_data=user, main_loop=asyncio.new_event_loop())
+    stray_cat.working_memory.user_message_json = {"user_id": user.id, "text": "meow"}
     yield stray_cat
 
 # autouse fixture will be applied to *all* the tests

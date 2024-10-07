@@ -3,22 +3,24 @@ import asyncio
 import traceback
 import tiktoken
 from typing import Literal, get_args, List, Dict, Union, Any
-
 from langchain.docstore.document import Document
+from langchain_core.language_models import BaseLanguageModel
 from langchain_core.messages import AIMessage, HumanMessage, SystemMessage, BaseMessage
 from langchain_core.runnables import RunnableConfig, RunnableLambda
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.output_parsers.string import StrOutputParser
-
 from fastapi import WebSocket
 
+from cat import utils
+from cat.agents import AgentOutput
+from cat.auth.permissions import AuthUserInfo
+from cat.convo.messages import CatMessage, UserMessage, MessageWhy, Role, EmbedderModelInteraction
 from cat.log import log
 from cat.looking_glass.cheshire_cat import CheshireCat
 from cat.looking_glass.callbacks import NewTokenHandler, ModelInteractionHandler
+from cat.mad_hatter.mad_hatter import MadHatter
 from cat.memory.working_memory import WorkingMemory
-from cat.convo.messages import CatMessage, UserMessage, MessageWhy, Role, EmbedderModelInteraction
-from cat.agents import AgentOutput
-from cat import utils
+from cat.rabbit_hole import RabbitHole
 
 MSG_TYPES = Literal["notification", "chat", "error", "chat_token"]
 
@@ -27,48 +29,37 @@ MSG_TYPES = Literal["notification", "chat", "error", "chat_token"]
 class StrayCat:
     """User/session based object containing working memory and a few utility pointers"""
 
-    def __init__(
-        self,
-        user_id: str,
-        main_loop,
-        user_data: dict = {},
-        ws: WebSocket = None,
-    ):
-        self.__user_id = user_id
+    def __init__(self, main_loop, user_data: AuthUserInfo = None, ws: WebSocket = None):
+        self.__user = user_data
         self.working_memory = WorkingMemory()
 
         # attribute to store ws connection
-        self.__ws = ws
+        self.ws = ws
 
         self.__main_loop = main_loop
 
         self.__loop = asyncio.new_event_loop()
+        self.__last_message_time = None
 
     def __repr__(self):
         return f"StrayCat(user_id={self.user_id})"
 
     def __send_ws_json(self, data: Any):
-        # Run the corutine in the main event loop in the main thread
+        # Run the coroutine in the main event loop in the main thread
         # and wait for the result
-        asyncio.run_coroutine_threadsafe(
-            self.__ws.send_json(data), loop=self.__main_loop
-        ).result()
+        asyncio.run_coroutine_threadsafe(self.ws.send_json(data), loop=self.__main_loop).result()
 
     def __build_why(self) -> MessageWhy:
+        def build_report(memories):
+            return [
+                dict(d[0]) | {"score": float(d[1]), "id": d[3]}
+                for d in memories
+            ]
+
         # build data structure for output (response and why with memories)
-        # TODO: these 3 lines are a mess, simplify
-        episodic_report = [
-            dict(d[0]) | {"score": float(d[1]), "id": d[3]}
-            for d in self.working_memory.episodic_memories
-        ]
-        declarative_report = [
-            dict(d[0]) | {"score": float(d[1]), "id": d[3]}
-            for d in self.working_memory.declarative_memories
-        ]
-        procedural_report = [
-            dict(d[0]) | {"score": float(d[1]), "id": d[3]}
-            for d in self.working_memory.procedural_memories
-        ]
+        episodic_report = build_report(self.working_memory.episodic_memories)
+        declarative_report = build_report(self.working_memory.declarative_memories)
+        procedural_report = build_report(self.working_memory.procedural_memories)
 
         # why this response?
         why = MessageWhy(
@@ -97,7 +88,7 @@ class StrayCat:
             The type of the message. Should be either `notification`, `chat`, `chat_token` or `error`
         """
 
-        if self.__ws is None:
+        if self.ws is None:
             log.warning(f"No websocket connection is open for user {self.user_id}")
             return
 
@@ -116,7 +107,7 @@ class StrayCat:
             self.__send_ws_json({"type": msg_type, "content": content})
 
     def send_chat_message(self, message: Union[str, CatMessage], save=False):
-        if self.__ws is None:
+        if self.ws is None:
             log.warning(f"No websocket connection is open for user {self.user_id}")
             return
 
@@ -126,7 +117,7 @@ class StrayCat:
 
         if save:
             self.working_memory.update_conversation_history(
-                who="AI", message=message["content"], why=message["why"]
+                who="AI", message=message["content"], why=message.why
             )
 
         self.__send_ws_json(message.model_dump())
@@ -135,7 +126,7 @@ class StrayCat:
         self.send_ws_message(content=content, msg_type="notification")
 
     def send_error(self, error: Union[str, Exception]):
-        if self.__ws is None:
+        if self.ws is None:
             log.warning(f"No websocket connection is open for user {self.user_id}")
             return
 
@@ -266,7 +257,7 @@ class StrayCat:
         # hook to modify/enrich retrieved memories
         self.mad_hatter.execute_hook("after_cat_recalls_memories", cat=self)
 
-    def llm(self, prompt: str, stream: bool = False) -> str:
+    def llm_response(self, prompt: str, stream: bool = False) -> str:
         """Generate a response using the LLM model.
 
         This method is useful for generating a response with both a chat and a completion model using the same syntax
@@ -275,6 +266,8 @@ class StrayCat:
         ----------
         prompt : str
             The prompt for generating the response.
+        stream : bool, optional
+            Whether to stream the tokens or not.
 
         Returns
         -------
@@ -292,8 +285,6 @@ class StrayCat:
         caller = utils.get_caller_info()
         callbacks.append(ModelInteractionHandler(self, caller or "StrayCat"))
 
-        
-
         # here we deal with motherfucking langchain
         prompt = ChatPromptTemplate(
             messages=[
@@ -306,7 +297,7 @@ class StrayCat:
         chain = (
             prompt
             | RunnableLambda(lambda x: utils.langchain_log_prompt(x, f"{caller} prompt"))
-            | self._llm
+            | self.llm
             | RunnableLambda(lambda x: utils.langchain_log_output(x, f"{caller} prompt output"))
             | StrOutputParser()
         )
@@ -328,8 +319,6 @@ class StrayCat:
         ----------
         message_dict : dict
             Dictionary received from the Websocket client.
-        save : bool, optional
-            If True, the user's message is stored in the chat history. Default is True.
 
         Returns
         -------
@@ -373,7 +362,7 @@ class StrayCat:
             self.recall_relevant_memories_to_working_memory()
         except Exception as e:
             log.error(e)
-            traceback.print_exc(e)
+            traceback.print_exc()
 
             err_message = (
                 "You probably changed Embedder and old vector memory is not compatible. "
@@ -448,6 +437,8 @@ class StrayCat:
             who="AI", message=final_output.content, why=final_output.why
         )
 
+        self.__last_message_time = time.time()
+
         return final_output
 
     def run(self, user_message_json):
@@ -462,9 +453,7 @@ class StrayCat:
             # Send error as websocket message
             self.send_error(e)
 
-    def classify(
-        self, sentence: str, labels: List[str] | Dict[str, List[str]]
-    ) -> str | None:
+    def classify(self, sentence: str, labels: List[str] | Dict[str, List[str]]) -> str | None:
         """Classify a sentence.
 
         Parameters
@@ -515,7 +504,7 @@ Allowed classes are:
 
 "{sentence}" -> """
 
-        response = self.llm(prompt)
+        response = self.llm_response(prompt)
         log.info(response)
 
         # find the closest match and its score with levenshtein distance
@@ -577,11 +566,11 @@ Allowed classes are:
 
     @property
     def user_id(self):
-        return self.__user_id
+        return self.__user.id
 
     @property
-    def _llm(self):
-        return CheshireCat()._llm
+    def llm(self) -> BaseLanguageModel:
+        return CheshireCat().llm
 
     @property
     def embedder(self):
@@ -592,11 +581,11 @@ Allowed classes are:
         return CheshireCat().memory
 
     @property
-    def rabbit_hole(self):
+    def rabbit_hole(self) -> RabbitHole:
         return CheshireCat().rabbit_hole
 
     @property
-    def mad_hatter(self):
+    def mad_hatter(self) -> MadHatter:
         return CheshireCat().mad_hatter
 
     @property
