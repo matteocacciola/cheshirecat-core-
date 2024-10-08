@@ -36,7 +36,6 @@ dependencies = [
     "loguru==0.7.2",
     "anthropic==0.2.9",
     "text_generation==0.6.1",
-    "tinydb==4.8.0",
     "python-slugify==8.0.1",
     "autopep8",
     "pylint",

@@ -14,4 +14,17 @@ class AgentOutput(BaseModelDict):
 class BaseAgent(ABC):
     @abstractmethod
     async def execute(self, stray: StrayCat, *args, **kwargs) -> AgentOutput:
+        """Execute the agents.
+
+        Args:
+        ----
+        stray : StrayCat
+            StrayCat instance containing the working memory and the chat history.
+
+        Returns
+        -------
+        agent_output : AgentOutput
+            Reply of the agent, instance of AgentOutput.
+        """
+
         pass

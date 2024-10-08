@@ -9,7 +9,6 @@ from qdrant_client import QdrantClient
 from fastapi.testclient import TestClient
 
 from cat.auth.permissions import AuthUserInfo
-from cat.db.crud_source import CrudSourceSettings
 from cat.looking_glass.cheshire_cat_manager import CheshireCatManager
 from cat.looking_glass.stray_cat import StrayCat
 from cat.mad_hatter.plugin import Plugin
@@ -28,12 +27,6 @@ def mock_classes(monkeypatch):
     monkeypatch.setattr(
         VectorMemory, "connect_to_vector_memory", mock_connect_to_vector_memory
     )
-
-    # Use a different json settings db
-    def mock_get_file_name(self, *args, **kwargs):
-        return "tests/mocks/crud-test.json"
-
-    monkeypatch.setattr(CrudSourceSettings().__class__, "get_file_name", mock_get_file_name)
 
     # Use mock utils plugin folder
     def get_test_plugin_folder():

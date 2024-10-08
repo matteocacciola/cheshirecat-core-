@@ -24,14 +24,6 @@ class MainAgent(BaseAgent):
             self.verbose = True
 
     async def execute(self, stray: StrayCat, *args, **kwargs) -> AgentOutput:
-        """Execute the agents.
-
-        Returns
-        -------
-        agent_output : AgentOutput
-            Reply of the agent, instance of AgentOutput.
-        """
-
         # prepare input to be passed to the agent.
         #   Info will be extracted from working memory
         # Note: agent_input works both as a dict and as an object
