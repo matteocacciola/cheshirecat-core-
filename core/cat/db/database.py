@@ -9,7 +9,7 @@ class Database:
     def __init__(self):
         self.db = redis.Redis(
             host=get_env("CCAT_REDIS_HOST"),
-            port=get_env("CCAT_REDIS_PORT"),
+            port=int(get_env("CCAT_REDIS_PORT")),
             db=get_env("CCAT_REDIS_DB"),
             password=get_env("CCAT_REDIS_PASSWORD"),
             encoding="utf-8",
