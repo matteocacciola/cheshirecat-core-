@@ -70,7 +70,6 @@ async def auth_index(
     template_context = {
         "referer": referer,
         "error_message": error_message,
-        # "show_default_passwords": len(get_users().keys()) == 2,
     }
 
     response = templates.TemplateResponse(
@@ -96,9 +95,7 @@ async def auth_token(request: Request, credentials: UserCredentials):
 
     # use username and password to authenticate user from local identity provider and get token
     auth_handler = request.app.state.ccat_manager.core_auth_handler
-    access_token = await auth_handler.issue_jwt(
-        credentials.username, credentials.password
-    )
+    access_token = await auth_handler.issue_jwt(credentials.username, credentials.password)
 
     if access_token:
         return JWTResponse(access_token=access_token)

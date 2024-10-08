@@ -35,8 +35,10 @@ class MainAgent(BaseAgent):
         # prepare input to be passed to the agent.
         #   Info will be extracted from working memory
         # Note: agent_input works both as a dict and as an object
+        mad_hatter = stray.mad_hatter
+
         agent_input : BaseModelDict = self.format_agent_input(stray)
-        agent_input = stray.mad_hatter.execute_hook(
+        agent_input = mad_hatter.execute_hook(
             "before_agent_starts", agent_input, cat=stray
         )
 
@@ -45,7 +47,7 @@ class MainAgent(BaseAgent):
 
         # should we run the default agents?
         fast_reply = {}
-        fast_reply = stray.mad_hatter.execute_hook(
+        fast_reply = mad_hatter.execute_hook(
             "agent_fast_reply", fast_reply, cat=stray
         )
         if isinstance(fast_reply, AgentOutput):
@@ -54,10 +56,10 @@ class MainAgent(BaseAgent):
             return AgentOutput(**fast_reply)
 
         # obtain prompt parts from plugins
-        prompt_prefix = stray.mad_hatter.execute_hook(
+        prompt_prefix = mad_hatter.execute_hook(
             "agent_prompt_prefix", prompts.MAIN_PROMPT_PREFIX, cat=stray
         )
-        prompt_suffix = stray.mad_hatter.execute_hook(
+        prompt_suffix = mad_hatter.execute_hook(
             "agent_prompt_suffix", prompts.MAIN_PROMPT_SUFFIX, cat=stray
         )
 
@@ -85,6 +87,11 @@ class MainAgent(BaseAgent):
 
         The method formats the strings of recalled memories and chat history that will be provided to the Langchain
         Agent and inserted in the prompt.
+
+        Args:
+        ----
+        stray : StrayCat
+            StrayCat instance containing the working memory and the chat history.
 
         Returns
         -------

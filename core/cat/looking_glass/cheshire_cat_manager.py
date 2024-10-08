@@ -1,7 +1,13 @@
+import asyncio
+from asyncio import AbstractEventLoop
 from typing import Dict
 
+from cat.auth.permissions import AuthUserInfo
+from cat.env import get_env
 from cat.factory.custom_auth_handler import CoreAuthHandler
+from cat.jobs.job_on_idle_strays import job_on_idle_strays
 from cat.looking_glass.cheshire_cat import CheshireCat
+from cat.looking_glass.stray_cat import StrayCat
 from cat.looking_glass.white_rabbit import WhiteRabbit
 from cat.utils import singleton
 
@@ -25,8 +31,17 @@ class CheshireCatManager:
         self.__cheshire_cats: set[CheshireCat] = set()
         self.__strays: Dict[str, set[str]] = {} # dictionary with keys as chatbot_id and values the sets of user ids of the strays of that chatbot
 
+        # set a reference to asyncio event loop
+        self.event_loop = asyncio.get_running_loop()
+
+        # Dict of pseudo-sessions (key is the user_id)
+        self.strays: Dict[str, StrayCat] = {}
+
         # Start scheduling system
         self.white_rabbit = WhiteRabbit()
+        self.__check_idle_strays_job_id = self.white_rabbit.schedule_cron_job(
+            lambda: job_on_idle_strays(self), second=int(get_env("CCAT_STRAYCAT_TIMEOUT"))
+        )
 
         self.core_auth_handler = CoreAuthHandler()
 
@@ -170,3 +185,76 @@ class CheshireCatManager:
             raise ValueError(f"User {stray_user_id} is not a stray in any chatbot")
 
         return cheshire_cat
+
+    def add_stray(self, user: AuthUserInfo, chatbot_id: str, event_loop: AbstractEventLoop | None = None) -> None:
+        """
+        Adds a new stray to the list of strays.
+
+        Args:
+            user: the user to add as a stray
+            chatbot_id: the id of the chatbot to add the stray to
+            event_loop: the event loop to use for the stray, if None, it uses the current running loop
+
+        Returns:
+            None
+        """
+        event_loop = event_loop if event_loop is not None else asyncio.get_running_loop()
+
+        self.strays[user.id] = StrayCat(user_data=user, main_loop=event_loop)
+        self.add_stray_to_cheshire_cat(chatbot_id, user.id)
+
+    def get_stray(self, user_id: str) -> StrayCat:
+        """
+        Gets the stray with the given id.
+
+        Args:
+            user_id: The id of the stray to get
+
+        Returns:
+            The stray with the given id
+        """
+        return self.strays[user_id]
+
+    def remove_stray(self, user_id: str) -> None:
+        """
+        Removes a stray from the list of strays.
+
+        Args:
+            user_id: The id of the stray to remove
+
+        Returns:
+            None
+        """
+        stray = self.strays.pop(user_id)
+        stray.ws.close()
+
+        chatbot_id = self.get_cheshire_cat_from_stray(stray.user_id).id
+
+        self.remove_stray_from_cheshire_cat(chatbot_id, stray.user_id)
+        if not self.get_cheshire_cat_strays(chatbot_id):
+            self.remove_cheshire_cat(chatbot_id)
+
+        del stray
+
+    def shutdown(self) -> None:
+        """
+        Shuts down the Cheshire Cat Manager. It closes all the strays' connections and stops the scheduling system.
+
+        Returns:
+            None
+        """
+        for user_id, stray in self.strays.items():
+            stray.ws.close()
+
+        self.event_loop.stop()
+        self.event_loop.close()
+        self.event_loop = None
+
+        self.__cheshire_cats.clear()
+        self.__strays.clear()
+        self.strays.clear()
+
+        self.white_rabbit.remove_job(self.__check_idle_strays_job_id)
+
+        self.white_rabbit = None
+        self.core_auth_handler = None

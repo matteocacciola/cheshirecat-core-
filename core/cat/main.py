@@ -1,5 +1,4 @@
 import uvicorn
-import asyncio
 from contextlib import asynccontextmanager
 from scalar_fastapi import get_scalar_api_reference
 
@@ -43,18 +42,16 @@ async def lifespan(app: FastAPI):
     # - Not using middleware because I can't make it work with both http and websocket;
     # - Not using "Depends" because it only supports callables (not instances)
     # - Starlette allows this: https://www.starlette.io/applications/#storing-state-on-the-app-instance
+
+    # load the Cheshire Cat Manager
     app.state.ccat_manager = CheshireCatManager()
-
-    # Dict of pseudo-sessions (key is the user_id)
-    app.state.strays = {}
-
-    # set a reference to asyncio event loop
-    app.state.event_loop = asyncio.get_running_loop()
 
     # startup message with admin, public and swagger addresses
     log.welcome()
 
     yield
+
+    app.state.ccat_manager.shutdown()
 
 
 def custom_generate_unique_id(route: APIRoute):

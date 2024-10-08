@@ -137,8 +137,14 @@ def main_agent(client):
 # fixture to have available an instance of StrayCat
 @pytest.fixture
 def stray(client):
+    cheshire_cat_manager: CheshireCatManager = client.app.state.cheshire_cat_manager
+    cheshire_cat = cheshire_cat_manager.get_or_create_cheshire_cat("test")
+
     user = AuthUserInfo(id="user_alice", name="Alice")
     stray_cat = StrayCat(user_data=user, main_loop=asyncio.new_event_loop())
+
+    cheshire_cat_manager.add_stray_to_cheshire_cat(cheshire_cat.id, stray_cat.user_id)
+
     stray_cat.working_memory.user_message_json = {"user_id": user.id, "text": "meow"}
     yield stray_cat
 

@@ -3,8 +3,6 @@
 # to have a standard auth interface.
 
 from abc import ABC, abstractmethod
-from typing import Dict
-import asyncio
 from urllib.parse import urlencode
 from fastapi import Request, WebSocket, HTTPException, WebSocketException
 from fastapi.requests import HTTPConnection
@@ -105,14 +103,11 @@ class HTTPAuth(ConnectionAuth):
 
     async def get_user_stray(self, user: AuthUserInfo, connection: Request, chatbot_id: str) -> StrayCat:
         ccat_manager: CheshireCatManager = connection.app.state.ccat_manager
-        strays: Dict[str, StrayCat] = connection.app.state.strays
-        event_loop = connection.app.state.event_loop
 
-        if user.id not in strays.keys():
-            strays[user.id] = StrayCat(user_data=user, main_loop=event_loop)
-            ccat_manager.add_stray_to_cheshire_cat(chatbot_id, user.id)
+        if user.id not in ccat_manager.strays.keys():
+            ccat_manager.add_stray(user, chatbot_id, ccat_manager.event_loop)
 
-        return strays[user.id]
+        return ccat_manager.get_stray(user.id)
     
     def not_allowed(self, connection: Request):
         raise HTTPException(status_code=403, detail={"error": "Invalid Credentials"})
@@ -135,13 +130,10 @@ class WebSocketAuth(ConnectionAuth):
 
     async def get_user_stray(self, user: AuthUserInfo, connection: WebSocket, chatbot_id: str) -> StrayCat:
         ccat_manager: CheshireCatManager = connection.app.state.ccat_manager
-        strays: Dict[str, StrayCat] = connection.app.state.strays
+        if user.id not in ccat_manager.strays.keys():
+            ccat_manager.add_stray(user, chatbot_id)
 
-        if user.id not in strays.keys():
-            strays[user.id] = StrayCat(user_data=user, main_loop=asyncio.get_running_loop())
-            ccat_manager.add_stray_to_cheshire_cat(chatbot_id, user.id)
-
-        stray = strays[user.id]
+        stray = ccat_manager.get_stray(user.id)
         # Close previous ws connection
         if stray.ws:
             await stray.ws.close()

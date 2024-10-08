@@ -40,7 +40,7 @@ class StrayCat:
         self.__main_loop = main_loop
 
         self.__loop = asyncio.new_event_loop()
-        self.__last_message_time = None
+        self.__last_message_time = time.time()
 
     def __repr__(self):
         return f"StrayCat(user_id={self.user_id})"
@@ -173,13 +173,14 @@ class StrayCat:
         after_cat_recalls_memories
         """
         recall_query = query
+        mad_hatter = self.mad_hatter
 
         if query is None:
             # If query is not provided, use the user's message as the query
             recall_query = self.working_memory.user_message_json.text
 
         # We may want to search in memory
-        recall_query = self.mad_hatter.execute_hook(
+        recall_query = mad_hatter.execute_hook(
             "cat_recall_query", recall_query, cat=self
         )
         log.info(f"Recall query: '{recall_query}'")
@@ -198,7 +199,7 @@ class StrayCat:
         )
 
         # hook to do something before recall begins
-        self.mad_hatter.execute_hook("before_cat_recalls_memories", cat=self)
+        mad_hatter.execute_hook("before_cat_recalls_memories", cat=self)
 
         # Setting default recall configs for each memory
         # TODO: can these data structures become instances of a RecallSettings class?
@@ -225,17 +226,17 @@ class StrayCat:
 
         # hooks to change recall configs for each memory
         recall_configs = [
-            self.mad_hatter.execute_hook(
+            mad_hatter.execute_hook(
                 "before_cat_recalls_episodic_memories",
                 default_episodic_recall_config,
                 cat=self,
             ),
-            self.mad_hatter.execute_hook(
+            mad_hatter.execute_hook(
                 "before_cat_recalls_declarative_memories",
                 default_declarative_recall_config,
                 cat=self,
             ),
-            self.mad_hatter.execute_hook(
+            mad_hatter.execute_hook(
                 "before_cat_recalls_procedural_memories",
                 default_procedural_recall_config,
                 cat=self,
@@ -256,7 +257,7 @@ class StrayCat:
             )  # self.working_memory.procedural_memories = ...
 
         # hook to modify/enrich retrieved memories
-        self.mad_hatter.execute_hook("after_cat_recalls_memories", cat=self)
+        mad_hatter.execute_hook("after_cat_recalls_memories", cat=self)
 
     def llm_response(self, prompt: str, stream: bool = False) -> str:
         """Generate a response using the LLM model.
@@ -310,7 +311,6 @@ class StrayCat:
 
         return output
 
-
     async def __call__(self, message_dict):
         """Call the Cat instance.
 
@@ -338,6 +338,8 @@ class StrayCat:
         user_message = UserMessage.model_validate(message_dict)
         log.info(user_message)
 
+        mad_hatter = self.mad_hatter
+
         # set a few easy access variables
         self.working_memory.user_message_json = user_message
 
@@ -345,7 +347,7 @@ class StrayCat:
         self.working_memory.model_interactions = []
 
         # hook to modify/enrich user input
-        self.working_memory.user_message_json = self.mad_hatter.execute_hook(
+        self.working_memory.user_message_json = mad_hatter.execute_hook(
             "before_cat_reads_message", self.working_memory.user_message_json, cat=self
         )
 
@@ -404,7 +406,7 @@ class StrayCat:
             page_content=user_message_text,
             metadata={"source": self.user_id, "when": time.time()},
         )
-        doc = self.mad_hatter.execute_hook(
+        doc = mad_hatter.execute_hook(
             "before_cat_stores_episodic_memory", doc, cat=self
         )
         # store user message in episodic memory
@@ -429,7 +431,7 @@ class StrayCat:
         )
 
         # run message through plugins
-        final_output = self.mad_hatter.execute_hook(
+        final_output = mad_hatter.execute_hook(
             "before_cat_sends_message", final_output, cat=self
         )
 
@@ -603,7 +605,4 @@ Allowed classes are:
 
     @property
     def is_idle(self) -> bool:
-        if not self.__last_message_time:
-            return False
-
         return time.time() - self.__last_message_time >= float(get_env("CCAT_STRAYCAT_TIMEOUT"))

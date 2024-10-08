@@ -44,25 +44,6 @@ def factory_allowed_embedders(allowed: List[EmbedderSettings], cat) -> List:
     return allowed
 
 
-# @hook(priority=0)
-# def factory_allowed_crud_sources(allowed: List[CrudSettings], cat) -> List:
-#     """Hook to extend support of crud sources.
-#
-#     Parameters
-#     ---------
-#     allowed : List of CrudSettings classes
-#         list of allowed crud sources
-#     cat : Cat
-#         Cat instance
-#
-#     Returns
-#     -------
-#     supported : List of CrudSettings classes
-#         list of allowed crud sources
-#     """
-#     return allowed
-
-
 @hook(priority=0)
 def factory_allowed_auth_handlers(allowed: List[AuthHandlerConfig], cat) -> List:
     """Hook to extend list of supported auth_handlers.

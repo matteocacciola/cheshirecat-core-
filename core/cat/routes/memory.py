@@ -165,9 +165,10 @@ async def create_memory_point(
         )
 
     stray = cats.stray_cat
+    memory_collections = stray.memory.vectors.collections
 
     # check if collection exists
-    collections = list(stray.memory.vectors.collections.keys())
+    collections = list(memory_collections.keys())
     if collection_id not in collections:
         raise HTTPException(
             status_code=400, detail={"error": "Collection does not exist."}
@@ -181,7 +182,7 @@ async def create_memory_point(
         point.metadata["source"] = stray.user_id # this will do also for declarative memory
 
     # create point
-    qdrant_point = stray.memory.vectors.collections[collection_id].add_point(
+    qdrant_point = memory_collections[collection_id].add_point(
         content=point.content,
         vector=embedding,
         metadata=point.metadata

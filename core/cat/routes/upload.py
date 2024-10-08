@@ -91,10 +91,10 @@ async def upload_file(
     ```
     """
 
-    stray = cats.stray_cat
+    rabbit_hole = cats.cheshire_cat.rabbit_hole
 
     # Check the file format is supported
-    admitted_types = stray.rabbit_hole.file_handlers.keys()
+    admitted_types = rabbit_hole.file_handlers.keys()
 
     # Get file mime type
     content_type = mimetypes.guess_type(file.filename)[0]
@@ -113,8 +113,8 @@ async def upload_file(
     background_tasks.add_task(
         # we deepcopy the file because FastAPI does not keep the file in memory after the response returns to the client
         # https://github.com/tiangolo/fastapi/discussions/10936
-        stray.rabbit_hole.ingest_file,
-        stray,
+        rabbit_hole.ingest_file,
+        cats.stray_cat,
         deepcopy(format_upload_file(file)),
         chunk_size=chunk_size,
         chunk_overlap=chunk_overlap,
@@ -157,8 +157,6 @@ async def upload_url(
     """Upload a url. Website content will be extracted and segmented into chunks.
     Chunks will be then vectorized and stored into documents memory."""
 
-    stray = cats.stray_cat
-
     # check that URL is valid
     try:
         # Send a HEAD request to the specified URL
@@ -169,8 +167,8 @@ async def upload_url(
         if response.status_code == 200:
             # upload file to long term memory, in the background
             background_tasks.add_task(
-                stray.rabbit_hole.ingest_file,
-                stray,
+                cats.cheshire_cat.rabbit_hole.ingest_file,
+                cats.stray_cat,
                 upload_config.url,
                 **upload_config.model_dump(exclude={"url"})
             )
@@ -196,7 +194,7 @@ async def upload_memory(
 ) -> Dict:
     """Upload a memory json file to the cat memory"""
 
-    stray = cats.stray_cat
+    cat = cats.cheshire_cat
 
     # Get file mime type
     content_type = mimetypes.guess_type(file.filename)[0]
@@ -211,8 +209,8 @@ async def upload_memory(
 
     # Ingest memories in background and notify client
     background_tasks.add_task(
-        stray.rabbit_hole.ingest_memory,
-        stray,
+        cat.rabbit_hole.ingest_memory,
+        cat,
         deepcopy(file)
     )
 

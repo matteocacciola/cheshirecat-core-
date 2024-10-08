@@ -5,7 +5,6 @@ from cat.db.crud_source import CrudSource, get_crud_settings
 from cat.db.database_source import DatabaseCrudSource
 from cat.db.redis_source import RedisCrudSource
 from cat.env import get_env
-# from cat.mad_hatter.mad_hatter import MadHatter
 
 
 # Base class to manage the source of crud.
@@ -60,10 +59,10 @@ def get_allowed_crud_sources() -> List:
     # return list_configuration_sources
 
 
-def get_crud_source_from_name(name_crud: str) -> CrudSettings | None:
+def get_crud_source_from_name(name: str) -> CrudSettings | None:
     """Find the crud adapter class by name"""
     for cls in get_allowed_crud_sources():
-        if cls.__name__ == name_crud:
+        if cls.__name__ == name:
             return cls
     return None
 
