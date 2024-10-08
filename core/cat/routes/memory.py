@@ -165,7 +165,8 @@ async def create_memory_point(
         )
 
     stray = cats.stray_cat
-    memory_collections = stray.memory.vectors.collections
+    ccat = cats.cheshire_cat
+    memory_collections = ccat.memory.vectors.collections
 
     # check if collection exists
     collections = list(memory_collections.keys())
@@ -175,7 +176,7 @@ async def create_memory_point(
         )
     
     # embed content
-    embedding = stray.embedder.embed_query(point.content)
+    embedding = ccat.embedder.embed_query(point.content)
     
     # ensure source is set
     if not point.metadata.get("source"):

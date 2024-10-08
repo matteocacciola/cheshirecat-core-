@@ -32,7 +32,7 @@ def test_main_modules_loaded(cheshire_cat):
 def test_default_llm_loaded(cheshire_cat):
     assert isinstance(cheshire_cat.llm, LLMDefault)
 
-    out = cheshire_cat.llm("Hey")
+    out = cheshire_cat.llm_response("Hey")
     assert "You did not configure a Language Model" in out
 
 

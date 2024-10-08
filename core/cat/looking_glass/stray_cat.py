@@ -1,6 +1,7 @@
 import time
 import asyncio
 import traceback
+from asyncio import AbstractEventLoop
 import tiktoken
 from typing import Literal, get_args, List, Dict, Union, Any
 from langchain.docstore.document import Document
@@ -13,13 +14,17 @@ from fastapi import WebSocket
 
 from cat import utils
 from cat.agents import AgentOutput
+from cat.agents.main_agent import MainAgent
 from cat.auth.permissions import AuthUserInfo
 from cat.convo.messages import CatMessage, UserMessage, MessageWhy, Role, EmbedderModelInteraction
 from cat.env import get_env
 from cat.log import log
 from cat.looking_glass.callbacks import NewTokenHandler, ModelInteractionHandler
+from cat.looking_glass.cheshire_cat import CheshireCat
 from cat.looking_glass.cheshire_cat_manager import CheshireCatManager
+from cat.looking_glass.white_rabbit import WhiteRabbit
 from cat.mad_hatter.mad_hatter import MadHatter
+from cat.memory.long_term_memory import LongTermMemory
 from cat.memory.working_memory import WorkingMemory
 from cat.rabbit_hole import RabbitHole
 
@@ -30,7 +35,9 @@ MSG_TYPES = Literal["notification", "chat", "error", "chat_token"]
 class StrayCat:
     """User/session based object containing working memory and a few utility pointers"""
 
-    def __init__(self, main_loop, user_data: AuthUserInfo = None, ws: WebSocket = None):
+    def __init__(self, chatbot_id: str, main_loop: AbstractEventLoop, user_data: AuthUserInfo, ws: WebSocket = None):
+        self.__chatbot_id = chatbot_id
+
         self.__user = user_data
         self.working_memory = WorkingMemory()
 
@@ -41,6 +48,15 @@ class StrayCat:
 
         self.__loop = asyncio.new_event_loop()
         self.__last_message_time = time.time()
+
+    def __eq__(self, other: "StrayCat") -> bool:
+        """Check if two cats are equal."""
+        if not isinstance(other, StrayCat):
+            return False
+        return self.user_id == other.user_id
+
+    def __hash__(self):
+        return hash(self.user_id)
 
     def __repr__(self):
         return f"StrayCat(user_id={self.user_id})"
@@ -172,21 +188,20 @@ class StrayCat:
         before_cat_recalls_procedural_memories
         after_cat_recalls_memories
         """
-        recall_query = query
-        mad_hatter = self.mad_hatter
+        cheshire_cat = self.cheshire_cat
 
-        if query is None:
-            # If query is not provided, use the user's message as the query
-            recall_query = self.working_memory.user_message_json.text
+        # If query is not provided, use the user's message as the query
+        recall_query = query if query is not None else self.working_memory.user_message_json.text
 
         # We may want to search in memory
+        mad_hatter = cheshire_cat.mad_hatter
         recall_query = mad_hatter.execute_hook(
             "cat_recall_query", recall_query, cat=self
         )
         log.info(f"Recall query: '{recall_query}'")
 
         # Embed recall query
-        recall_query_embedding = self.embedder.embed_query(recall_query)
+        recall_query_embedding = self.cheshire_cat.embedder.embed_query(recall_query)
         self.working_memory.recall_query = recall_query
         
         # keep track of embedder model usage
@@ -243,13 +258,13 @@ class StrayCat:
             ),
         ]
 
-        memory_types = self.memory.vectors.collections.keys()
+        memory_types = cheshire_cat.memory.vectors.collections.keys()
 
         for config, memory_type in zip(recall_configs, memory_types):
             memory_key = f"{memory_type}_memories"
 
             # recall relevant memories for collection
-            vector_memory = getattr(self.memory.vectors, memory_type)
+            vector_memory = getattr(cheshire_cat.memory.vectors, memory_type)
             memories = vector_memory.recall_memories_from_embedding(**config)
 
             setattr(
@@ -299,7 +314,7 @@ class StrayCat:
         chain = (
             prompt
             | RunnableLambda(lambda x: utils.langchain_log_prompt(x, f"{caller} prompt"))
-            | self.llm
+            | self.cheshire_cat.llm
             | RunnableLambda(lambda x: utils.langchain_log_output(x, f"{caller} prompt output"))
             | StrOutputParser()
         )
@@ -338,7 +353,8 @@ class StrayCat:
         user_message = UserMessage.model_validate(message_dict)
         log.info(user_message)
 
-        mad_hatter = self.mad_hatter
+        ccat = self.cheshire_cat
+        mad_hatter = ccat.mad_hatter
 
         # set a few easy access variables
         self.working_memory.user_message_json = user_message
@@ -380,7 +396,7 @@ class StrayCat:
 
         # reply with agent
         try:
-            agent_output: AgentOutput = await self.main_agent.execute(self)
+            agent_output: AgentOutput = await ccat.main_agent.execute(self)
         except Exception as e:
             # This error happens when the LLM
             #   does not respect prompt instructions.
@@ -412,8 +428,8 @@ class StrayCat:
         # store user message in episodic memory
         # TODO: vectorize and store also conversation chunks
         #   (not raw dialog, but summarization)
-        user_message_embedding = self.embedder.embed_documents([user_message_text])
-        _ = self.memory.vectors.episodic.add_point(
+        user_message_embedding = self.cheshire_cat.embedder.embed_documents([user_message_text])
+        _ = self.cheshire_cat.memory.vectors.episodic.add_point(
             doc.page_content,
             user_message_embedding[0],
             doc.metadata,
@@ -568,35 +584,47 @@ Allowed classes are:
         return langchain_chat_history
 
     @property
-    def user_id(self):
+    def user_id(self) -> str:
         return self.__user.id
 
     @property
+    def chatbot_id(self) -> str:
+        return self.__chatbot_id
+
+    @property
+    def cheshire_cat(self) -> CheshireCat:
+        ccat = CheshireCatManager().get_cheshire_cat(self.chatbot_id)
+        if not ccat:
+            raise ValueError(f"Cheshire Cat not found for the StrayCat {self.user_id}.")
+
+        return ccat
+
+    @property
     def llm(self) -> BaseLanguageModel:
-        return CheshireCatManager().get_cheshire_cat_from_stray(self.user_id).llm
+        return self.cheshire_cat.llm
 
     @property
     def embedder(self):
-        return CheshireCatManager().get_cheshire_cat_from_stray(self.user_id).embedder
+        return self.cheshire_cat.embedder
 
     @property
     def memory(self):
-        return CheshireCatManager().get_cheshire_cat_from_stray(self.user_id).memory
+        return self.cheshire_cat.memory
 
     @property
     def rabbit_hole(self) -> RabbitHole:
-        return CheshireCatManager().get_cheshire_cat_from_stray(self.user_id).rabbit_hole
+        return self.cheshire_cat.rabbit_hole
 
     @property
     def mad_hatter(self) -> MadHatter:
-        return CheshireCatManager().get_cheshire_cat_from_stray(self.user_id).mad_hatter
+        return self.cheshire_cat.mad_hatter
 
     @property
-    def main_agent(self):
-        return CheshireCatManager().get_cheshire_cat_from_stray(self.user_id).main_agent
+    def main_agent(self) -> MainAgent:
+        return self.cheshire_cat.main_agent
 
     @property
-    def white_rabbit(self):
+    def white_rabbit(self) -> WhiteRabbit:
         return CheshireCatManager().white_rabbit
 
     @property

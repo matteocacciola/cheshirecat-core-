@@ -60,7 +60,7 @@ class ProceduresAgent(BaseAgent):
         return AgentOutput()
 
     async def execute_procedures(self, stray: StrayCat) -> AgentOutput:
-        mad_hatter = stray.mad_hatter
+        mad_hatter = stray.cheshire_cat.mad_hatter
 
         # get procedures prompt from plugins
         procedures_prompt_template = mad_hatter.execute_hook(
@@ -117,7 +117,7 @@ class ProceduresAgent(BaseAgent):
         chain = (
             prompt
             | RunnableLambda(lambda x: utils.langchain_log_prompt(x, "TOOL PROMPT"))
-            | stray.llm
+            | stray.cheshire_cat.llm
             | RunnableLambda(lambda x: utils.langchain_log_output(x, "TOOL PROMPT OUTPUT"))
             | ChooseProcedureOutputParser() # ensures output is a LLMAction
         )

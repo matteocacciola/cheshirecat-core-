@@ -20,7 +20,6 @@ from cat.looking_glass.cheshire_cat import CheshireCat
 from cat.looking_glass.cheshire_cat_manager import CheshireCatManager
 from cat.looking_glass.stray_cat import StrayCat
 from cat.log import log
-from cat.mad_hatter.mad_hatter import MadHatter
 
 
 class RabbitHole:
@@ -356,9 +355,11 @@ class RabbitHole:
 
         log.info(f"Preparing to memorize {len(docs)} vectors")
 
-        mad_hatter = stray.mad_hatter
-        embedder = stray.embedder
-        memory = stray.memory
+        ccat = stray.cheshire_cat
+
+        mad_hatter = ccat.mad_hatter
+        embedder = ccat.embedder
+        memory = ccat.memory
 
         # hook the docs before they are stored in the vector memory
         docs = mad_hatter.execute_hook(
@@ -456,7 +457,7 @@ class RabbitHole:
 
         """
 
-        mad_hatter = stray.mad_hatter
+        mad_hatter = stray.cheshire_cat.mad_hatter
 
         # do something on the text before it is split
         text = mad_hatter.execute_hook(

@@ -1,3 +1,5 @@
+from typing import Dict
+
 from cat.memory.vector_memory import VectorMemory
 
 
@@ -13,7 +15,9 @@ class LongTermMemory:
         Vector Memory collection.
     """
 
-    def __init__(self, vector_memory_config={}):
+    def __init__(self, vector_memory_config: Dict | None = None):
+        vector_memory_config = vector_memory_config or {}
+
         # Vector based memory (will store embeddings and their metadata)
         self.vectors = VectorMemory(**vector_memory_config)
 

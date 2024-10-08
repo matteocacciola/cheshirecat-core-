@@ -1,7 +1,7 @@
 # Helper classes for connection handling
 # Credential extraction from ws / http connections is not delegated to the custom auth handlers,
 # to have a standard auth interface.
-
+import asyncio
 from abc import ABC, abstractmethod
 from urllib.parse import urlencode
 from fastapi import Request, WebSocket, HTTPException, WebSocketException
@@ -52,7 +52,7 @@ class ConnectionAuth(ABC):
                 credentials.credential, self.resource, self.permission, user_id=credentials.user_id
             )
             if user:
-                stray = await self.get_user_stray(user, connection, credentials.chatbot_id)
+                stray = await self.get_user_stray(ccat, user, connection)
                 return ContextualCats(cheshire_cat=ccat, stray_cat=stray)
 
         # if no stray was obtained, raise exception
@@ -63,7 +63,7 @@ class ConnectionAuth(ABC):
         pass
 
     @abstractmethod
-    async def get_user_stray(self, user: AuthUserInfo, connection: HTTPConnection, chatbot_id: str) -> StrayCat:
+    async def get_user_stray(self, ccat: CheshireCat, user: AuthUserInfo, connection: HTTPConnection) -> StrayCat:
         pass
 
     @abstractmethod
@@ -101,13 +101,16 @@ class HTTPAuth(ConnectionAuth):
 
         return Credentials(chatbot_id=chatbot_id, user_id=user_id, credential=token)
 
-    async def get_user_stray(self, user: AuthUserInfo, connection: Request, chatbot_id: str) -> StrayCat:
+    async def get_user_stray(self, ccat: CheshireCat, user: AuthUserInfo, connection: Request) -> StrayCat:
+        current_stray = ccat.get_stray(user.id)
+        if current_stray:
+            return current_stray
+
         ccat_manager: CheshireCatManager = connection.app.state.ccat_manager
+        stray_cat = StrayCat(user_data=user, main_loop=ccat_manager.event_loop, chatbot_id=ccat.id)
+        ccat.add_stray(stray_cat)
 
-        if user.id not in ccat_manager.strays.keys():
-            ccat_manager.add_stray(user, chatbot_id, ccat_manager.event_loop)
-
-        return ccat_manager.get_stray(user.id)
+        return stray_cat
     
     def not_allowed(self, connection: Request):
         raise HTTPException(status_code=403, detail={"error": "Invalid Credentials"})
@@ -128,12 +131,13 @@ class WebSocketAuth(ConnectionAuth):
         
         return Credentials(chatbot_id=chatbot_id, user_id=user_id, credential=token)
 
-    async def get_user_stray(self, user: AuthUserInfo, connection: WebSocket, chatbot_id: str) -> StrayCat:
-        ccat_manager: CheshireCatManager = connection.app.state.ccat_manager
-        if user.id not in ccat_manager.strays.keys():
-            ccat_manager.add_stray(user, chatbot_id)
+    async def get_user_stray(self, ccat: CheshireCat, user: AuthUserInfo, connection: WebSocket) -> StrayCat:
+        stray = ccat.get_stray(user.id)
+        if not stray:
+            stray = StrayCat(user_data=user, main_loop=asyncio.get_running_loop(), chatbot_id=ccat.id)
+            # Add the stray to the cheshire cat
+            ccat.add_stray(stray)
 
-        stray = ccat_manager.get_stray(user.id)
         # Close previous ws connection
         if stray.ws:
             await stray.ws.close()

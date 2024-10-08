@@ -35,7 +35,7 @@ class MainAgent(BaseAgent):
         # prepare input to be passed to the agent.
         #   Info will be extracted from working memory
         # Note: agent_input works both as a dict and as an object
-        mad_hatter = stray.mad_hatter
+        mad_hatter = stray.cheshire_cat.mad_hatter
 
         agent_input : BaseModelDict = self.format_agent_input(stray)
         agent_input = mad_hatter.execute_hook(

@@ -26,6 +26,7 @@ from cat.factory.llm import LLMDefaultConfig
 from cat.factory.llm import get_llm_from_name
 from cat.agents.main_agent import MainAgent
 from cat.log import log
+from cat.looking_glass.stray_cat import StrayCat
 from cat.mad_hatter.mad_hatter import MadHatter
 from cat.memory.long_term_memory import LongTermMemory
 from cat.rabbit_hole import RabbitHole
@@ -62,6 +63,8 @@ class CheshireCat:
         self.llm = None
         self.memory = None
         self.custom_auth_handler = None
+
+        self.__strays: set[StrayCat] = set()
 
         # instantiate MadHatter (loads all plugins' hooks and tools)
         self.mad_hatter = MadHatter(self.id)
@@ -100,6 +103,47 @@ class CheshireCat:
 
     def __hash__(self):
         return hash(self.id)
+
+    def __next_stray(self, user_id: str) -> StrayCat | None:
+        return next(
+            (cat for cat in self.__strays if cat.user_id == user_id),
+            None
+        )
+
+    def __any_stray(self, user_id: str) -> bool:
+        return any(cat.user_id == user_id for cat in self.__strays)
+
+    def add_stray(self, stray: StrayCat):
+        """Add a stray to the Cat."""
+
+        if not self.__any_stray(stray.user_id):
+            self.__strays.add(stray)
+
+    def remove_stray(self, user_id: str):
+        """Remove a stray from the Cat."""
+
+        stray = self.__next_stray(user_id)
+        if not stray:
+            return
+
+        stray.ws.close()
+        self.__strays.remove(stray)
+
+        del stray
+
+    def get_stray(self, user_id: str) -> StrayCat | None:
+        """Get a stray from the Cat."""
+
+        return self.__next_stray(user_id)
+
+    def has_strays(self) -> bool:
+        return bool(self.__strays)
+
+    def shutdown(self) -> None:
+        for stray in self.__strays:
+            stray.ws.close()
+
+        self.__strays.clear()
 
     def load_natural_language(self):
         """Load Natural Language related objects.
@@ -351,7 +395,7 @@ class CheshireCat:
 
     # REFACTOR: cat.llm should be available here, without streaming clearly
     # (one could be interested in calling the LLM anytime, not only when there is a session)
-    def llm(self, prompt, *args, **kwargs) -> str:
+    def llm_response(self, prompt, *args, **kwargs) -> str:
         """Generate a response using the LLM model.
 
         This method is useful for generating a response with both a chat and a completion model using the same syntax
@@ -391,3 +435,7 @@ class CheshireCat:
         )
 
         return output
+
+    @property
+    def strays(self):
+        return self.__strays

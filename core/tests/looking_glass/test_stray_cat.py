@@ -3,13 +3,21 @@ import asyncio
 
 from cat.auth.permissions import AuthUserInfo
 from cat.convo.messages import MessageWhy, CatMessage
+from cat.looking_glass.cheshire_cat_manager import CheshireCatManager
 from cat.looking_glass.stray_cat import StrayCat
 from cat.memory.working_memory import WorkingMemory
 
 
 @pytest.fixture
 def stray(client) -> StrayCat:
-    yield StrayCat(user_data=AuthUserInfo(id="user_alice", name="Alice"), main_loop=asyncio.new_event_loop())
+    cheshire_cat_manager: CheshireCatManager = client.app.state.cheshire_cat_manager
+    cheshire_cat = cheshire_cat_manager.get_or_create_cheshire_cat("test")
+
+    yield StrayCat(
+        user_data=AuthUserInfo(id="user_alice", name="Alice"),
+        main_loop=asyncio.new_event_loop(),
+        chatbot_id=cheshire_cat.id
+    )
 
 
 def test_stray_initialization(stray):
@@ -19,10 +27,10 @@ def test_stray_initialization(stray):
 
 
 def test_stray_nlp(stray):
-    res = stray.llm("hey")
+    res = stray.llm_response("hey")
     assert "You did not configure" in res
 
-    embedding = stray.embedder.embed_documents(["hey"])
+    embedding = stray.cheshire_cat.embedder.embed_documents(["hey"])
     assert isinstance(embedding[0], list)
     assert isinstance(embedding[0][0], float)
 
