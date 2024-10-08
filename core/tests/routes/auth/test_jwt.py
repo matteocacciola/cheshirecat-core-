@@ -99,7 +99,7 @@ async def test_issue_jwt_for_new_user(client):
     received_token = res.json()["access_token"]
     assert is_jwt(received_token)
 
-# test token expiration after successfull login
+# test token expiration after successful login
 # NOTE: here we are using the secure_client fixture (see conftest.py)
 def test_jwt_expiration(secure_client):
 

@@ -134,7 +134,7 @@ def explicit_error_message(e):
         # happens both when there are no credits or the key is not active
         error_description = """Your OpenAI key is not active or you did not add a payment method.
 You need a credit card - and money in it - to use OpenAI api.
-HOW TO FIX: go to your OpenAI accont and add a credit card"""
+HOW TO FIX: go to your OpenAI account and add a credit card"""
 
         log.error(
             error_description

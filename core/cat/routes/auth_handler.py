@@ -1,5 +1,5 @@
 from typing import Dict
-from fastapi import Request, APIRouter, Body, HTTPException, Depends
+from fastapi import APIRouter, Body, HTTPException, Depends
 
 from cat.auth.connection import HTTPAuth, ContextualCats
 from cat.auth.permissions import AuthPermission, AuthResource
@@ -14,7 +14,7 @@ AUTH_HANDLER_CATEGORY = "auth_handler_factory"
 
 @router.get("/settings")
 def get_auth_handler_settings(
-    request: Request, cats: ContextualCats = Depends(HTTPAuth(AuthResource.AUTH_HANDLER, AuthPermission.LIST))
+    cats: ContextualCats = Depends(HTTPAuth(AuthResource.AUTH_HANDLER, AuthPermission.LIST))
 ) -> Dict:
     """Get the list of the AuthHandlers"""
 
@@ -51,7 +51,6 @@ def get_auth_handler_settings(
 
 @router.get("/settings/{auth_handler_name}")
 def get_auth_handler_setting(
-    request: Request,
     auth_handler_name: str,
     cats: ContextualCats = Depends(HTTPAuth(AuthResource.AUTH_HANDLER, AuthPermission.LIST))
 ) -> Dict:
@@ -59,9 +58,9 @@ def get_auth_handler_setting(
 
     chatbot_id = cats.cheshire_cat.id
 
-    AUTH_HANDLER_SCHEMAS = get_auth_handlers_schemas(chatbot_id)
+    auth_handler_schemas = get_auth_handlers_schemas(chatbot_id)
 
-    allowed_configurations = list(AUTH_HANDLER_SCHEMAS.keys())
+    allowed_configurations = list(auth_handler_schemas.keys())
     if auth_handler_name not in allowed_configurations:
         raise HTTPException(
             status_code=400,
@@ -71,7 +70,7 @@ def get_auth_handler_setting(
         )
 
     setting = crud.get_setting_by_name(name=auth_handler_name, chatbot_id=chatbot_id)
-    schema = AUTH_HANDLER_SCHEMAS[auth_handler_name]
+    schema = auth_handler_schemas[auth_handler_name]
 
     setting = {} if setting is None else setting["value"]
 
@@ -80,7 +79,6 @@ def get_auth_handler_setting(
 
 @router.put("/settings/{auth_handler_name}")
 def upsert_authenticator_setting(
-    request: Request,
     auth_handler_name: str,
     cats: ContextualCats = Depends(HTTPAuth(AuthResource.AUTH_HANDLER, AuthPermission.LIST)),
     payload: Dict = Body(...),
@@ -90,9 +88,9 @@ def upsert_authenticator_setting(
     ccat = cats.cheshire_cat
     chatbot_id = ccat.id
 
-    AUTH_HANDLER_SCHEMAS = get_auth_handlers_schemas(chatbot_id)
+    auth_handler_schemas = get_auth_handlers_schemas(chatbot_id)
 
-    allowed_configurations = list(AUTH_HANDLER_SCHEMAS.keys())
+    allowed_configurations = list(auth_handler_schemas.keys())
     if auth_handler_name not in allowed_configurations:
         raise HTTPException(
             status_code=400,

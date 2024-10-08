@@ -10,10 +10,8 @@ router = APIRouter()
 
 
 # server status
-@router.get("/")
-async def home(
-    cats: ContextualCats = Depends(HTTPAuth(AuthResource.STATUS, AuthPermission.READ)),
-) -> Dict:
+@router.get("/", dependencies=[Depends(HTTPAuth(AuthResource.STATUS, AuthPermission.READ))])
+async def home() -> Dict:
     """Server status"""
     with open("pyproject.toml", "rb") as f:
         project_toml = tomli.load(f)["project"]

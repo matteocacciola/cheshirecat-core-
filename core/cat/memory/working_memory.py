@@ -55,7 +55,7 @@ class WorkingMemory(BaseModelDict):
         why = why.model_dump() if why else {}
 
         # append latest message in conversation
-        # TODO: Message should be of type CatMessage or UserMessage. For retrocompatibility we put a new key
+        # TODO: Message should be of type CatMessage or UserMessage. For backward compatibility we put a new key
         # we are sure that who is not change in the current call
         self.history.append(
             {

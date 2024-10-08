@@ -314,13 +314,13 @@ def get_llm_from_name(name: str, chatbot_id: str):
 
 
 def get_llms_schemas(chatbot_id: str):
-    # LLM_SCHEMAS contains metadata to let any client know
+    # llm_schemas contains metadata to let any client know
     # which fields are required to create the language model.
-    LLM_SCHEMAS = {}
+    llm_schemas = {}
     for config_class in get_allowed_language_models(chatbot_id):
         schema = config_class.model_json_schema()
         # useful for clients in order to call the correct config endpoints
         schema["languageModelName"] = schema["title"]
-        LLM_SCHEMAS[schema["title"]] = schema
+        llm_schemas[schema["title"]] = schema
 
-    return LLM_SCHEMAS
+    return llm_schemas

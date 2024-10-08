@@ -2,15 +2,15 @@ from .cat_form import CatForm
 
 
 # form decorator
-def form(Form: CatForm) -> CatForm:
-    Form._autopilot = True
-    if Form.name is None:
-        Form.name = Form.__name__
+def form(form: CatForm) -> CatForm:
+    form._autopilot = True
+    if form.name is None:
+        form.name = form.__name__
 
-    if Form.triggers_map is None:
-        Form.triggers_map = {
-            "start_example": Form.start_examples,
-            "description": [f"{Form.name}: {Form.description}"],
+    if form.triggers_map is None:
+        form.triggers_map = {
+            "start_example": form.start_examples,
+            "description": [f"{form.name}: {form.description}"],
         }
 
-    return Form
+    return form

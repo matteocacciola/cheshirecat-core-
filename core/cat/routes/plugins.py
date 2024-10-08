@@ -1,7 +1,7 @@
 import mimetypes
 from copy import deepcopy
 from typing import Dict
-from fastapi import Body, Request, APIRouter, HTTPException, UploadFile, Depends
+from fastapi import Body, APIRouter, HTTPException, UploadFile, Depends
 from pydantic import ValidationError
 
 from cat.auth.connection import HTTPAuth, ContextualCats
@@ -15,7 +15,6 @@ router = APIRouter()
 # GET plugins
 @router.get("/")
 async def get_available_plugins(
-    request: Request,
     query: str = None,
     cats: ContextualCats = Depends(HTTPAuth(AuthResource.PLUGINS, AuthPermission.LIST)),
     # author: str = None, to be activated in case of more granular search
@@ -77,7 +76,6 @@ async def get_available_plugins(
 
 @router.post("/upload")
 async def install_plugin(
-    request: Request,
     file: UploadFile,
     cats: ContextualCats = Depends(HTTPAuth(AuthResource.PLUGINS, AuthPermission.WRITE)),
 ) -> Dict:
@@ -111,7 +109,6 @@ async def install_plugin(
 
 @router.post("/upload/registry")
 async def install_plugin_from_registry(
-    request: Request,
     payload: Dict = Body({"url": "https://github.com/plugin-dev-account/plugin-repo"}),
     cats: ContextualCats = Depends(HTTPAuth(AuthResource.PLUGINS, AuthPermission.WRITE)),
 ) -> Dict:
@@ -135,7 +132,6 @@ async def install_plugin_from_registry(
 @router.put("/toggle/{plugin_id}", status_code=200)
 async def toggle_plugin(
     plugin_id: str,
-    request: Request,
     cats: ContextualCats = Depends(HTTPAuth(AuthResource.PLUGINS, AuthPermission.WRITE)),
 ) -> Dict:
     """Enable or disable a single plugin"""
@@ -157,7 +153,6 @@ async def toggle_plugin(
 
 @router.get("/settings")
 async def get_plugins_settings(
-    request: Request,
     cats: ContextualCats = Depends(HTTPAuth(AuthResource.PLUGINS, AuthPermission.READ)),
 ) -> Dict:
     """Returns the settings of all the plugins"""
@@ -189,7 +184,6 @@ async def get_plugins_settings(
 
 @router.get("/settings/{plugin_id}")
 async def get_plugin_settings(
-    request: Request,
     plugin_id: str,
     cats: ContextualCats = Depends(HTTPAuth(AuthResource.PLUGINS, AuthPermission.READ)),
 ) -> Dict:
@@ -215,7 +209,6 @@ async def get_plugin_settings(
 
 @router.put("/settings/{plugin_id}")
 async def upsert_plugin_settings(
-    request: Request,
     plugin_id: str,
     payload: Dict = Body({"setting_a": "some value", "setting_b": "another value"}),
     cats: ContextualCats = Depends(HTTPAuth(AuthResource.PLUGINS, AuthPermission.EDIT)),
@@ -233,9 +226,9 @@ async def upsert_plugin_settings(
 
     try:
         # Load the plugin settings Pydantic model
-        PluginSettingsModel = plugin.settings_model()
+        plugin_settings_model = plugin.settings_model()
         # Validate the settings
-        PluginSettingsModel.model_validate(payload)
+        plugin_settings_model.model_validate(payload)
     except ValidationError as e:
         raise HTTPException(
             status_code=400,
@@ -250,7 +243,6 @@ async def upsert_plugin_settings(
 @router.get("/{plugin_id}")
 async def get_plugin_details(
     plugin_id: str,
-    request: Request,
     cats: ContextualCats = Depends(HTTPAuth(AuthResource.PLUGINS, AuthPermission.READ)),
 ) -> Dict:
     """Returns information on a single plugin"""
@@ -279,7 +271,6 @@ async def get_plugin_details(
 @router.delete("/{plugin_id}")
 async def delete_plugin(
     plugin_id: str,
-    request: Request,
     cats: ContextualCats = Depends(HTTPAuth(AuthResource.PLUGINS, AuthPermission.DELETE)),
 ) -> Dict:
     """Physically remove plugin."""

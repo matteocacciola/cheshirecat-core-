@@ -194,12 +194,12 @@ def get_embedder_from_name(name: str, chatbot_id: str):
 
 
 def get_embedders_schemas(chatbot_id: str):
-    # EMBEDDER_SCHEMAS contains metadata to let any client know which fields are required to create the language embedder.
-    EMBEDDER_SCHEMAS = {}
+    # embedder_schemas contains metadata to let any client know which fields are required to create the language embedder.
+    embedder_schemas = {}
     for config_class in get_allowed_embedder_models(chatbot_id):
         schema = config_class.model_json_schema()
         # useful for clients in order to call the correct config endpoints
         schema["languageEmbedderName"] = schema["title"]
-        EMBEDDER_SCHEMAS[schema["title"]] = schema
+        embedder_schemas[schema["title"]] = schema
 
-    return EMBEDDER_SCHEMAS
+    return embedder_schemas

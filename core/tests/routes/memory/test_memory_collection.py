@@ -65,7 +65,7 @@ def test_memory_collection_episodic_cleared(client):
 
 
 def test_memory_collection_procedural_has_tools_after_clear(client):
-    # procedural emmory contains one tool (get_the_time)
+    # procedural memory contains one tool (get_the_time)
     collections_n_points = get_collections_names_and_point_count(client)
     assert collections_n_points["procedural"] == 3
 
@@ -100,6 +100,6 @@ def test_memory_collections_wipe(client):
     assert response.status_code == 200
 
     collections_n_points = get_collections_names_and_point_count(client)
-    assert collections_n_points["procedural"] == 3  # default tool is re-emebedded
+    assert collections_n_points["procedural"] == 3  # default tool is re-embedded
     assert collections_n_points["episodic"] == 0
     assert collections_n_points["declarative"] == 0

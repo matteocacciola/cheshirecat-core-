@@ -35,6 +35,8 @@ class VectorMemoryCollection:
         embedder_name: str,
         embedder_size: int,
     ):
+        self.snapshot_info = None
+
         # Set attributes (metadata on the embedder are useful because it may change at runtime)
         self.client = client
         self.collection_name = collection_name
@@ -53,7 +55,7 @@ class VectorMemoryCollection:
 
     def check_embedding_size(self):
         # having the same size does not necessarily imply being the same embedder
-        # having vectors with the same size but from diffent embedder in the same vector space is wrong
+        # having vectors with the same size but from different embedder in the same vector space is wrong
         same_size = (
             self.client.get_collection(self.collection_name).config.params.vectors.size
             == self.embedder_size
@@ -123,7 +125,7 @@ class VectorMemoryCollection:
         )
 
     # adapted from https://github.com/langchain-ai/langchain/blob/bfc12a4a7644cfc4d832cc4023086a7a5374f46a/libs/langchain/langchain/vectorstores/qdrant.py#L1965
-    def _qdrant_filter_from_dict(self, filter: dict) -> Filter:
+    def _qdrant_filter_from_dict(self, filter: dict) -> Filter | None:
         if not filter:
             return None
 
@@ -163,9 +165,9 @@ class VectorMemoryCollection:
         content: str,
         vector: Iterable,
         metadata: dict = None,
-        id: Optional[str] = None,
+        id: str | None = None,
         **kwargs: Any,
-    ) -> List[str]:
+    ) -> PointStruct | None:
         """Add a point (and its metadata) to the vectorstore.
 
         Args:
@@ -173,10 +175,10 @@ class VectorMemoryCollection:
             vector: Embedding vector.
             metadata: Optional metadata dict associated with the text.
             id:
-                Optional id to associate with the point. Id has to be a uuid-like string.
+                Optional id to associate with the point. Id has to be an uuid-like string.
 
         Returns:
-            Point id as saved into the vectorstore.
+            PointStruct: The stored point.
         """
 
         # TODO: may be adapted to upload batches of points as langchain does.
@@ -195,7 +197,7 @@ class VectorMemoryCollection:
         )
 
         if update_status.status == "completed":
-            # returnign stored point
+            # returning stored point
             return point # TODOV2 return internal MemoryPoint
         else:
             return None
@@ -301,7 +303,7 @@ class VectorMemoryCollection:
             + self.snapshot_info.name
         )
         snapshot_url_out = folder + self.snapshot_info.name
-        # rename snapshots for a easyer restore in the future
+        # rename snapshots for an easier restore in the future
         alias = (
             self.client.get_collection_aliases(self.collection_name)
             .aliases[0]

@@ -74,6 +74,8 @@ def agent_prompt_suffix(prompt_suffix: str, cat) -> str:
 
     Parameters
     ----------
+    prompt_suffix : str
+        The suffix string to be concatenated to the *Main Prompt* (prefix
     cat : StrayCat
         StrayCat instance.
 

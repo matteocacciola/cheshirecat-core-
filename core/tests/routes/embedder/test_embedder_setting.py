@@ -1,5 +1,6 @@
 from json import dumps
 from fastapi.encoders import jsonable_encoder
+
 from cat.factory.embedder import get_embedders_schemas
 from cat.looking_glass.cheshire_cat_manager import CheshireCatManager
 from tests.utils import get_procedural_memory_contents
@@ -9,18 +10,18 @@ def test_get_all_embedder_settings(client):
     cheshire_cat_manager: CheshireCatManager = client.app.state.cheshire_cat_manager
     cheshire_cat = cheshire_cat_manager.get_or_create_cheshire_cat("test")
 
-    EMBEDDER_SCHEMAS = get_embedders_schemas(cheshire_cat.id)
+    embedder_schemas = get_embedders_schemas(cheshire_cat.id)
     response = client.get("/embedder/settings")
     json = response.json()
 
     assert response.status_code == 200
     assert isinstance(json["settings"], list)
-    assert len(json["settings"]) == len(EMBEDDER_SCHEMAS)
+    assert len(json["settings"]) == len(embedder_schemas)
 
     for setting in json["settings"]:
-        assert setting["name"] in EMBEDDER_SCHEMAS.keys()
+        assert setting["name"] in embedder_schemas.keys()
         assert setting["value"] == {}
-        expected_schema = EMBEDDER_SCHEMAS[setting["name"]]
+        expected_schema = embedder_schemas[setting["name"]]
         assert dumps(jsonable_encoder(expected_schema)) == dumps(setting["schema"])
 
     # automatically selected embedder

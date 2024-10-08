@@ -36,27 +36,27 @@ def create_setting(
     return {"setting": new_setting}
 
 
-@router.get("/{settingId}")
+@router.get("/{setting_id}")
 def get_setting(
-    settingId: str,
+    setting_id: str,
     cats: ContextualCats = Depends(HTTPAuth(AuthResource.SETTINGS, AuthPermission.READ))
 ):
     """Get the specific setting from the database"""
 
-    setting = crud.get_setting_by_id(settingId, chatbot_id=cats.cheshire_cat.id)
+    setting = crud.get_setting_by_id(setting_id, chatbot_id=cats.cheshire_cat.id)
     if not setting:
         raise HTTPException(
             status_code=404,
             detail={
-                "error": f"No setting with this id: {settingId}",
+                "error": f"No setting with this id: {setting_id}",
             },
         )
     return {"setting": setting}
 
 
-@router.put("/{settingId}")
+@router.put("/{setting_id}")
 def update_setting(
-    settingId: str,
+    setting_id: str,
     payload: models.SettingBody,
     cats: ContextualCats = Depends(HTTPAuth(AuthResource.SETTINGS, AuthPermission.EDIT)),
 ):
@@ -65,18 +65,18 @@ def update_setting(
     chatbot_id = cats.cheshire_cat.id
 
     # does the setting exist?
-    setting = crud.get_setting_by_id(settingId, chatbot_id=chatbot_id)
+    setting = crud.get_setting_by_id(setting_id, chatbot_id=chatbot_id)
     if not setting:
         raise HTTPException(
             status_code=404,
             detail={
-                "error": f"No setting with this id: {settingId}",
+                "error": f"No setting with this id: {setting_id}",
             },
         )
 
     # complete the payload with setting_id and updated_at
     payload = models.Setting(**payload.model_dump())
-    payload.setting_id = settingId  # force this to be the setting_id
+    payload.setting_id = setting_id  # force this to be the setting_id
 
     # save to DB
     updated_setting = crud.update_setting_by_id(payload, chatbot_id=chatbot_id)
@@ -84,9 +84,9 @@ def update_setting(
     return {"setting": updated_setting}
 
 
-@router.delete("/{settingId}")
+@router.delete("/{setting_id}")
 def delete_setting(
-    settingId: str,
+    setting_id: str,
     cats: ContextualCats = Depends(HTTPAuth(AuthResource.SETTINGS, AuthPermission.DELETE)),
 ):
     """Delete a specific setting in the database"""
@@ -94,16 +94,16 @@ def delete_setting(
     chatbot_id = cats.cheshire_cat.id
 
     # does the setting exist?
-    setting = crud.get_setting_by_id(settingId, chatbot_id=chatbot_id)
+    setting = crud.get_setting_by_id(setting_id, chatbot_id=chatbot_id)
     if not setting:
         raise HTTPException(
             status_code=404,
             detail={
-                "error": f"No setting with this id: {settingId}",
+                "error": f"No setting with this id: {setting_id}",
             },
         )
 
     # delete
-    crud.delete_setting_by_id(settingId, chatbot_id=chatbot_id)
+    crud.delete_setting_by_id(setting_id, chatbot_id=chatbot_id)
 
-    return {"deleted": settingId}
+    return {"deleted": setting_id}

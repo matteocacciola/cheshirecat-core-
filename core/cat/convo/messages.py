@@ -78,8 +78,8 @@ class UserMessage(BaseModelDict):
     user_id: str
 
 
-def convert_to_Langchain_message(
-        messages: List[UserMessage | CatMessage],
+def convert_to_langchain_message(
+    messages: List[UserMessage | CatMessage],
 ) -> List[BaseMessage]:
     messages = []
     for m in messages:
@@ -94,7 +94,7 @@ def convert_to_Langchain_message(
     return messages
 
 
-def convert_to_Cat_message(cat_message: AIMessage, why: MessageWhy) -> CatMessage:
+def convert_to_cat_message(cat_message: AIMessage, why: MessageWhy) -> CatMessage:
     return CatMessage(
         content=cat_message.content,
         user_id=cat_message.response_metadata["userId"],

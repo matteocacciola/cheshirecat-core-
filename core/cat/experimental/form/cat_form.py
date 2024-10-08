@@ -68,7 +68,7 @@ JSON:
         return "true" in response.lower()
 
     # Check if the user wants to exit the form
-    # it is run at the befginning of every form.next()
+    # it is run at the beginning of every form.next()
     def check_exit_intent(self) -> bool:
         # Get user message
         user_message = self.cat.working_memory.user_message_json.text
@@ -108,7 +108,7 @@ JSON:
         # could we enrich prompt completion with episodic/declarative memories?
         # self.cat.working_memory.episodic_memories = []
 
-        # If state is WAIT_CONFIRM, check user confirm response..
+        # If state is WAIT_CONFIRM, check user confirm response.
         if self._state == CatFormState.WAIT_CONFIRM:
             if self.confirm():
                 self._state = CatFormState.CLOSED
@@ -219,20 +219,20 @@ JSON:
 
         # JSON structure
         # BaseModel.__fields__['my_field'].type_
-        JSON_structure = "{"
+        json_structure = "{"
         for field_name, field in self.model_class.model_fields.items():
             if field.description:
                 description = field.description
             else:
                 description = ""
-            JSON_structure += f'\n\t"{field_name}": // {description} Must be of type `{field.annotation.__name__}` or `null`'  # field.required?
-        JSON_structure += "\n}"
+            json_structure += f'\n\t"{field_name}": // {description} Must be of type `{field.annotation.__name__}` or `null`'  # field.required?
+        json_structure += "\n}"
 
         # TODO: reintroduce examples
         prompt = f"""Your task is to fill up a JSON out of a conversation.
 The JSON must have this format:
 ```json
-{JSON_structure}
+{json_structure}
 ```
 
 This is the current JSON:

@@ -97,7 +97,7 @@ cheshire_cat_api.include_router(
 cheshire_cat_api.include_router(websocket.router, tags=["Websocket"])
 
 # mount static files
-# this cannot be done via fastapi.APIrouter:
+# this cannot be done via fastapi.APIRouter:
 # https://github.com/tiangolo/fastapi/discussions/9070
 
 # admin single page app (static build)

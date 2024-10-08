@@ -1,5 +1,6 @@
 from json import dumps
 from fastapi.encoders import jsonable_encoder
+
 from cat.factory.auth_handler import get_auth_handlers_schemas
 from cat.looking_glass.cheshire_cat_manager import CheshireCatManager
 
@@ -8,18 +9,18 @@ def test_get_all_auth_handler_settings(client):
     cheshire_cat_manager: CheshireCatManager = client.app.state.cheshire_cat_manager
     cheshire_cat = cheshire_cat_manager.get_or_create_cheshire_cat("test")
 
-    AUTH_HANDLER_SCHEMAS = get_auth_handlers_schemas(cheshire_cat.id)
+    auth_handler_schemas = get_auth_handlers_schemas(cheshire_cat.id)
     response = client.get("/auth_handler/settings")
     json = response.json()
 
     assert response.status_code == 200
     assert isinstance(json["settings"], list)
-    assert len(json["settings"]) == len(AUTH_HANDLER_SCHEMAS)
+    assert len(json["settings"]) == len(auth_handler_schemas)
 
     for setting in json["settings"]:
-        assert setting["name"] in AUTH_HANDLER_SCHEMAS.keys()
+        assert setting["name"] in auth_handler_schemas.keys()
         assert setting["value"] == {}
-        expected_schema = AUTH_HANDLER_SCHEMAS[setting["name"]]
+        expected_schema = auth_handler_schemas[setting["name"]]
         assert dumps(jsonable_encoder(expected_schema)) == dumps(setting["schema"])
 
     # automatically selected auth_handler
@@ -46,7 +47,7 @@ def test_get_auth_handler_settings(client):
     assert response.status_code == 200
     assert json["name"] == auth_handler_name
     assert json["value"] == {}
-    assert json["schema"]["auhrizatorName"] == auth_handler_name
+    assert json["schema"]["authorizatorName"] == auth_handler_name
     assert json["schema"]["type"] == "object"
 
 
@@ -88,5 +89,5 @@ def test_upsert_auth_handler_settings(client):
     assert response.status_code == 200
     json = response.json()
     assert json["name"] == new_auth_handler
-    assert json["schema"]["auhrizatorName"] == new_auth_handler
+    assert json["schema"]["authorizatorName"] == new_auth_handler
 """

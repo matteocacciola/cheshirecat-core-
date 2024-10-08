@@ -1,6 +1,6 @@
 from typing import Dict, List
 from pydantic import BaseModel
-from fastapi import Query, Request, APIRouter, HTTPException, Depends
+from fastapi import Query, APIRouter, HTTPException, Depends
 
 from cat.auth.connection import HTTPAuth, ContextualCats
 from cat.auth.permissions import AuthPermission, AuthResource
@@ -21,7 +21,6 @@ router = APIRouter()
 # GET memories from recall
 @router.get("/recall")
 async def recall_memories_from_text(
-    request: Request,
     text: str = Query(description="Find memories similar to this text."),
     k: int = Query(default=100, description="How many memories to return."),
     cats: ContextualCats = Depends(HTTPAuth(AuthResource.MEMORY, AuthPermission.READ)),
@@ -74,7 +73,7 @@ async def recall_memories_from_text(
 # GET collection list with some metadata
 @router.get("/collections")
 async def get_collections(
-    request: Request, cats: ContextualCats = Depends(HTTPAuth(AuthResource.MEMORY, AuthPermission.READ))
+    cats: ContextualCats = Depends(HTTPAuth(AuthResource.MEMORY, AuthPermission.READ))
 ) -> Dict:
     """Get list of available collections"""
 
@@ -94,7 +93,6 @@ async def get_collections(
 # DELETE all collections
 @router.delete("/collections")
 async def wipe_collections(
-    request: Request,
     cats: ContextualCats = Depends(HTTPAuth(AuthResource.MEMORY, AuthPermission.DELETE)),
 ) -> Dict:
     """Delete and create all collections"""
@@ -119,7 +117,6 @@ async def wipe_collections(
 # DELETE one collection
 @router.delete("/collections/{collection_id}")
 async def wipe_single_collection(
-    request: Request,
     collection_id: str,
     cats: ContextualCats = Depends(HTTPAuth(AuthResource.MEMORY, AuthPermission.DELETE)),
 ) -> Dict:
@@ -151,7 +148,6 @@ async def wipe_single_collection(
 # CREATE a point in memory
 @router.post("/collections/{collection_id}/points", response_model=MemoryPoint)
 async def create_memory_point(
-    request: Request,
     collection_id: str,
     point: MemoryPointBase,
     cats: ContextualCats = Depends(HTTPAuth(AuthResource.MEMORY, AuthPermission.WRITE)),
@@ -199,7 +195,6 @@ async def create_memory_point(
 # DELETE memories
 @router.delete("/collections/{collection_id}/points/{point_id}")
 async def delete_memory_point(
-    request: Request,
     collection_id: str,
     point_id: str,
     cats: ContextualCats = Depends(HTTPAuth(AuthResource.MEMORY, AuthPermission.DELETE)),
@@ -232,7 +227,6 @@ async def delete_memory_point(
 
 @router.delete("/collections/{collection_id}/points")
 async def delete_memory_points_by_metadata(
-    request: Request,
     collection_id: str,
     metadata: Dict = None,
     cats: ContextualCats = Depends(HTTPAuth(AuthResource.MEMORY, AuthPermission.DELETE)),
@@ -254,7 +248,6 @@ async def delete_memory_points_by_metadata(
 # DELETE conversation history from working memory
 @router.delete("/conversation_history")
 async def wipe_conversation_history(
-    request: Request,
     cats: ContextualCats = Depends(HTTPAuth(AuthResource.MEMORY, AuthPermission.DELETE)),
 ) -> Dict:
     """Delete the specified user's conversation history from working memory"""
@@ -269,7 +262,6 @@ async def wipe_conversation_history(
 # GET conversation history from working memory
 @router.get("/conversation_history")
 async def get_conversation_history(
-    request: Request,
     cats: ContextualCats = Depends(HTTPAuth(AuthResource.MEMORY, AuthPermission.READ)),
 ) -> Dict:
     """Get the specified user's conversation history from working memory"""

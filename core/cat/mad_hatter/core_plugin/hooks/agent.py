@@ -37,7 +37,7 @@ def agent_fast_reply(fast_reply, cat) -> Union[None, Dict]:
     Parameters
     --------
     fast_reply: dict
-        Input is dict (initially empty), which can be enriched whith an "output" key with the shortcut response.
+        Input is dict (initially empty), which can be enriched with an "output" key with the shortcut response.
     cat : CheshireCat
         Cheshire Cat instance.
 
@@ -83,6 +83,8 @@ def agent_allowed_tools(allowed_tools: List[str], cat) -> List[str]:
 
     Parameters
     ---------
+    allowed_tools : List[str]
+        List of tools that are allowed to be used by the *
     cat : CheshireCat
         Cheshire Cat instance.
 

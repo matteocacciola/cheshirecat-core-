@@ -2,7 +2,7 @@ from typing import Dict
 
 from cat.auth.connection import HTTPAuth, ContextualCats
 from cat.auth.permissions import AuthPermission, AuthResource
-from fastapi import Request, APIRouter, Body, HTTPException, Depends
+from fastapi import APIRouter, Body, HTTPException, Depends
 
 from cat.factory.llm import get_llms_schemas
 from cat.db import crud, models
@@ -30,7 +30,7 @@ def get_llms_settings(
 
     chatbot_id = cats.cheshire_cat.id
 
-    LLM_SCHEMAS = get_llms_schemas(chatbot_id)
+    llm_schemas = get_llms_schemas(chatbot_id)
 
     # get selected LLM, if any
     selected = crud.get_setting_by_name(name=LLM_SELECTED_NAME, chatbot_id=chatbot_id)
@@ -41,7 +41,7 @@ def get_llms_settings(
     saved_settings = {s["name"]: s for s in saved_settings}
 
     settings = []
-    for class_name, schema in LLM_SCHEMAS.items():
+    for class_name, schema in llm_schemas.items():
         if class_name in saved_settings:
             saved_setting = saved_settings[class_name]["value"]
         else:
@@ -64,38 +64,36 @@ def get_llms_settings(
 # get LLM settings and its schema
 @router.get("/settings/{languageModelName}")
 def get_llm_settings(
-    request: Request,
-    languageModelName: str,
+    language_model_name: str,
     cats: ContextualCats = Depends(HTTPAuth(AuthResource.LLM, AuthPermission.READ)),
 ) -> Dict:
     """Get settings and schema of the specified Large Language Model"""
 
     chatbot_id = cats.cheshire_cat.id
 
-    LLM_SCHEMAS = get_llms_schemas(chatbot_id)
+    llm_schemas = get_llms_schemas(chatbot_id)
 
-    # check that languageModelName is a valid name
-    allowed_configurations = list(LLM_SCHEMAS.keys())
-    if languageModelName not in allowed_configurations:
+    # check that language_model_name is a valid name
+    allowed_configurations = list(llm_schemas.keys())
+    if language_model_name not in allowed_configurations:
         raise HTTPException(
             status_code=400,
             detail={
-                "error": f"{languageModelName} not supported. Must be one of {allowed_configurations}"
+                "error": f"{language_model_name} not supported. Must be one of {allowed_configurations}"
             },
         )
 
-    setting = crud.get_setting_by_name(name=languageModelName, chatbot_id=chatbot_id)
-    schema = LLM_SCHEMAS[languageModelName]
+    setting = crud.get_setting_by_name(name=language_model_name, chatbot_id=chatbot_id)
+    schema = llm_schemas[language_model_name]
 
     setting = {} if setting is None else setting["value"]
 
-    return {"name": languageModelName, "value": setting, "schema": schema}
+    return {"name": language_model_name, "value": setting, "schema": schema}
 
 
-@router.put("/settings/{languageModelName}")
+@router.put("/settings/{language_model_name}")
 def upsert_llm_setting(
-    request: Request,
-    languageModelName: str,
+    language_model_name: str,
     payload: Dict = Body({"openai_api_key": "your-key-here"}),
     cats: ContextualCats = Depends(HTTPAuth(AuthResource.LLM, AuthPermission.EDIT)),
 ) -> Dict:
@@ -104,30 +102,30 @@ def upsert_llm_setting(
     ccat = cats.cheshire_cat
     chatbot_id = ccat.id
 
-    LLM_SCHEMAS = get_llms_schemas(chatbot_id)
+    llm_schemas = get_llms_schemas(chatbot_id)
 
-    # check that languageModelName is a valid name
-    allowed_configurations = list(LLM_SCHEMAS.keys())
-    if languageModelName not in allowed_configurations:
+    # check that language_model_name is a valid name
+    allowed_configurations = list(llm_schemas.keys())
+    if language_model_name not in allowed_configurations:
         raise HTTPException(
             status_code=400,
             detail={
-                "error": f"{languageModelName} not supported. Must be one of {allowed_configurations}"
+                "error": f"{language_model_name} not supported. Must be one of {allowed_configurations}"
             },
         )
 
     # create the setting and upsert it
     final_setting = crud.upsert_setting_by_name(
-        models.Setting(name=languageModelName, category=LLM_CATEGORY, value=payload),
+        models.Setting(name=language_model_name, category=LLM_CATEGORY, value=payload),
         chatbot_id=chatbot_id
     )
 
     crud.upsert_setting_by_name(
-        models.Setting(name=LLM_SELECTED_NAME, category=LLM_SELECTED_CATEGORY, value={"name": languageModelName}),
+        models.Setting(name=LLM_SELECTED_NAME, category=LLM_SELECTED_CATEGORY, value={"name": language_model_name}),
         chatbot_id=chatbot_id
     )
 
-    status = {"name": languageModelName, "value": final_setting["value"]}
+    status = {"name": language_model_name, "value": final_setting["value"]}
 
     # reload llm and embedder of the cat
     ccat.load_natural_language()

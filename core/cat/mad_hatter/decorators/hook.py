@@ -3,10 +3,11 @@ from typing import Union, Callable
 
 # class to represent a @hook
 class CatHook:
-    def __init__(self, name: str, func: Callable, priority: int):
+    def __init__(self, name: str, func: Callable, priority: int, plugin_id: str | None = None):
         self.function = func
         self.name = name
         self.priority = priority
+        self.plugin_id = plugin_id
 
     def __repr__(self) -> str:
         return f"CatHook(name={self.name}, priority={self.priority})"

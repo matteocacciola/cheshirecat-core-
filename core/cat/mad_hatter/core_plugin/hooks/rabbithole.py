@@ -188,7 +188,7 @@ def after_rabbithole_stored_documents(
     ----------
     source: str
         Name of ingested file/url
-    docs : List[PointStruct]
+    stored_points : List[PointStruct]
         List of Qdrant PointStruct just inserted into the db.
     cat : CheshireCat
         Cheshire Cat instance.
@@ -196,5 +196,8 @@ def after_rabbithole_stored_documents(
     Returns
     -------
     None
+
+    Args:
+        stored_points:
     """
     pass

@@ -65,13 +65,13 @@ def get_allowed_auth_handler_strategies(chatbot_id: str):
 
 
 def get_auth_handlers_schemas(chatbot_id: str):
-    AUTH_HANDLER_SCHEMAS = {}
+    auth_handler_schemas = {}
     for config_class in get_allowed_auth_handler_strategies(chatbot_id):
         schema = config_class.model_json_schema()
-        schema["auhrizatorName"] = schema["title"]
-        AUTH_HANDLER_SCHEMAS[schema["title"]] = schema
+        schema["authorizatorName"] = schema["title"]
+        auth_handler_schemas[schema["title"]] = schema
 
-    return AUTH_HANDLER_SCHEMAS
+    return auth_handler_schemas
 
 
 def get_auth_handler_from_name(name: str, chatbot_id: str):

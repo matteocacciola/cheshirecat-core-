@@ -8,7 +8,6 @@ from pydantic import BaseModel, Field, ConfigDict
 from fastapi import (
     Form,
     Depends,
-    Request,
     APIRouter,
     UploadFile,
     BackgroundTasks,
@@ -36,7 +35,6 @@ def format_upload_file(upload_file: UploadFile) -> UploadFile:
 # receive files via http endpoint
 @router.post("/")
 async def upload_file(
-    request: Request,
     file: UploadFile,
     background_tasks: BackgroundTasks,
     chunk_size: int | None = Form(
@@ -129,7 +127,7 @@ async def upload_file(
     }
 
 # This model can be used only for the upload_url endpoint,
-# because in uplaod_file we need to pass the file and config as form data
+# because in upload_file we need to pass the file and config as form data
 class UploadURLConfig(BaseModel):
     url: str = Field(
         description="URL of the website to which you want to save the content"
@@ -154,7 +152,7 @@ async def upload_url(
     upload_config: UploadURLConfig,
     cats: ContextualCats = Depends(HTTPAuth(AuthResource.UPLOAD, AuthPermission.WRITE)),
 ):
-    """Upload a url. Website content will be extracted and segmented into chunks.
+    """Upload an url. Website content will be extracted and segmented into chunks.
     Chunks will be then vectorized and stored into documents memory."""
 
     # check that URL is valid
@@ -187,7 +185,6 @@ async def upload_url(
 
 @router.post("/memory")
 async def upload_memory(
-    request: Request,
     file: UploadFile,
     background_tasks: BackgroundTasks,
     cats: ContextualCats = Depends(HTTPAuth(AuthResource.MEMORY, AuthPermission.WRITE)),
@@ -224,7 +221,6 @@ async def upload_memory(
 
 @router.get("/allowed-mimetypes")
 async def get_allowed_mimetypes(
-    request: Request,
     cats: ContextualCats = Depends(HTTPAuth(AuthResource.UPLOAD, AuthPermission.WRITE)),
 ) -> Dict:
     """Retrieve the allowed mimetypes that can be ingested by the Rabbit Hole"""

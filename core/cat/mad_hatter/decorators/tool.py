@@ -15,8 +15,10 @@ class CatTool(BaseTool):
         name: str,
         func: Callable,
         return_direct: bool = False,
-        examples: List[str] = [],
+        examples: List[str] = None,
     ):
+        examples = examples or []
+
         description = func.__doc__.strip()
 
         # call parent contructor
@@ -73,7 +75,7 @@ class CatTool(BaseTool):
 # @tool decorator, a modified version of a langchain Tool that also takes a Cat instance as argument
 # adapted from https://github.com/hwchase17/langchain/blob/master/langchain/agents/tools.py
 def tool(
-    *args: Union[str, Callable], return_direct: bool = False, examples: List[str] = []
+    *args: Union[str, Callable], return_direct: bool = False, examples: List[str] = None
 ) -> Callable:
     """
     Make tools out of functions, can be used with or without arguments.
@@ -91,6 +93,8 @@ def tool(
                 # Searches the API for the query.
                 return "https://api.com/search?q=" + query
     """
+
+    examples = examples or []
 
     def _make_with_name(tool_name: str) -> Callable:
         def _make_tool(func: Callable[[str], str]) -> CatTool:

@@ -54,9 +54,7 @@ async def core_login_token(request: Request):
 
 
 @router.get("/login", include_in_schema=False)
-async def auth_index(
-    request: Request, referer: str = Query(None), retry: int = Query(0)
-):
+async def auth_index(request: Request, referer: str = Query(None), retry: int = Query(0)):
     """Core login form, used when no external Identity Provider is configured"""
 
     error_message = ""

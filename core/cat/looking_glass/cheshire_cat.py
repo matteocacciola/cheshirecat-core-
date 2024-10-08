@@ -187,12 +187,12 @@ class CheshireCat:
         else:
             # get LLM factory class
             selected_llm_class = selected_llm["value"]["name"]
-            FactoryClass = get_llm_from_name(selected_llm_class, self.id)
+            factory_class = get_llm_from_name(selected_llm_class, self.id)
 
             # obtain configuration and instantiate LLM
             selected_llm_config = crud.get_setting_by_name(name=selected_llm_class, chatbot_id=self.id)
             try:
-                llm = FactoryClass.get_llm_from_config(selected_llm_config["value"])
+                llm = factory_class.get_llm_from_config(selected_llm_config["value"])
             except Exception:
                 import traceback
 
@@ -221,12 +221,12 @@ class CheshireCat:
         if selected_embedder is not None:
             # get Embedder factory class
             selected_embedder_class = selected_embedder["value"]["name"]
-            FactoryClass = get_embedder_from_name(selected_embedder_class, self.id)
+            factory_class = get_embedder_from_name(selected_embedder_class, self.id)
 
             # obtain configuration and instantiate Embedder
             selected_embedder_config = crud.get_setting_by_name(name=selected_embedder_class, chatbot_id=self.id)
             try:
-                embedder = FactoryClass.get_embedder_from_config(selected_embedder_config["value"])
+                embedder = factory_class.get_embedder_from_config(selected_embedder_config["value"])
             except AttributeError:
                 import traceback
 
@@ -297,12 +297,12 @@ class CheshireCat:
 
         # get AuthHandler factory class
         selected_auth_handler_class = selected_auth_handler["value"]["name"]
-        FactoryClass = get_auth_handler_from_name(selected_auth_handler_class, self.id)
+        factory_class = get_auth_handler_from_name(selected_auth_handler_class, self.id)
 
         # obtain configuration and instantiate AuthHandler
         selected_auth_handler_config = crud.get_setting_by_name(name=selected_auth_handler_class, chatbot_id=self.id)
         try:
-            auth_handler = FactoryClass.get_auth_handler_from_config(selected_auth_handler_config["value"])
+            auth_handler = factory_class.get_auth_handler_from_config(selected_auth_handler_config["value"])
         except Exception:
             import traceback
             traceback.print_exc()

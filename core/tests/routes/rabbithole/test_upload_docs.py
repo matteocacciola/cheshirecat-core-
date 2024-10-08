@@ -49,7 +49,7 @@ def test_rabbithole_upload_pdf(client):
     assert len(declarative_memories) == 4
 
 
-def test_rabbihole_chunking(client):
+def test_rabbithole_chunking(client):
     content_type = "application/pdf"
     file_name = "sample.pdf"
     file_path = f"tests/mocks/{file_name}"

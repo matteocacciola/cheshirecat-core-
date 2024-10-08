@@ -131,6 +131,9 @@ class CatLogEngine:
             return ""
         parentframe = stack[start][0]
 
+        package = None
+        module = None
+
         # module and packagename.
         module_info = inspect.getmodule(parentframe)
         if module_info:

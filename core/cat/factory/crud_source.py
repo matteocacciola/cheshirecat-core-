@@ -68,16 +68,16 @@ def get_crud_source_from_name(name: str) -> CrudSettings | None:
 
 
 def get_crud_sources_schemas() -> Dict:
-    # CRUDSOURCE_SCHEMAS contains metadata to let any client know
+    # crudsource_schemas contains metadata to let any client know
     # which fields are required to create the crud source model.
-    CRUDSOURCE_SCHEMAS = {}
+    crudsource_schemas = {}
     for config_class in get_allowed_crud_sources():
         schema = config_class.model_json_schema()
         # useful for clients in order to call the correct config endpoints
         schema["configurationSourceName"] = schema["title"]
-        CRUDSOURCE_SCHEMAS[schema["title"]] = schema
+        crudsource_schemas[schema["title"]] = schema
 
-    return CRUDSOURCE_SCHEMAS
+    return crudsource_schemas
 
 
 def get_db() -> CrudSource:
@@ -86,8 +86,8 @@ def get_db() -> CrudSource:
         return TinyDbCrudConfig.get_crud_source_from_config({"file": get_env("CCAT_METADATA_FILE")})
 
     try:
-        FactoryClass = get_crud_source_from_name(crud_settings.name)
-        crud_source = FactoryClass.get_crud_source_from_config(crud_settings.value)
+        factory_class = get_crud_source_from_name(crud_settings.name)
+        crud_source = factory_class.get_crud_source_from_config(crud_settings.value)
     except Exception:
         import traceback
 

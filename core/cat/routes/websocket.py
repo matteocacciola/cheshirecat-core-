@@ -1,11 +1,10 @@
 from cat.auth.permissions import AuthPermission, AuthResource
 from cat.auth.connection import WebSocketAuth, ContextualCats
-from fastapi import APIRouter, WebSocket, WebSocketDisconnect, Depends, Request
+from fastapi import APIRouter, WebSocket, WebSocketDisconnect, Depends
 from fastapi.concurrency import run_in_threadpool
 
 from cat.looking_glass.stray_cat import StrayCat
 from cat.log import log
-
 
 router = APIRouter()
 
@@ -27,7 +26,6 @@ async def receive_message(websocket: WebSocket, stray: StrayCat):
 @router.websocket("/ws")
 @router.websocket("/ws/{user_id}")
 async def websocket_endpoint(
-    request: Request,
     websocket: WebSocket,
     cats: ContextualCats = Depends(WebSocketAuth(AuthResource.CONVERSATION, AuthPermission.WRITE)),
 ):
