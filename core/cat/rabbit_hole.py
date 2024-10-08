@@ -16,6 +16,8 @@ from langchain_community.document_loaders.parsers.txt import TextParser
 from langchain_community.document_loaders.parsers.html.bs4 import BS4HTMLParser
 from langchain.document_loaders.blob_loaders.schema import Blob
 
+from cat.looking_glass.cheshire_cat import CheshireCat
+from cat.looking_glass.cheshire_cat_manager import CheshireCatManager
 from cat.looking_glass.stray_cat import StrayCat
 from cat.log import log
 
@@ -23,8 +25,8 @@ from cat.log import log
 class RabbitHole:
     """Manages content ingestion. I'm late... I'm late!"""
 
-    def __init__(self, cat) -> None:
-        self.__cat = cat
+    def __init__(self, ccat_id: str) -> None:
+        self.__cat: CheshireCat = CheshireCatManager().get_cheshire_cat(ccat_id)
 
     # each time we access the file handlers, plugins can intervene
     def __reload_file_handlers(self):

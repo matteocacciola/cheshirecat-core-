@@ -50,13 +50,13 @@ class CoreOnlyAuthConfig(AuthHandlerConfig):
 #     )
 
 
-def get_allowed_auth_handler_strategies():
+def get_allowed_auth_handler_strategies(chatbot_id: str):
     list_auth_handler_default = [
         CoreOnlyAuthConfig,
         # ApiKeyAuthConfig,
     ]
 
-    mad_hatter_instance = MadHatter()
+    mad_hatter_instance = MadHatter(chatbot_id)
     list_auth_handler = mad_hatter_instance.execute_hook(
         "factory_allowed_auth_handlers", list_auth_handler_default, cat=None
     )
@@ -64,9 +64,9 @@ def get_allowed_auth_handler_strategies():
     return list_auth_handler
 
 
-def get_auth_handlers_schemas():
+def get_auth_handlers_schemas(chatbot_id: str):
     AUTH_HANDLER_SCHEMAS = {}
-    for config_class in get_allowed_auth_handler_strategies():
+    for config_class in get_allowed_auth_handler_strategies(chatbot_id):
         schema = config_class.model_json_schema()
         schema["auhrizatorName"] = schema["title"]
         AUTH_HANDLER_SCHEMAS[schema["title"]] = schema
@@ -74,8 +74,8 @@ def get_auth_handlers_schemas():
     return AUTH_HANDLER_SCHEMAS
 
 
-def get_auth_handler_from_name(name):
-    list_auth_handler = get_allowed_auth_handler_strategies()
+def get_auth_handler_from_name(name: str, chatbot_id: str):
+    list_auth_handler = get_allowed_auth_handler_strategies(chatbot_id)
     for auth_handler in list_auth_handler:
         if auth_handler.__name__ == name:
             return auth_handler

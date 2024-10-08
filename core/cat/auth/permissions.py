@@ -5,6 +5,7 @@ from typing import Dict, List
 from cat.utils import BaseModelDict
 
 class AuthResource(str, Enum):
+    CRUD = "CRUD"
     STATUS = "STATUS"
     MEMORY = "MEMORY"
     CONVERSATION = "CONVERSATION"

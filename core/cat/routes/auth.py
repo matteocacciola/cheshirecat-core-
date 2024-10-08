@@ -2,19 +2,19 @@ import asyncio
 from typing import Dict, List
 from urllib.parse import urlencode
 from pydantic import BaseModel
-
-from fastapi import APIRouter, Request, HTTPException, Response, status, Query
+from fastapi import APIRouter, Request, HTTPException, status, Query
 from fastapi.responses import RedirectResponse
 
-from cat.db import crud
 from cat.auth.permissions import AuthPermission, AuthResource, get_full_permissions
 from cat.routes.static.templates import get_jinja_templates
 
 router = APIRouter()
 
+
 class UserCredentials(BaseModel):
     username: str
     password: str
+
 
 class JWTResponse(BaseModel):
     access_token: str
@@ -23,12 +23,12 @@ class JWTResponse(BaseModel):
 
 # set cookies and redirect to origin page after login
 @router.post("/redirect", include_in_schema=False)
-async def core_login_token(request: Request, response: Response):
+async def core_login_token(request: Request):
     # get form data from submitted core login form (/auth/core_login)
     form_data = await request.form()
 
     # use username and password to authenticate user from local identity provider and get token
-    auth_handler = request.app.state.ccat.core_auth_handler
+    auth_handler = request.app.state.ccat_manager.core_auth_handler
     access_token = await auth_handler.issue_jwt(
         form_data["username"], form_data["password"]
     )
@@ -70,7 +70,7 @@ async def auth_index(
     template_context = {
         "referer": referer,
         "error_message": error_message,
-        "show_default_passwords": len(crud.get_users().keys()) == 2,
+        # "show_default_passwords": len(get_users().keys()) == 2,
     }
 
     response = templates.TemplateResponse(
@@ -87,6 +87,7 @@ async def get_available_permissions():
     """Returns all available resources and permissions."""
     return get_full_permissions()
 
+
 @router.post("/token", response_model=JWTResponse)
 async def auth_token(request: Request, credentials: UserCredentials):
     """Endpoint called from client to get a JWT from local identity provider.
@@ -94,7 +95,7 @@ async def auth_token(request: Request, credentials: UserCredentials):
     """
 
     # use username and password to authenticate user from local identity provider and get token
-    auth_handler = request.app.state.ccat.core_auth_handler
+    auth_handler = request.app.state.ccat_manager.core_auth_handler
     access_token = await auth_handler.issue_jwt(
         credentials.username, credentials.password
     )

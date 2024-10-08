@@ -1,24 +1,21 @@
-
 import asyncio
 import pytest
 import os
 import shutil
 from typing import Any, Generator
-
 import warnings
 from pydantic import PydanticDeprecatedSince20
-
 from qdrant_client import QdrantClient
 from fastapi.testclient import TestClient
 
 from cat.auth.permissions import AuthUserInfo
-from cat.looking_glass.cheshire_cat import CheshireCat
-from cat.looking_glass.stray_cat import StrayCat
 from cat.db.crud_source import CrudSourceSettings
-import cat.utils as utils
-from cat.memory.vector_memory import VectorMemory
+from cat.looking_glass.cheshire_cat_manager import CheshireCatManager
+from cat.looking_glass.stray_cat import StrayCat
 from cat.mad_hatter.plugin import Plugin
 from cat.main import cheshire_cat_api
+from cat.memory.vector_memory import VectorMemory
+import cat.utils as utils
 from tests.utils import create_mock_plugin_zip
 
 
@@ -132,7 +129,10 @@ def just_installed_plugin(client):
 # fixtures to test the main agent
 @pytest.fixture
 def main_agent(client):
-    yield CheshireCat().main_agent  # each test receives as argument the main agent instance
+    cheshire_cat_manager: CheshireCatManager = client.app.state.cheshire_cat_manager
+    cheshire_cat = cheshire_cat_manager.get_or_create_cheshire_cat("test")
+
+    yield cheshire_cat.main_agent  # each test receives as argument the main agent instance
 
 # fixture to have available an instance of StrayCat
 @pytest.fixture

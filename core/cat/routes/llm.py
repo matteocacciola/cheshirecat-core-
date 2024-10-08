@@ -1,6 +1,6 @@
 from typing import Dict
 
-from cat.auth.connection import HTTPAuth
+from cat.auth.connection import HTTPAuth, ContextualCats
 from cat.auth.permissions import AuthPermission, AuthResource
 from fastapi import Request, APIRouter, Body, HTTPException, Depends
 
@@ -8,7 +8,6 @@ from cat.factory.llm import get_llms_schemas
 from cat.db import crud, models
 from cat.log import log
 from cat import utils
-from cat.looking_glass.stray_cat import StrayCat
 
 router = APIRouter()
 
@@ -25,17 +24,20 @@ LLM_SELECTED_NAME = "llm_selected"
 # get configured LLMs and configuration schemas
 @router.get("/settings")
 def get_llms_settings(
-    stray: StrayCat = Depends(HTTPAuth(AuthResource.LLM, AuthPermission.LIST)),
+    cats: ContextualCats = Depends(HTTPAuth(AuthResource.LLM, AuthPermission.LIST)),
 ) -> Dict:
     """Get the list of the Large Language Models"""
-    LLM_SCHEMAS = get_llms_schemas()
+
+    chatbot_id = cats.cheshire_cat.id
+
+    LLM_SCHEMAS = get_llms_schemas(chatbot_id)
 
     # get selected LLM, if any
-    selected = crud.get_setting_by_name(name=LLM_SELECTED_NAME, user_id=stray.user_id)
+    selected = crud.get_setting_by_name(name=LLM_SELECTED_NAME, chatbot_id=chatbot_id)
     if selected is not None:
         selected = selected["value"]["name"]
 
-    saved_settings = crud.get_settings_by_category(category=LLM_CATEGORY, user_id=stray.user_id)
+    saved_settings = crud.get_settings_by_category(category=LLM_CATEGORY, chatbot_id=chatbot_id)
     saved_settings = {s["name"]: s for s in saved_settings}
 
     settings = []
@@ -64,10 +66,13 @@ def get_llms_settings(
 def get_llm_settings(
     request: Request,
     languageModelName: str,
-    stray: StrayCat = Depends(HTTPAuth(AuthResource.LLM, AuthPermission.READ)),
+    cats: ContextualCats = Depends(HTTPAuth(AuthResource.LLM, AuthPermission.READ)),
 ) -> Dict:
     """Get settings and schema of the specified Large Language Model"""
-    LLM_SCHEMAS = get_llms_schemas()
+
+    chatbot_id = cats.cheshire_cat.id
+
+    LLM_SCHEMAS = get_llms_schemas(chatbot_id)
 
     # check that languageModelName is a valid name
     allowed_configurations = list(LLM_SCHEMAS.keys())
@@ -79,13 +84,10 @@ def get_llm_settings(
             },
         )
 
-    setting = crud.get_setting_by_name(name=languageModelName, user_id=stray.user_id)
+    setting = crud.get_setting_by_name(name=languageModelName, chatbot_id=chatbot_id)
     schema = LLM_SCHEMAS[languageModelName]
 
-    if setting is None:
-        setting = {}
-    else:
-        setting = setting["value"]
+    setting = {} if setting is None else setting["value"]
 
     return {"name": languageModelName, "value": setting, "schema": schema}
 
@@ -95,10 +97,14 @@ def upsert_llm_setting(
     request: Request,
     languageModelName: str,
     payload: Dict = Body({"openai_api_key": "your-key-here"}),
-    stray: StrayCat = Depends(HTTPAuth(AuthResource.LLM, AuthPermission.EDIT)),
+    cats: ContextualCats = Depends(HTTPAuth(AuthResource.LLM, AuthPermission.EDIT)),
 ) -> Dict:
     """Upsert the Large Language Model setting"""
-    LLM_SCHEMAS = get_llms_schemas()
+
+    ccat = cats.cheshire_cat
+    chatbot_id = ccat.id
+
+    LLM_SCHEMAS = get_llms_schemas(chatbot_id)
 
     # check that languageModelName is a valid name
     allowed_configurations = list(LLM_SCHEMAS.keys())
@@ -112,17 +118,17 @@ def upsert_llm_setting(
 
     # create the setting and upsert it
     final_setting = crud.upsert_setting_by_name(
-        models.Setting(name=languageModelName, category=LLM_CATEGORY, value=payload), user_id=stray.user_id
+        models.Setting(name=languageModelName, category=LLM_CATEGORY, value=payload),
+        chatbot_id=chatbot_id
     )
 
     crud.upsert_setting_by_name(
         models.Setting(name=LLM_SELECTED_NAME, category=LLM_SELECTED_CATEGORY, value={"name": languageModelName}),
-        user_id=stray.user_id
+        chatbot_id=chatbot_id
     )
 
     status = {"name": languageModelName, "value": final_setting["value"]}
 
-    ccat = request.app.state.ccat
     # reload llm and embedder of the cat
     ccat.load_natural_language()
     # crete new collections
@@ -133,8 +139,8 @@ def upsert_llm_setting(
         ccat.load_memory()
     except Exception as e:
         log.error(e)
-        crud.delete_settings_by_category(category=LLM_SELECTED_CATEGORY, user_id=stray.user_id)
-        crud.delete_settings_by_category(category=LLM_CATEGORY, user_id=stray.user_id)
+        crud.delete_settings_by_category(category=LLM_SELECTED_CATEGORY, chatbot_id=chatbot_id)
+        crud.delete_settings_by_category(category=LLM_CATEGORY, chatbot_id=chatbot_id)
         raise HTTPException(
             status_code=400, detail={"error": utils.explicit_error_message(e)}
         )

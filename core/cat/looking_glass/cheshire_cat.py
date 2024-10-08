@@ -12,7 +12,6 @@ from langchain_openai import ChatOpenAI, OpenAI
 from langchain_google_genai import ChatGoogleGenerativeAI
 
 from cat.factory.auth_handler import get_auth_handler_from_name
-from cat.factory.custom_auth_handler import CoreAuthHandler
 import cat.factory.auth_handler as auth_handlers
 from cat.db import crud, models
 from cat.factory.embedder import (
@@ -26,7 +25,6 @@ from cat.factory.embedder import (
 from cat.factory.llm import LLMDefaultConfig
 from cat.factory.llm import get_llm_from_name
 from cat.agents.main_agent import MainAgent
-from cat.looking_glass.white_rabbit import WhiteRabbit
 from cat.log import log
 from cat.mad_hatter.mad_hatter import MadHatter
 from cat.memory.long_term_memory import LongTermMemory
@@ -51,27 +49,25 @@ class CheshireCat:
     This is the main class that manages everything for a single chatbot.
     """
 
-    def __init__(self):
+    def __init__(self, chatbot_id: str):
         """Cat initialization.
 
         At init time the Cat executes the bootstrap.
         """
 
         # bootstrap the Cat! ^._.^
+        self.id = chatbot_id
+
         self.embedder = None
         self.llm = None
         self.memory = None
-        self.core_auth_handler = None
         self.custom_auth_handler = None
 
         # instantiate MadHatter (loads all plugins' hooks and tools)
-        self.mad_hatter = MadHatter()
+        self.mad_hatter = MadHatter(self.id)
 
         # load AuthHandler
         self.load_auth()
-
-        # Start scheduling system
-        self.white_rabbit = WhiteRabbit()
 
         # allows plugins to do something before cat components are loaded
         self.mad_hatter.execute_hook("before_cat_bootstrap", cat=self)
@@ -91,10 +87,19 @@ class CheshireCat:
         self.main_agent = MainAgent()
 
         # Rabbit Hole Instance
-        self.rabbit_hole = RabbitHole(self)  # :(
+        self.rabbit_hole = RabbitHole(self.id)
 
         # allows plugins to do something after the cat bootstrap is complete
         self.mad_hatter.execute_hook("after_cat_bootstrap", cat=self)
+
+    def __eq__(self, other: "CheshireCat") -> bool:
+        """Check if two cats are equal."""
+        if not isinstance(other, CheshireCat):
+            return False
+        return self.id == other.id
+
+    def __hash__(self):
+        return hash(self.id)
 
     def load_natural_language(self):
         """Load Natural Language related objects.
@@ -130,7 +135,7 @@ class CheshireCat:
 
         """
 
-        selected_llm = crud.get_setting_by_name(name="llm_selected", user_id=self.user_id)
+        selected_llm = crud.get_setting_by_name(name="llm_selected", chatbot_id=self.id)
 
         if selected_llm is None:
             # return default LLM
@@ -138,10 +143,10 @@ class CheshireCat:
         else:
             # get LLM factory class
             selected_llm_class = selected_llm["value"]["name"]
-            FactoryClass = get_llm_from_name(selected_llm_class)
+            FactoryClass = get_llm_from_name(selected_llm_class, self.id)
 
             # obtain configuration and instantiate LLM
-            selected_llm_config = crud.get_setting_by_name(name=selected_llm_class, user_id=self.user_id)
+            selected_llm_config = crud.get_setting_by_name(name=selected_llm_class, chatbot_id=self.id)
             try:
                 llm = FactoryClass.get_llm_from_config(selected_llm_config["value"])
             except Exception:
@@ -167,15 +172,15 @@ class CheshireCat:
         """
         # Embedding LLM
 
-        selected_embedder = crud.get_setting_by_name(name="embedder_selected", user_id=self.user_id)
+        selected_embedder = crud.get_setting_by_name(name="embedder_selected", chatbot_id=self.id)
 
         if selected_embedder is not None:
             # get Embedder factory class
             selected_embedder_class = selected_embedder["value"]["name"]
-            FactoryClass = get_embedder_from_name(selected_embedder_class)
+            FactoryClass = get_embedder_from_name(selected_embedder_class, self.id)
 
             # obtain configuration and instantiate Embedder
-            selected_embedder_config = crud.get_setting_by_name(name=selected_embedder_class, user_id=self.user_id)
+            selected_embedder_config = crud.get_setting_by_name(name=selected_embedder_class, chatbot_id=self.id)
             try:
                 embedder = FactoryClass.get_embedder_from_config(selected_embedder_config["value"])
             except AttributeError:
@@ -223,7 +228,7 @@ class CheshireCat:
 
     def load_auth(self):
         # Custom auth_handler # TODOAUTH: change the name to custom_auth
-        selected_auth_handler = crud.get_setting_by_name(name="auth_handler_selected")
+        selected_auth_handler = crud.get_setting_by_name(name="auth_handler_selected", chatbot_id=self.id)
 
         # if no auth_handler is saved, use default one and save to db
         if selected_auth_handler is None:
@@ -231,44 +236,36 @@ class CheshireCat:
             crud.upsert_setting_by_name(
                 models.Setting(
                     name="CoreOnlyAuthConfig", category="auth_handler_factory", value={}
-                )
+                ),
+                chatbot_id=self.id,
             )
             crud.upsert_setting_by_name(
                 models.Setting(
                     name="auth_handler_selected",
                     category="auth_handler_factory",
                     value={"name": "CoreOnlyAuthConfig"},
-                )
+                ),
+                chatbot_id=self.id,
             )
 
             # reload from db
-            selected_auth_handler = crud.get_setting_by_name(
-                name="auth_handler_selected"
-            )
+            selected_auth_handler = crud.get_setting_by_name(name="auth_handler_selected", chatbot_id=self.id)
 
         # get AuthHandler factory class
         selected_auth_handler_class = selected_auth_handler["value"]["name"]
-        FactoryClass = get_auth_handler_from_name(selected_auth_handler_class)
+        FactoryClass = get_auth_handler_from_name(selected_auth_handler_class, self.id)
 
         # obtain configuration and instantiate AuthHandler
-        selected_auth_handler_config = crud.get_setting_by_name(
-            name=selected_auth_handler_class
-        )
+        selected_auth_handler_config = crud.get_setting_by_name(name=selected_auth_handler_class, chatbot_id=self.id)
         try:
-            auth_handler = FactoryClass.get_auth_handler_from_config(
-                selected_auth_handler_config["value"]
-            )
+            auth_handler = FactoryClass.get_auth_handler_from_config(selected_auth_handler_config["value"])
         except Exception:
             import traceback
-
             traceback.print_exc()
 
-            auth_handler = (
-                auth_handlers.CoreOnlyAuthConfig.get_auth_handler_from_config({})
-            )
+            auth_handler = auth_handlers.CoreOnlyAuthConfig.get_auth_handler_from_config({})
 
         self.custom_auth_handler = auth_handler
-        self.core_auth_handler = CoreAuthHandler()
 
     def load_memory(self):
         """Load LongTerMemory and WorkingMemory."""

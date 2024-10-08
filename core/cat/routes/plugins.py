@@ -4,10 +4,9 @@ from typing import Dict
 from fastapi import Body, Request, APIRouter, HTTPException, UploadFile, Depends
 from pydantic import ValidationError
 
-from cat.auth.connection import HTTPAuth
+from cat.auth.connection import HTTPAuth, ContextualCats
 from cat.auth.permissions import AuthPermission, AuthResource
 from cat.log import log
-from cat.looking_glass.stray_cat import StrayCat
 from cat.mad_hatter.registry import registry_search_plugins, registry_download_plugin
 
 router = APIRouter()
@@ -18,7 +17,7 @@ router = APIRouter()
 async def get_available_plugins(
     request: Request,
     query: str = None,
-    stray: StrayCat = Depends(HTTPAuth(AuthResource.PLUGINS, AuthPermission.LIST)),
+    cats: ContextualCats = Depends(HTTPAuth(AuthResource.PLUGINS, AuthPermission.LIST)),
     # author: str = None, to be activated in case of more granular search
     # tag: str = None, to be activated in case of more granular search
 ) -> Dict:
@@ -33,7 +32,7 @@ async def get_available_plugins(
         registry_plugins_index[plugin_url] = p
 
     # get active plugins
-    ccat = request.app.state.ccat
+    ccat = cats.cheshire_cat
     active_plugins = ccat.mad_hatter.load_active_plugins_from_db()
 
     # list installed plugins' manifest
@@ -80,12 +79,12 @@ async def get_available_plugins(
 async def install_plugin(
     request: Request,
     file: UploadFile,
-    stray: StrayCat = Depends(HTTPAuth(AuthResource.PLUGINS, AuthPermission.WRITE)),
+    cats: ContextualCats = Depends(HTTPAuth(AuthResource.PLUGINS, AuthPermission.WRITE)),
 ) -> Dict:
     """Install a new plugin from a zip file"""
 
     # access cat instance
-    ccat = request.app.state.ccat
+    ccat = cats.cheshire_cat
 
     admitted_mime_types = ["application/zip", "application/x-tar"]
     content_type = mimetypes.guess_type(file.filename)[0]
@@ -114,12 +113,12 @@ async def install_plugin(
 async def install_plugin_from_registry(
     request: Request,
     payload: Dict = Body({"url": "https://github.com/plugin-dev-account/plugin-repo"}),
-    stray: StrayCat = Depends(HTTPAuth(AuthResource.PLUGINS, AuthPermission.WRITE)),
+    cats: ContextualCats = Depends(HTTPAuth(AuthResource.PLUGINS, AuthPermission.WRITE)),
 ) -> Dict:
     """Install a new plugin from registry"""
 
     # access cat instance
-    ccat = request.app.state.ccat
+    ccat = cats.cheshire_cat
 
     # download zip from registry
     try:
@@ -137,12 +136,12 @@ async def install_plugin_from_registry(
 async def toggle_plugin(
     plugin_id: str,
     request: Request,
-    stray: StrayCat = Depends(HTTPAuth(AuthResource.PLUGINS, AuthPermission.WRITE)),
+    cats: ContextualCats = Depends(HTTPAuth(AuthResource.PLUGINS, AuthPermission.WRITE)),
 ) -> Dict:
     """Enable or disable a single plugin"""
 
     # access cat instance
-    ccat = request.app.state.ccat
+    ccat = cats.cheshire_cat
 
     # check if plugin exists
     if not ccat.mad_hatter.plugin_exists(plugin_id):
@@ -159,12 +158,12 @@ async def toggle_plugin(
 @router.get("/settings")
 async def get_plugins_settings(
     request: Request,
-    stray: StrayCat = Depends(HTTPAuth(AuthResource.PLUGINS, AuthPermission.READ)),
+    cats: ContextualCats = Depends(HTTPAuth(AuthResource.PLUGINS, AuthPermission.READ)),
 ) -> Dict:
     """Returns the settings of all the plugins"""
 
     # access cat instance
-    ccat = request.app.state.ccat
+    ccat = cats.cheshire_cat
 
     settings = []
 
@@ -192,12 +191,12 @@ async def get_plugins_settings(
 async def get_plugin_settings(
     request: Request,
     plugin_id: str,
-    stray: StrayCat = Depends(HTTPAuth(AuthResource.PLUGINS, AuthPermission.READ)),
+    cats: ContextualCats = Depends(HTTPAuth(AuthResource.PLUGINS, AuthPermission.READ)),
 ) -> Dict:
     """Returns the settings of a specific plugin"""
 
     # access cat instance
-    ccat = request.app.state.ccat
+    ccat = cats.cheshire_cat
 
     if not ccat.mad_hatter.plugin_exists(plugin_id):
         raise HTTPException(status_code=404, detail={"error": "Plugin not found"})
@@ -219,12 +218,12 @@ async def upsert_plugin_settings(
     request: Request,
     plugin_id: str,
     payload: Dict = Body({"setting_a": "some value", "setting_b": "another value"}),
-    stray: StrayCat = Depends(HTTPAuth(AuthResource.PLUGINS, AuthPermission.EDIT)),
+    cats: ContextualCats = Depends(HTTPAuth(AuthResource.PLUGINS, AuthPermission.EDIT)),
 ) -> Dict:
     """Updates the settings of a specific plugin"""
 
     # access cat instance
-    ccat = request.app.state.ccat
+    ccat = cats.cheshire_cat
 
     if not ccat.mad_hatter.plugin_exists(plugin_id):
         raise HTTPException(status_code=404, detail={"error": "Plugin not found"})
@@ -252,12 +251,12 @@ async def upsert_plugin_settings(
 async def get_plugin_details(
     plugin_id: str,
     request: Request,
-    stray: StrayCat = Depends(HTTPAuth(AuthResource.PLUGINS, AuthPermission.READ)),
+    cats: ContextualCats = Depends(HTTPAuth(AuthResource.PLUGINS, AuthPermission.READ)),
 ) -> Dict:
     """Returns information on a single plugin"""
 
     # access cat instance
-    ccat = request.app.state.ccat
+    ccat = cats.cheshire_cat
 
     if not ccat.mad_hatter.plugin_exists(plugin_id):
         raise HTTPException(status_code=404, detail={"error": "Plugin not found"})
@@ -281,12 +280,12 @@ async def get_plugin_details(
 async def delete_plugin(
     plugin_id: str,
     request: Request,
-    stray: StrayCat = Depends(HTTPAuth(AuthResource.PLUGINS, AuthPermission.DELETE)),
+    cats: ContextualCats = Depends(HTTPAuth(AuthResource.PLUGINS, AuthPermission.DELETE)),
 ) -> Dict:
     """Physically remove plugin."""
 
     # access cat instance
-    ccat = request.app.state.ccat
+    ccat = cats.cheshire_cat
 
     if not ccat.mad_hatter.plugin_exists(plugin_id):
         raise HTTPException(status_code=404, detail={"error": "Item not found"})

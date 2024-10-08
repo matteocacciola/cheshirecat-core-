@@ -5,7 +5,7 @@ from cat.db.crud_source import CrudSource, get_crud_settings
 from cat.db.database_source import DatabaseCrudSource
 from cat.db.redis_source import RedisCrudSource
 from cat.env import get_env
-from cat.mad_hatter.mad_hatter import MadHatter
+# from cat.mad_hatter.mad_hatter import MadHatter
 
 
 # Base class to manage the source of crud.
@@ -51,13 +51,13 @@ class RedisCrudConfig(CrudSettings):
 
 
 def get_allowed_crud_sources() -> List:
-    list_crud_sources_default = [TinyDbCrudConfig, RedisCrudConfig]
+    return [TinyDbCrudConfig, RedisCrudConfig]
 
-    mad_hatter_instance = MadHatter()
-    list_configuration_sources = mad_hatter_instance.execute_hook(
-        "factory_allowed_crud_sources", list_crud_sources_default, cat=None
-    )
-    return list_configuration_sources
+    # mad_hatter_instance = MadHatter()
+    # list_configuration_sources = mad_hatter_instance.execute_hook(
+    #     "factory_allowed_crud_sources", list_crud_sources_default, cat=None
+    # )
+    # return list_configuration_sources
 
 
 def get_crud_source_from_name(name_crud: str) -> CrudSettings | None:

@@ -2,9 +2,8 @@ from typing import Dict, List
 from pydantic import BaseModel
 from fastapi import Query, Request, APIRouter, HTTPException, Depends
 
-from cat.auth.connection import HTTPAuth
+from cat.auth.connection import HTTPAuth, ContextualCats
 from cat.auth.permissions import AuthPermission, AuthResource
-from cat.looking_glass.stray_cat import StrayCat
 
 
 class MemoryPointBase(BaseModel):
@@ -25,11 +24,11 @@ async def recall_memories_from_text(
     request: Request,
     text: str = Query(description="Find memories similar to this text."),
     k: int = Query(default=100, description="How many memories to return."),
-    stray: StrayCat = Depends(HTTPAuth(AuthResource.MEMORY, AuthPermission.READ)),
+    cats: ContextualCats = Depends(HTTPAuth(AuthResource.MEMORY, AuthPermission.READ)),
 ) -> Dict:
     """Search k memories similar to given text."""
 
-    ccat = request.app.state.ccat
+    ccat = cats.cheshire_cat
     vector_memory = ccat.memory.vectors
 
     # Embed the query to plot it in the Memory page
@@ -43,12 +42,10 @@ async def recall_memories_from_text(
     collections = list(vector_memory.collections.keys())
     recalled = {}
     for c in collections:
-        # only episodic collection has users
-        user_id = stray.user_id
+        user_filter = None
         if c == "episodic":
-            user_filter = {"source": user_id}
-        else:
-            user_filter = None
+            # only episodic collection has users
+            user_filter = {"source": cats.stray_cat.user_id}
 
         memories = vector_memory.collections[c].recall_memories_from_embedding(
             query_embedding, k=k, metadata=user_filter
@@ -77,11 +74,11 @@ async def recall_memories_from_text(
 # GET collection list with some metadata
 @router.get("/collections")
 async def get_collections(
-    request: Request, stray: StrayCat = Depends(HTTPAuth(AuthResource.MEMORY, AuthPermission.READ))
+    request: Request, cats: ContextualCats = Depends(HTTPAuth(AuthResource.MEMORY, AuthPermission.READ))
 ) -> Dict:
     """Get list of available collections"""
 
-    ccat = request.app.state.ccat
+    ccat = cats.cheshire_cat
     vector_memory = ccat.memory.vectors
     collections = list(vector_memory.collections.keys())
 
@@ -98,11 +95,11 @@ async def get_collections(
 @router.delete("/collections")
 async def wipe_collections(
     request: Request,
-    stray: StrayCat = Depends(HTTPAuth(AuthResource.MEMORY, AuthPermission.DELETE)),
+    cats: ContextualCats = Depends(HTTPAuth(AuthResource.MEMORY, AuthPermission.DELETE)),
 ) -> Dict:
     """Delete and create all collections"""
 
-    ccat = request.app.state.ccat
+    ccat = cats.cheshire_cat
     collections = list(ccat.memory.vectors.collections.keys())
     vector_memory = ccat.memory.vectors
 
@@ -124,11 +121,11 @@ async def wipe_collections(
 async def wipe_single_collection(
     request: Request,
     collection_id: str,
-    stray: StrayCat = Depends(HTTPAuth(AuthResource.MEMORY, AuthPermission.DELETE)),
+    cats: ContextualCats = Depends(HTTPAuth(AuthResource.MEMORY, AuthPermission.DELETE)),
 ) -> Dict:
     """Delete and recreate a collection"""
 
-    ccat = request.app.state.ccat
+    ccat = cats.cheshire_cat
     vector_memory = ccat.memory.vectors
 
     # check if collection exists
@@ -157,7 +154,7 @@ async def create_memory_point(
     request: Request,
     collection_id: str,
     point: MemoryPointBase,
-    stray: StrayCat = Depends(HTTPAuth(AuthResource.MEMORY, AuthPermission.WRITE)),
+    cats: ContextualCats = Depends(HTTPAuth(AuthResource.MEMORY, AuthPermission.WRITE)),
 ) -> MemoryPoint:
     """Create a point in memory"""
 
@@ -166,6 +163,8 @@ async def create_memory_point(
         raise HTTPException(
             status_code=400, detail={"error": "Procedural memory is read-only."}
         )
+
+    stray = cats.stray_cat
 
     # check if collection exists
     collections = list(stray.memory.vectors.collections.keys())
@@ -201,11 +200,11 @@ async def delete_memory_point(
     request: Request,
     collection_id: str,
     point_id: str,
-    stray: StrayCat = Depends(HTTPAuth(AuthResource.MEMORY, AuthPermission.DELETE)),
+    cats: ContextualCats = Depends(HTTPAuth(AuthResource.MEMORY, AuthPermission.DELETE)),
 ) -> Dict:
     """Delete a specific point in memory"""
 
-    ccat = request.app.state.ccat
+    ccat = cats.cheshire_cat
     vector_memory = ccat.memory.vectors
 
     # check if collection exists
@@ -220,7 +219,7 @@ async def delete_memory_point(
         collection_name=collection_id,
         ids=[point_id],
     )
-    if points == []:
+    if not points:
         raise HTTPException(status_code=400, detail={"error": "Point does not exist."})
 
     # delete point
@@ -234,12 +233,12 @@ async def delete_memory_points_by_metadata(
     request: Request,
     collection_id: str,
     metadata: Dict = None,
-    stray: StrayCat = Depends(HTTPAuth(AuthResource.MEMORY, AuthPermission.DELETE)),
+    cats: ContextualCats = Depends(HTTPAuth(AuthResource.MEMORY, AuthPermission.DELETE)),
 ) -> Dict:
     """Delete points in memory by filter"""
     metadata = metadata or {}
 
-    ccat = request.app.state.ccat
+    ccat = cats.cheshire_cat
     vector_memory = ccat.memory.vectors
 
     # delete points
@@ -254,11 +253,11 @@ async def delete_memory_points_by_metadata(
 @router.delete("/conversation_history")
 async def wipe_conversation_history(
     request: Request,
-    stray: StrayCat = Depends(HTTPAuth(AuthResource.MEMORY, AuthPermission.DELETE)),
+    cats: ContextualCats = Depends(HTTPAuth(AuthResource.MEMORY, AuthPermission.DELETE)),
 ) -> Dict:
     """Delete the specified user's conversation history from working memory"""
 
-    stray.working_memory.history = []
+    cats.stray_cat.working_memory.history = []
 
     return {
         "deleted": True,
@@ -269,8 +268,8 @@ async def wipe_conversation_history(
 @router.get("/conversation_history")
 async def get_conversation_history(
     request: Request,
-    stray: StrayCat = Depends(HTTPAuth(AuthResource.MEMORY, AuthPermission.READ)),
+    cats: ContextualCats = Depends(HTTPAuth(AuthResource.MEMORY, AuthPermission.READ)),
 ) -> Dict:
     """Get the specified user's conversation history from working memory"""
 
-    return {"history": stray.working_memory.history}
+    return {"history": cats.stray_cat.working_memory.history}

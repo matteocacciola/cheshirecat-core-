@@ -109,16 +109,16 @@ def tool(
         # if the argument is a string, then we use the string as the tool name
         # Example usage: @tool("search", return_direct=True)
         return _make_with_name(args[0])
-    elif len(args) == 1 and callable(args[0]):
+    if len(args) == 1 and callable(args[0]):
         # if the argument is a function, then we use the function name as the tool name
         # Example usage: @tool
         return _make_with_name(args[0].__name__)(args[0])
-    elif len(args) == 0:
+    if len(args) == 0:
         # if there are no arguments, then we use the function name as the tool name
         # Example usage: @tool(return_direct=True)
         def _partial(func: Callable[[str], str]) -> CatTool:
             return _make_with_name(func.__name__)(func)
 
         return _partial
-    else:
-        raise ValueError("Too many arguments for tool decorator")
+
+    raise ValueError("Too many arguments for tool decorator")

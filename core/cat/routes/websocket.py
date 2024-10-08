@@ -1,5 +1,5 @@
 from cat.auth.permissions import AuthPermission, AuthResource
-from cat.auth.connection import WebSocketAuth
+from cat.auth.connection import WebSocketAuth, ContextualCats
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect, Depends, Request
 from fastapi.concurrency import run_in_threadpool
 
@@ -29,11 +29,14 @@ async def receive_message(websocket: WebSocket, stray: StrayCat):
 async def websocket_endpoint(
     request: Request,
     websocket: WebSocket,
-    stray: StrayCat = Depends(WebSocketAuth(AuthResource.CONVERSATION, AuthPermission.WRITE)),
+    cats: ContextualCats = Depends(WebSocketAuth(AuthResource.CONVERSATION, AuthPermission.WRITE)),
 ):
     """
     Endpoint to handle incoming WebSocket connections by user id, process messages, and check for messages.
     """
+
+    # Extract the StrayCat object from the DependingCats object.
+    stray = cats.stray_cat
 
     # Add the new WebSocket connection to the manager.
     await websocket.accept()

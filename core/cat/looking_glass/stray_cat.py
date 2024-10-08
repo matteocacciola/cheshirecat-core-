@@ -15,9 +15,10 @@ from cat import utils
 from cat.agents import AgentOutput
 from cat.auth.permissions import AuthUserInfo
 from cat.convo.messages import CatMessage, UserMessage, MessageWhy, Role, EmbedderModelInteraction
+from cat.env import get_env
 from cat.log import log
-from cat.looking_glass.cheshire_cat import CheshireCat
 from cat.looking_glass.callbacks import NewTokenHandler, ModelInteractionHandler
+from cat.looking_glass.cheshire_cat_manager import CheshireCatManager
 from cat.mad_hatter.mad_hatter import MadHatter
 from cat.memory.working_memory import WorkingMemory
 from cat.rabbit_hole import RabbitHole
@@ -570,32 +571,39 @@ Allowed classes are:
 
     @property
     def llm(self) -> BaseLanguageModel:
-        return CheshireCat().llm
+        return CheshireCatManager().get_cheshire_cat_from_stray(self.user_id).llm
 
     @property
     def embedder(self):
-        return CheshireCat().embedder
+        return CheshireCatManager().get_cheshire_cat_from_stray(self.user_id).embedder
 
     @property
     def memory(self):
-        return CheshireCat().memory
+        return CheshireCatManager().get_cheshire_cat_from_stray(self.user_id).memory
 
     @property
     def rabbit_hole(self) -> RabbitHole:
-        return CheshireCat().rabbit_hole
+        return CheshireCatManager().get_cheshire_cat_from_stray(self.user_id).rabbit_hole
 
     @property
     def mad_hatter(self) -> MadHatter:
-        return CheshireCat().mad_hatter
+        return CheshireCatManager().get_cheshire_cat_from_stray(self.user_id).mad_hatter
 
     @property
     def main_agent(self):
-        return CheshireCat().main_agent
+        return CheshireCatManager().get_cheshire_cat_from_stray(self.user_id).main_agent
 
     @property
     def white_rabbit(self):
-        return CheshireCat().white_rabbit
+        return CheshireCatManager().white_rabbit
 
     @property
     def loop(self):
         return self.__loop
+
+    @property
+    def is_idle(self) -> bool:
+        if not self.__last_message_time:
+            return False
+
+        return time.time() - self.__last_message_time >= float(get_env("CCAT_STRAYCAT_TIMEOUT"))

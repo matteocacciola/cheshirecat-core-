@@ -282,7 +282,7 @@ class LLMGeminiChatConfig(LLMSettings):
     )
 
 
-def get_allowed_language_models():
+def get_allowed_language_models(chatbot_id: str):
     list_llms_default = [
         LLMOpenAIChatConfig,
         LLMOpenAIConfig,
@@ -298,26 +298,26 @@ def get_allowed_language_models():
         LLMDefaultConfig,
     ]
 
-    mad_hatter_instance = MadHatter()
+    mad_hatter_instance = MadHatter(chatbot_id)
     list_llms = mad_hatter_instance.execute_hook(
         "factory_allowed_llms", list_llms_default, cat=None
     )
     return list_llms
 
 
-def get_llm_from_name(name_llm: str):
+def get_llm_from_name(name: str, chatbot_id: str):
     """Find the llm adapter class by name"""
-    for cls in get_allowed_language_models():
-        if cls.__name__ == name_llm:
+    for cls in get_allowed_language_models(chatbot_id):
+        if cls.__name__ == name:
             return cls
     return None
 
 
-def get_llms_schemas():
+def get_llms_schemas(chatbot_id: str):
     # LLM_SCHEMAS contains metadata to let any client know
     # which fields are required to create the language model.
     LLM_SCHEMAS = {}
-    for config_class in get_allowed_language_models():
+    for config_class in get_allowed_language_models(chatbot_id):
         schema = config_class.model_json_schema()
         # useful for clients in order to call the correct config endpoints
         schema["languageModelName"] = schema["title"]

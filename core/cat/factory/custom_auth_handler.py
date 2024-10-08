@@ -3,7 +3,7 @@ from datetime import datetime, timedelta
 from pytz import utc
 import jwt
 
-from cat.db.crud import get_users
+from cat.db.crud import get_all_users
 from cat.auth.permissions import AuthPermission, AuthResource, AuthUserInfo, get_base_permissions, get_full_permissions
 from cat.auth.auth_utils import is_jwt, check_password
 from cat.env import get_env
@@ -69,19 +69,17 @@ class CoreAuthHandler(BaseAuthHandler):
             )
 
             # get user from DB
-            users = get_users()
+            users = get_all_users()
             if payload["sub"] in users:
                 user = users[payload["sub"]]
                 # TODOAUTH: permissions check should be done in a method
-                if auth_resource in user["permissions"].keys() and \
-                        auth_permission in user["permissions"][auth_resource]:
+                if auth_resource in user["permissions"].keys() and auth_permission in user["permissions"][auth_resource]:
                     return AuthUserInfo(
                         id=payload["sub"],
                         name=payload["username"],
                         permissions=user["permissions"],
                         extra=user,
                     )
-
         except Exception as e:
             log.error(f"Could not auth user from JWT: {e}")
 
@@ -126,7 +124,7 @@ class CoreAuthHandler(BaseAuthHandler):
         # brutal search over users, which are stored in a simple dictionary.
         # waiting to have graph in core to store them properly
         # TODOAUTH: get rid of this shameful loop
-        users = get_users()
+        users = get_all_users()
         for user_id, user in users.items():
             if user["username"] == username and check_password(password, user["password"]):
                 # TODOAUTH: expiration with timezone needs to be tested

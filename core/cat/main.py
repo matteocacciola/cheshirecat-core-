@@ -9,8 +9,9 @@ from fastapi.responses import JSONResponse
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 
-from cat.log import log
 from cat.env import get_env, fix_legacy_env_variables
+from cat.looking_glass.cheshire_cat_manager import CheshireCatManager
+from cat.log import log
 from cat.routes import (
     base,
     auth,
@@ -27,7 +28,6 @@ from cat.routes import (
 )
 from cat.routes.static import admin, static
 from cat.routes.openapi import get_openapi_configuration_function
-from cat.looking_glass.cheshire_cat import CheshireCat
 
 
 # TODO: take away in v2
@@ -38,12 +38,12 @@ fix_legacy_env_variables()
 async def lifespan(app: FastAPI):
     #       ^._.^
     #
-    # loads Cat and plugins
-    # Every endpoint can access the cat instance via request.app.state.ccat
+    # loads Cat Manager and plugins
+    # Every endpoint can access the cat manager instance via request.app.state.ccat_manager
     # - Not using middleware because I can't make it work with both http and websocket;
     # - Not using "Depends" because it only supports callables (not instances)
     # - Starlette allows this: https://www.starlette.io/applications/#storing-state-on-the-app-instance
-    app.state.ccat = CheshireCat()
+    app.state.ccat_manager = CheshireCatManager()
 
     # Dict of pseudo-sessions (key is the user_id)
     app.state.strays = {}
@@ -83,6 +83,7 @@ cheshire_cat_api.add_middleware(
 cheshire_cat_api.include_router(base.router, tags=["Status"])
 cheshire_cat_api.include_router(auth.router, tags=["User Auth"], prefix="/auth")
 cheshire_cat_api.include_router(users.router, tags=["Users"], prefix="/users")
+cheshire_cat_api.include_router(crud_source.router, tags=["Crud Source"])
 cheshire_cat_api.include_router(settings.router, tags=["Settings"], prefix="/settings")
 cheshire_cat_api.include_router(
     llm.router, tags=["Large Language Model"], prefix="/llm"
@@ -97,7 +98,6 @@ cheshire_cat_api.include_router(
     auth_handler.router, tags=["AuthHandler"], prefix="/auth_handler"
 )
 cheshire_cat_api.include_router(websocket.router, tags=["Websocket"])
-cheshire_cat_api.include_router(crud_source.router, tags=["Crud Source"])
 
 # mount static files
 # this cannot be done via fastapi.APIrouter:

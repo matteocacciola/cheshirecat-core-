@@ -17,7 +17,7 @@ def get_class_from_decorated_singleton(singleton):
 
 @pytest.fixture
 def cheshire_cat(client):
-    yield CheshireCat()
+    yield CheshireCat("test")
 
 
 def test_main_modules_loaded(cheshire_cat):

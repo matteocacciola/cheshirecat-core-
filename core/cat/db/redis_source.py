@@ -5,6 +5,8 @@ import redis
 from cat.db.crud_source import CrudSource
 from cat.db.models import Setting
 
+USERS_KEY = "users"
+
 
 class RedisCrudSource(CrudSource):
     host: str
@@ -38,26 +40,26 @@ class RedisCrudSource(CrudSource):
             raise ValueError(f"Unexpected type for Redis value: {type(new)}")
 
     def get_settings(self, search: str = "", *args, **kwargs) -> List[Dict]:
-        user_id: str = kwargs.get("user_id")
-        settings: List[Dict] = self.__get(user_id)
+        chatbot_id: str = kwargs.get("chatbot_id")
+        settings: List[Dict] = self.__get(chatbot_id)
 
         return [setting for setting in settings if search in setting["name"]]
 
     def get_settings_by_category(self, category: str, *args, **kwargs) -> List[Dict]:
-        user_id: str = kwargs.get("user_id")
-        settings: List[Dict] = self.__get(user_id)
+        chatbot_id: str = kwargs.get("chatbot_id")
+        settings: List[Dict] = self.__get(chatbot_id)
 
         return [setting for setting in settings if setting["category"] == category]
 
     def create_setting(self, payload: Setting, *args, **kwargs) -> Dict:
-        user_id: str = kwargs.get("user_id")
+        chatbot_id: str = kwargs.get("chatbot_id")
 
         # create and retrieve the record we just created
-        return self.__set(user_id, [payload.model_dump()])
+        return self.__set(chatbot_id, [payload.model_dump()])
 
     def get_setting_by_name(self, name: str, *args, **kwargs) -> Dict | None:
-        user_id: str = kwargs.get("user_id")
-        settings: List[Dict] = self.__get(user_id)
+        chatbot_id: str = kwargs.get("chatbot_id")
+        settings: List[Dict] = self.__get(chatbot_id)
 
         settings = [setting for setting in settings if setting["name"] == name]
         if not settings:
@@ -66,8 +68,8 @@ class RedisCrudSource(CrudSource):
         return settings[0]
 
     def get_setting_by_id(self, setting_id: str, *args, **kwargs) -> Dict | None:
-        user_id: str = kwargs.get("user_id")
-        settings: List[Dict] = self.__get(user_id)
+        chatbot_id: str = kwargs.get("chatbot_id")
+        settings: List[Dict] = self.__get(chatbot_id)
 
         settings = [setting for setting in settings if setting["setting_id"] == setting_id]
         if not settings:
@@ -76,28 +78,28 @@ class RedisCrudSource(CrudSource):
         return settings[0]
 
     def delete_setting_by_id(self, setting_id: str, *args, **kwargs) -> None:
-        user_id: str = kwargs.get("user_id")
-        settings: List[Dict] = self.__get(user_id)
+        chatbot_id: str = kwargs.get("chatbot_id")
+        settings: List[Dict] = self.__get(chatbot_id)
 
         if not settings:
             return
 
         settings = [setting for setting in settings if setting["setting_id"] != setting_id]
-        self.__set(user_id, settings)
+        self.__set(chatbot_id, settings)
 
     def delete_settings_by_category(self, category: str, *args, **kwargs) -> None:
-        user_id: str = kwargs.get("user_id")
-        settings: List[Dict] = self.__get(user_id)
+        chatbot_id: str = kwargs.get("chatbot_id")
+        settings: List[Dict] = self.__get(chatbot_id)
 
         if not settings:
             return
 
         settings = [setting for setting in settings if setting["category"] != category]
-        self.__set(user_id, settings)
+        self.__set(chatbot_id, settings)
 
     def update_setting_by_id(self, payload: Setting, *args, **kwargs) -> Dict | None:
-        user_id: str = kwargs.get("user_id")
-        settings: List[Dict] = self.__get(user_id)
+        chatbot_id: str = kwargs.get("chatbot_id")
+        settings: List[Dict] = self.__get(chatbot_id)
 
         if not settings:
             return None
@@ -106,21 +108,33 @@ class RedisCrudSource(CrudSource):
             if setting["setting_id"] == payload.setting_id:
                 setting.update(payload.model_dump())
 
-        self.__set(user_id, settings)
+        self.__set(chatbot_id, settings)
         return self.get_setting_by_id(payload.setting_id)
 
-    def upsert_setting_by_name(self, payload: Setting, *args, **kwargs) -> Dict | None:
-        user_id: str = kwargs.get("user_id")
-        old_setting = self.get_setting_by_name(payload.name, user_id=user_id)
+    def upsert_setting_by_name(self, payload: Setting, *args, **kwargs) -> Dict:
+        chatbot_id: str = kwargs.get("chatbot_id")
+        old_setting = self.get_setting_by_name(payload.name, chatbot_id=chatbot_id)
 
         if not old_setting:
-            self.create_setting(payload, user_id=user_id)
+            self.create_setting(payload, chatbot_id=chatbot_id)
         else:
-            settings: List[Dict] = self.__get(user_id)
+            settings: List[Dict] = self.__get(chatbot_id)
             for setting in settings:
                 if setting["name"] == payload.name:
                     setting.update(payload.model_dump())
 
-            self.__set(user_id, settings)
+            self.__set(chatbot_id, settings)
 
-        return self.get_setting_by_name(payload.name, user_id=user_id)
+        return self.get_setting_by_name(payload.name, chatbot_id=chatbot_id)
+
+    def update_users(self, users: Dict[str, Dict], *args, **kwargs) -> Dict | None:
+        updated_users = Setting(name="users", value=users)
+
+        # add or update the set from USERS_KEY with the new users
+        all_users = {**self.get_all_users(), **users}
+        self.__set(USERS_KEY, all_users)
+
+        return self.upsert_setting_by_name(updated_users, *args, **kwargs)
+
+    def get_all_users(self) -> Dict[str, Dict]:
+        return self.__get(USERS_KEY)

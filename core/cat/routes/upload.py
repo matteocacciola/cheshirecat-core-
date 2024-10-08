@@ -4,9 +4,7 @@ import io
 import json
 from typing import Dict
 from copy import deepcopy
-
 from pydantic import BaseModel, Field, ConfigDict
-
 from fastapi import (
     Form,
     Depends,
@@ -17,10 +15,9 @@ from fastapi import (
     HTTPException,
 )
 
-from cat.auth.connection import HTTPAuth
+from cat.auth.connection import HTTPAuth, ContextualCats
 from cat.auth.permissions import AuthPermission, AuthResource
 from cat.log import log
-from cat.looking_glass.stray_cat import StrayCat
 
 # TODOV2:
 # - add proper request and response pydantic models
@@ -55,7 +52,7 @@ async def upload_file(
         description="Metadata to be stored with each chunk (e.g. author, category, etc.). "
                     "Since we are passing this along side form data, must be a JSON string (use `json.dumps(metadata)`)."
     ),
-    stray: StrayCat = Depends(HTTPAuth(AuthResource.UPLOAD, AuthPermission.WRITE)),
+    cats: ContextualCats = Depends(HTTPAuth(AuthResource.UPLOAD, AuthPermission.WRITE)),
 ) -> Dict:
     """Upload a file containing text (.txt, .md, .pdf, etc.). File content will be extracted and segmented into chunks.
     Chunks will be then vectorized and stored into documents memory.
@@ -93,6 +90,8 @@ async def upload_file(
         )
     ```
     """
+
+    stray = cats.stray_cat
 
     # Check the file format is supported
     admitted_types = stray.rabbit_hole.file_handlers.keys()
@@ -153,11 +152,13 @@ class UploadURLConfig(BaseModel):
 async def upload_url(
     background_tasks: BackgroundTasks,
     upload_config: UploadURLConfig,
-    stray: StrayCat = Depends(HTTPAuth(AuthResource.UPLOAD, AuthPermission.WRITE)),
+    cats: ContextualCats = Depends(HTTPAuth(AuthResource.UPLOAD, AuthPermission.WRITE)),
 ):
     """Upload a url. Website content will be extracted and segmented into chunks.
     Chunks will be then vectorized and stored into documents memory."""
-    
+
+    stray = cats.stray_cat
+
     # check that URL is valid
     try:
         # Send a HEAD request to the specified URL
@@ -191,9 +192,11 @@ async def upload_memory(
     request: Request,
     file: UploadFile,
     background_tasks: BackgroundTasks,
-    stray: StrayCat = Depends(HTTPAuth(AuthResource.MEMORY, AuthPermission.WRITE)),
+    cats: ContextualCats = Depends(HTTPAuth(AuthResource.MEMORY, AuthPermission.WRITE)),
 ) -> Dict:
     """Upload a memory json file to the cat memory"""
+
+    stray = cats.stray_cat
 
     # Get file mime type
     content_type = mimetypes.guess_type(file.filename)[0]
@@ -224,12 +227,8 @@ async def upload_memory(
 @router.get("/allowed-mimetypes")
 async def get_allowed_mimetypes(
     request: Request,
-    stray: StrayCat = Depends(HTTPAuth(AuthResource.UPLOAD, AuthPermission.WRITE)),
+    cats: ContextualCats = Depends(HTTPAuth(AuthResource.UPLOAD, AuthPermission.WRITE)),
 ) -> Dict:
     """Retrieve the allowed mimetypes that can be ingested by the Rabbit Hole"""
 
-    ccat = request.app.state.ccat
-
-    admitted_types = list(ccat.rabbit_hole.file_handlers.keys())
-
-    return {"allowed": admitted_types}
+    return {"allowed": list(cats.cheshire_cat.rabbit_hole.file_handlers.keys())}

@@ -3,8 +3,7 @@ from fastapi.responses import FileResponse
 from fastapi import Depends
 
 from cat.auth.permissions import AuthResource, AuthPermission
-from cat.auth.connection import CoreFrontendAuth
-from cat.looking_glass.stray_cat import StrayCat
+from cat.auth.connection import CoreFrontendAuth, ContextualCats
 
 
 def mount(cheshire_cat_api):
@@ -20,7 +19,7 @@ def mount_admin_spa(cheshire_cat_api):
     @cheshire_cat_api.get("/admin/{page}", include_in_schema=False)
     @cheshire_cat_api.get("/admin/{page}/", include_in_schema=False)
     def get_admin_single_page_app(
-        stray: StrayCat = Depends(
+        cats: ContextualCats = Depends(
             CoreFrontendAuth(AuthResource.STATIC, AuthPermission.READ)
         )
     ):

@@ -1,11 +1,10 @@
 from typing import Dict
 from fastapi import Request, APIRouter, Body, HTTPException, Depends
 
-from cat.auth.connection import HTTPAuth
+from cat.auth.connection import HTTPAuth, ContextualCats
 from cat.auth.permissions import AuthPermission, AuthResource
 from cat.db import crud, models
 from cat.factory.auth_handler import get_auth_handlers_schemas
-from cat.looking_glass.stray_cat import StrayCat
 
 router = APIRouter()
 
@@ -15,20 +14,22 @@ AUTH_HANDLER_CATEGORY = "auth_handler_factory"
 
 @router.get("/settings")
 def get_auth_handler_settings(
-    request: Request, stray: StrayCat = Depends(HTTPAuth(AuthResource.AUTH_HANDLER, AuthPermission.LIST))
+    request: Request, cats: ContextualCats = Depends(HTTPAuth(AuthResource.AUTH_HANDLER, AuthPermission.LIST))
 ) -> Dict:
     """Get the list of the AuthHandlers"""
 
+    chatbot_id = cats.cheshire_cat.id
+
     # get selected AuthHandler
-    selected = crud.get_setting_by_name(name=AUTH_HANDLER_SELECTED_NAME, user_id=stray.user_id)
+    selected = crud.get_setting_by_name(name=AUTH_HANDLER_SELECTED_NAME, chatbot_id=chatbot_id)
     if selected is not None:
         selected = selected["value"]["name"]
 
-    saved_settings = crud.get_settings_by_category(category=AUTH_HANDLER_CATEGORY, user_id=stray.user_id)
+    saved_settings = crud.get_settings_by_category(category=AUTH_HANDLER_CATEGORY, chatbot_id=chatbot_id)
     saved_settings = {s["name"]: s for s in saved_settings}
 
     settings = []
-    for class_name, schema in get_auth_handlers_schemas().items():
+    for class_name, schema in get_auth_handlers_schemas(chatbot_id).items():
         if class_name in saved_settings:
             saved_setting = saved_settings[class_name]["value"]
         else:
@@ -52,11 +53,13 @@ def get_auth_handler_settings(
 def get_auth_handler_setting(
     request: Request,
     auth_handler_name: str,
-    stray: StrayCat = Depends(HTTPAuth(AuthResource.AUTH_HANDLER, AuthPermission.LIST))
+    cats: ContextualCats = Depends(HTTPAuth(AuthResource.AUTH_HANDLER, AuthPermission.LIST))
 ) -> Dict:
     """Get the settings of a specific AuthHandler"""
 
-    AUTH_HANDLER_SCHEMAS = get_auth_handlers_schemas()
+    chatbot_id = cats.cheshire_cat.id
+
+    AUTH_HANDLER_SCHEMAS = get_auth_handlers_schemas(chatbot_id)
 
     allowed_configurations = list(AUTH_HANDLER_SCHEMAS.keys())
     if auth_handler_name not in allowed_configurations:
@@ -67,13 +70,10 @@ def get_auth_handler_setting(
             },
         )
 
-    setting = crud.get_setting_by_name(name=auth_handler_name, user_id=stray.user_id)
+    setting = crud.get_setting_by_name(name=auth_handler_name, chatbot_id=chatbot_id)
     schema = AUTH_HANDLER_SCHEMAS[auth_handler_name]
 
-    if setting is None:
-        setting = {}
-    else:
-        setting = setting["value"]
+    setting = {} if setting is None else setting["value"]
 
     return {"name": auth_handler_name, "value": setting, "schema": schema}
 
@@ -82,12 +82,15 @@ def get_auth_handler_setting(
 def upsert_authenticator_setting(
     request: Request,
     auth_handler_name: str,
-    stray: StrayCat = Depends(HTTPAuth(AuthResource.AUTH_HANDLER, AuthPermission.LIST)),
+    cats: ContextualCats = Depends(HTTPAuth(AuthResource.AUTH_HANDLER, AuthPermission.LIST)),
     payload: Dict = Body(...),
 ) -> Dict:
     """Upsert the settings of a specific AuthHandler"""
 
-    AUTH_HANDLER_SCHEMAS = get_auth_handlers_schemas()
+    ccat = cats.cheshire_cat
+    chatbot_id = ccat.id
+
+    AUTH_HANDLER_SCHEMAS = get_auth_handlers_schemas(chatbot_id)
 
     allowed_configurations = list(AUTH_HANDLER_SCHEMAS.keys())
     if auth_handler_name not in allowed_configurations:
@@ -102,7 +105,7 @@ def upsert_authenticator_setting(
         models.Setting(
             name=auth_handler_name, value=payload, category=AUTH_HANDLER_CATEGORY
         ),
-        user_id=stray.user_id,
+        chatbot_id=chatbot_id,
     )
 
     crud.upsert_setting_by_name(
@@ -111,10 +114,10 @@ def upsert_authenticator_setting(
             value={"name": auth_handler_name},
             category=AUTH_HANDLER_CATEGORY,
         ),
-        user_id=stray.user_id,
+        chatbot_id=chatbot_id,
     )
 
-    request.app.state.ccat.load_auth()
+    ccat.load_auth()
 
     return {
         "name": auth_handler_name,

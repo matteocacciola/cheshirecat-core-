@@ -166,7 +166,7 @@ class EmbedderGeminiChatConfig(EmbedderSettings):
     )
 
 
-def get_allowed_embedder_models():
+def get_allowed_embedder_models(chatbot_id: str):
     list_embedder_default = [
         EmbedderQdrantFastEmbedConfig,
         EmbedderOpenAIConfig,
@@ -178,25 +178,25 @@ def get_allowed_embedder_models():
         EmbedderFakeConfig,
     ]
 
-    mad_hatter_instance = MadHatter()
+    mad_hatter_instance = MadHatter(chatbot_id)
     list_embedder = mad_hatter_instance.execute_hook(
         "factory_allowed_embedders", list_embedder_default, cat=None
     )
     return list_embedder
 
 
-def get_embedder_from_name(name_embedder: str):
+def get_embedder_from_name(name: str, chatbot_id: str):
     """Find the llm adapter class by name"""
-    for cls in get_allowed_embedder_models():
-        if cls.__name__ == name_embedder:
+    for cls in get_allowed_embedder_models(chatbot_id):
+        if cls.__name__ == name:
             return cls
     return None
 
 
-def get_embedders_schemas():
+def get_embedders_schemas(chatbot_id: str):
     # EMBEDDER_SCHEMAS contains metadata to let any client know which fields are required to create the language embedder.
     EMBEDDER_SCHEMAS = {}
-    for config_class in get_allowed_embedder_models():
+    for config_class in get_allowed_embedder_models(chatbot_id):
         schema = config_class.model_json_schema()
         # useful for clients in order to call the correct config endpoints
         schema["languageEmbedderName"] = schema["title"]

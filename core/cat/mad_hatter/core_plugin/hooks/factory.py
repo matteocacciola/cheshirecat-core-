@@ -1,6 +1,5 @@
 from typing import List
 
-from cat.factory.crud_source import CrudSettings
 from cat.factory.llm import LLMSettings
 from cat.factory.embedder import EmbedderSettings
 from cat.factory.auth_handler import AuthHandlerConfig
@@ -15,6 +14,8 @@ def factory_allowed_llms(allowed: List[LLMSettings], cat) -> List:
     ---------
     allowed : List of LLMSettings classes
         list of allowed language models
+    cat : Cat
+        Cat instance
 
     Returns
     -------
@@ -32,6 +33,8 @@ def factory_allowed_embedders(allowed: List[EmbedderSettings], cat) -> List:
     ---------
     allowed : embedder of EmbedderSettings classes
         list of allowed embedders
+    cat : Cat
+        Cat instance
 
     Returns
     -------
@@ -41,21 +44,23 @@ def factory_allowed_embedders(allowed: List[EmbedderSettings], cat) -> List:
     return allowed
 
 
-@hook(priority=0)
-def factory_allowed_crud_sources(allowed: List[CrudSettings], cat) -> List:
-    """Hook to extend support of crud sources.
-
-    Parameters
-    ---------
-    allowed : List of CrudSettings classes
-        list of allowed crud sources
-
-    Returns
-    -------
-    supported : List of CrudSettings classes
-        list of allowed crud sources
-    """
-    return allowed
+# @hook(priority=0)
+# def factory_allowed_crud_sources(allowed: List[CrudSettings], cat) -> List:
+#     """Hook to extend support of crud sources.
+#
+#     Parameters
+#     ---------
+#     allowed : List of CrudSettings classes
+#         list of allowed crud sources
+#     cat : Cat
+#         Cat instance
+#
+#     Returns
+#     -------
+#     supported : List of CrudSettings classes
+#         list of allowed crud sources
+#     """
+#     return allowed
 
 
 @hook(priority=0)
@@ -66,6 +71,8 @@ def factory_allowed_auth_handlers(allowed: List[AuthHandlerConfig], cat) -> List
     ---------
     allowed : List of AuthHandlerConfig classes
         list of allowed auth_handlers
+    cat : Cat
+        Cat instance
 
     Returns
     -------

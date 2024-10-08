@@ -42,13 +42,15 @@ async def test_issue_jwt(client):
     res = client.post("/auth/token", json=creds)
     assert res.status_code == 200
 
+    res_json = res.json()
+
     # did we obtain a JWT?
-    res.json()["token_type"] == "bearer"
-    received_token = res.json()["access_token"]
+    assert res_json["token_type"] == "bearer"
+    received_token = res_json["access_token"]
     assert is_jwt(received_token)
 
     # is the JWT correct for core auth handler?
-    auth_handler = client.app.state.ccat.core_auth_handler
+    auth_handler = client.app.state.ccat_manager.core_auth_handler
     user_info = await auth_handler.authorize_user_from_jwt(
         received_token, AuthResource.LLM, AuthPermission.WRITE
     )

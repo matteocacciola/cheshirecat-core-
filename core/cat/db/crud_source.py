@@ -1,7 +1,10 @@
 from abc import ABC, abstractmethod
 from typing import Dict, List
+from uuid import uuid4
 from tinydb import TinyDB, Query
 
+from cat.auth.auth_utils import hash_password
+from cat.auth.permissions import get_full_permissions, get_base_permissions
 from cat.db.models import CrudSetting, Setting
 from cat.env import get_env
 from cat.utils import singleton
@@ -41,7 +44,42 @@ class CrudSource(ABC):
         pass
 
     @abstractmethod
-    def upsert_setting_by_name(self, payload: Setting, *args, **kwargs) -> Setting:
+    def upsert_setting_by_name(self, payload: Setting, *args, **kwargs) -> Dict:
+        pass
+
+    @abstractmethod
+    def get_all_users(self) -> Dict[str, Dict]:
+        pass
+
+    # We store users in a setting and when there will be a graph db in the cat, we will store them there.
+    # P.S.: I'm not proud of this.
+    def get_users(self, *args, **kwargs) -> Dict[str, Dict]:
+        users = self.get_setting_by_name("users", *args, **kwargs)
+        if not users:
+            # create admin user and an ordinary user
+            admin_id = str(uuid4())
+            user_id = str(uuid4())
+
+            self.update_users({
+                admin_id: {
+                    "id": admin_id,
+                    "username": "admin",
+                    "password": hash_password("admin"),
+                    # admin has all permissions
+                    "permissions": get_full_permissions()
+                },
+                user_id: {
+                    "id": user_id,
+                    "username": "user",
+                    "password": hash_password("user"),
+                    # user has minor permissions
+                    "permissions": get_base_permissions()
+                }
+            })
+        return self.get_setting_by_name("users", *args, **kwargs)["value"]
+
+    @abstractmethod
+    def update_users(self, users: Dict[str, Dict], *args, **kwargs) -> Dict | None:
         pass
 
 

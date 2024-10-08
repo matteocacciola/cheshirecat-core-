@@ -1,19 +1,18 @@
 from typing import Dict
 from fastapi import Request, APIRouter, HTTPException, Depends, Body
 
-from cat.auth.connection import HTTPAuth
+from cat.auth.connection import HTTPAuth, ContextualCats
 from cat.auth.permissions import AuthPermission, AuthResource
 from cat.db.crud_source import get_crud_settings, upsert_setting_by_name
 from cat.db.models import CrudSetting
 from cat.factory.crud_source import get_crud_sources_schemas
-from cat.looking_glass.stray_cat import StrayCat
 
 router = APIRouter()
 
 
 # get configured Crud Sources and configuration schemas
 @router.get("/settings")
-def get_crud_sources_settings(stray: StrayCat = Depends(HTTPAuth(AuthResource.LLM, AuthPermission.LIST))) -> Dict:
+def get_crud_sources_settings(cats: ContextualCats = Depends(HTTPAuth(AuthResource.CRUD, AuthPermission.LIST))) -> Dict:
     """Get the list of the Crud Sources"""
     CRUDSOURCE_SCHEMAS = get_crud_sources_schemas()
 
@@ -33,7 +32,7 @@ def get_crud_sources_settings(stray: StrayCat = Depends(HTTPAuth(AuthResource.LL
 def get_crud_source_settings(
     request: Request,
     crudSourceName: str,
-    stray: StrayCat = Depends(HTTPAuth(AuthResource.LLM, AuthPermission.LIST))
+    cats: ContextualCats = Depends(HTTPAuth(AuthResource.CRUD, AuthPermission.LIST))
 ) -> Dict:
     """Get settings and schema of the specified Crud Source"""
     CRUDSOURCE_SCHEMAS = get_crud_sources_schemas()
@@ -62,7 +61,7 @@ def upsert_crud_source_settings(
     request: Request,
     crudSourceName: str,
     payload: Dict = Body(...),
-    stray: StrayCat = Depends(HTTPAuth(AuthResource.LLM, AuthPermission.EDIT)),
+    cats: ContextualCats = Depends(HTTPAuth(AuthResource.CRUD, AuthPermission.EDIT)),
 ) -> Dict:
     """Upsert the Crud Source setting"""
     CRUDSOURCE_SCHEMAS = get_crud_sources_schemas()

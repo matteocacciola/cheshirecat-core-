@@ -1,9 +1,6 @@
 from typing import Dict, List
 from tinydb import TinyDB, Query
-from uuid import uuid4
 
-from cat.auth.permissions import get_full_permissions, get_base_permissions
-from cat.auth.auth_utils import hash_password
 from cat.db.crud_source import CrudSource
 from cat.db.models import Setting
 
@@ -57,7 +54,7 @@ class DatabaseCrudSource(CrudSource):
 
         return self.get_setting_by_id(payload.setting_id)
 
-    def upsert_setting_by_name(self, payload: Setting, *args, **kwargs) -> Dict | None:
+    def upsert_setting_by_name(self, payload: Setting, *args, **kwargs) -> Dict:
         old_setting = self.get_setting_by_name(payload.name)
 
         if not old_setting:
@@ -67,3 +64,10 @@ class DatabaseCrudSource(CrudSource):
             self.db.update(payload, query.name == payload.name)
 
         return self.get_setting_by_name(payload.name)
+
+    def update_users(self, users: Dict[str, Dict], *args, **kwargs) -> Dict | None:
+        updated_users = Setting(name="users", value=users)
+        return self.upsert_setting_by_name(updated_users, *args, **kwargs)
+
+    def get_all_users(self) -> Dict[str, Dict]:
+        return self.get_users()
