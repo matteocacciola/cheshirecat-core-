@@ -13,7 +13,6 @@ from langchain_core.output_parsers.string import StrOutputParser
 from fastapi import WebSocket
 
 from cat import utils
-from cat.agents import AgentOutput
 from cat.agents.main_agent import MainAgent
 from cat.auth.permissions import AuthUserInfo
 from cat.convo.messages import CatMessage, UserMessage, MessageWhy, Role, EmbedderModelInteraction
@@ -348,6 +347,7 @@ class StrayCat:
         answer. This is formatted in a dictionary to be sent as a JSON via Websocket to the client.
 
         """
+        from cat.agents import AgentOutput
 
         # Parse websocket message into UserMessage obj
         user_message = UserMessage.model_validate(message_dict)

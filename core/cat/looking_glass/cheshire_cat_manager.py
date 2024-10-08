@@ -2,7 +2,6 @@ import asyncio
 
 from cat.env import get_env
 from cat.factory.custom_auth_handler import CoreAuthHandler
-from cat.jobs.job_on_idle_strays import job_on_idle_strays
 from cat.looking_glass.cheshire_cat import CheshireCat
 from cat.looking_glass.white_rabbit import WhiteRabbit
 from cat.utils import singleton
@@ -24,6 +23,7 @@ class CheshireCatManager:
     """
 
     def __init__(self):
+        from cat.jobs.job_on_idle_strays import job_on_idle_strays
         self.__cheshire_cats: set[CheshireCat] = set()
 
         # set a reference to asyncio event loop

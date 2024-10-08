@@ -2,8 +2,6 @@ import json
 from enum import Enum
 from typing import List, Dict
 from pydantic import BaseModel, ValidationError
-
-from cat.looking_glass.stray_cat import StrayCat
 from cat.utils import parse_json
 from cat.log import log
 
@@ -17,6 +15,8 @@ class CatFormState(Enum):
 
 
 class CatForm:  # base model of forms
+    from cat.looking_glass.stray_cat import StrayCat
+    
     model_class: BaseModel
     procedure_type: str = "form"
     name: str = None
