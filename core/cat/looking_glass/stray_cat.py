@@ -24,6 +24,7 @@ from cat.looking_glass.cheshire_cat import CheshireCat
 from cat.looking_glass.cheshire_cat_manager import CheshireCatManager
 from cat.looking_glass.white_rabbit import WhiteRabbit
 from cat.mad_hatter.mad_hatter import MadHatter
+from cat.memory.models import MemoryCollection
 from cat.memory.working_memory import WorkingMemory
 from cat.rabbit_hole import RabbitHole
 
@@ -82,9 +83,9 @@ class StrayCat:
             input=self.working_memory.user_message_json.text,
             intermediate_steps=[],
             memory={
-                "episodic": episodic_report,
-                "declarative": declarative_report,
-                "procedural": procedural_report,
+                str(MemoryCollection.EPISODIC): episodic_report,
+                str(MemoryCollection.DECLARATIVE): declarative_report,
+                str(MemoryCollection.PROCEDURAL): procedural_report,
             },
             model_interactions=self.working_memory.model_interactions,
         )

@@ -4,6 +4,7 @@ from fastapi import Query, APIRouter, HTTPException, Depends
 
 from cat.auth.connection import HTTPAuth, ContextualCats
 from cat.auth.permissions import AuthPermission, AuthResource
+from cat.memory.models import MemoryCollection
 
 
 class MemoryPointBase(BaseModel):
@@ -42,7 +43,7 @@ async def recall_memories_from_text(
     recalled = {}
     for c in collections:
         user_filter = None
-        if c == "episodic":
+        if c == str(MemoryCollection.EPISODIC):
             # only episodic collection has users
             user_filter = {"source": cats.stray_cat.user_id}
 
@@ -155,7 +156,7 @@ async def create_memory_point(
     """Create a point in memory"""
 
     # do not touch procedural memory
-    if collection_id == "procedural":
+    if collection_id == str(MemoryCollection.PROCEDURAL):
         raise HTTPException(
             status_code=400, detail={"error": "Procedural memory is read-only."}
         )

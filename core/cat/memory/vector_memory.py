@@ -2,6 +2,7 @@ import sys
 import socket
 from qdrant_client import QdrantClient
 
+from cat.memory.models import MemoryCollection
 from cat.memory.vector_memory_collection import VectorMemoryCollection
 from cat.log import log
 from cat.env import get_env
@@ -27,11 +28,11 @@ class VectorMemory:
         # - Declarative memory will contain uploaded documents' content
         # - Procedural memory will contain tools and knowledge on how to do things
         self.collections = {}
-        for collection_name in ["episodic", "declarative", "procedural"]:
+        for collection_name in MemoryCollection:
             # Instantiate collection
             collection = VectorMemoryCollection(
                 client=self.vector_db,
-                collection_name=collection_name,
+                collection_name=str(collection_name),
                 embedder_name=embedder_name,
                 embedder_size=embedder_size,
             )
@@ -42,7 +43,7 @@ class VectorMemory:
 
             # Have the collection as an instance attribute
             # (i.e. do things like cat.memory.vectors.declarative.something())
-            setattr(self, collection_name, collection)
+            setattr(self, str(collection_name), collection)
 
     def connect_to_vector_memory(self) -> None:
         db_path = "cat/data/local_vector_memory/"

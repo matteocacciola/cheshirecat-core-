@@ -20,6 +20,7 @@ from cat.looking_glass.cheshire_cat import CheshireCat
 from cat.looking_glass.cheshire_cat_manager import CheshireCatManager
 from cat.looking_glass.stray_cat import StrayCat
 from cat.log import log
+from cat.memory.models import MemoryCollection
 
 
 class RabbitHole:
@@ -93,7 +94,7 @@ class RabbitHole:
             raise Exception(message)
 
         # Get Declarative memories in file
-        declarative_memories = memories["collections"]["declarative"]
+        declarative_memories = memories["collections"][str(MemoryCollection.DECLARATIVE)]
 
         # Store data to upload the memories in batch
         ids = [i["id"] for i in declarative_memories]
@@ -117,7 +118,7 @@ class RabbitHole:
 
         # Upsert memories in batch mode # TODO REFACTOR: use VectorMemoryCollection.add_point
         cat.memory.vectors.vector_db.upsert(
-            collection_name="declarative",
+            collection_name=str(MemoryCollection.DECLARATIVE),
             points=models.Batch(ids=ids, payloads=payloads, vectors=vectors),
         )
 
