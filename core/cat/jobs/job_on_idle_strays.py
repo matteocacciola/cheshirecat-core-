@@ -14,4 +14,4 @@ def job_on_idle_strays(cat_manager: CheshireCatManager) -> None:
                 ccat.remove_stray(stray)
 
         if not ccat.has_strays():
-            cat_manager.remove_cheshire_cat(ccat)
+            cat_manager.remove_cheshire_cat(ccat.id)
