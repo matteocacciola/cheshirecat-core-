@@ -56,9 +56,6 @@ class CheshireCatManager:
         Returns:
             None
         """
-        cheshire_cat = self.__next(chatbot_id)
-        if cheshire_cat:
-            return cheshire_cat  # chatbot already exists
 
         ccat = CheshireCat(chatbot_id)
         self.__cheshire_cats.add(ccat)
@@ -102,7 +99,7 @@ class CheshireCatManager:
             The Cheshire Cat with the given id or a new one if it doesn't exist yet
         """
         current_cat = self.get_cheshire_cat(chatbot_id)
-        if current_cat:
+        if current_cat:  # chatbot already exists
             return current_cat
 
         return self.add_cheshire_cat(chatbot_id)
