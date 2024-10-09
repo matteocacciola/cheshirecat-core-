@@ -1,11 +1,11 @@
 from enum import Enum
 from typing import Type
-
 from pydantic import BaseModel, ConfigDict, Field
 from langchain_community.embeddings import FakeEmbeddings, FastEmbedEmbeddings
 from langchain_openai import OpenAIEmbeddings, AzureOpenAIEmbeddings
 from langchain_google_genai import GoogleGenerativeAIEmbeddings
 from fastembed import TextEmbedding
+
 from cat.factory.custom_embedder import DumbEmbedder, CustomOpenAIEmbeddings
 from cat.looking_glass.cheshire_cat_manager import CheshireCatManager
 from langchain_cohere import CohereEmbeddings

@@ -14,8 +14,9 @@ services:
     environment:
       # Timezone
       - TZ=${CCAT_TIMEZONE:-UTC}
-      # Pass the Redis password directly
+      - CCAT_REDIS_HOST=${CCAT_REDIS_HOST:-redis}
       - CCAT_REDIS_PASSWORD=${CCAT_REDIS_PASSWORD:-}
+      - CCAT_STRAYCAT_TIMEOUT=${CCAT_STRAYCAT_TIMEOUT:-59}
     volumes:
       - ./core:/app
     command:

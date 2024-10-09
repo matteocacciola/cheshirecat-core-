@@ -124,8 +124,9 @@ class CoreAuthHandler(BaseAuthHandler):
         # brutal search over users, which are stored in a simple dictionary.
         # waiting to have graph in core to store them properly
         # TODOAUTH: get rid of this shameful loop
-        users = get_all_users()
-        for user_id, user in users.items():
+        # Assuming users is a list of user objects
+        users_dict = {user["id"]: user for user in get_all_users()}
+        for user_id, user in users_dict.items():
             if user["username"] == username and check_password(password, user["password"]):
                 # TODOAUTH: expiration with timezone needs to be tested
                 # using seconds for easier testing
