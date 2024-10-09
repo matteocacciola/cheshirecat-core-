@@ -1,7 +1,7 @@
 from typing import Type
 from pydantic import BaseModel, ConfigDict
 
-from cat.mad_hatter.mad_hatter import MadHatter
+from cat.looking_glass.cheshire_cat_manager import CheshireCatManager
 from cat.factory.custom_auth_handler import (
     # ApiKeyAuthHandler,
     BaseAuthHandler,
@@ -56,7 +56,7 @@ def get_allowed_auth_handler_strategies(chatbot_id: str):
         # ApiKeyAuthConfig,
     ]
 
-    mad_hatter_instance = MadHatter(chatbot_id)
+    mad_hatter_instance = CheshireCatManager().get_cheshire_cat(chatbot_id).mad_hatter
     list_auth_handler = mad_hatter_instance.execute_hook(
         "factory_allowed_auth_handlers", list_auth_handler_default, cat=None
     )

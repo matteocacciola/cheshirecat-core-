@@ -1,4 +1,3 @@
-
 services:
   cheshire-cat-core:
     build:
@@ -15,6 +14,8 @@ services:
     environment:
       # Timezone
       - TZ=${CCAT_TIMEZONE:-UTC}
+      # Pass the Redis password directly
+      - CCAT_REDIS_PASSWORD=${CCAT_REDIS_PASSWORD:-}
     volumes:
       - ./core:/app
     command:
@@ -26,6 +27,13 @@ services:
   redis:
     image: redis:7.4.1
     container_name: cheshire_cat_redis
+    # Use conditional command based on whether password is set
+    command: >
+      sh -c '[ ! -z "$$CCAT_REDIS_PASSWORD" ] && 
+      redis-server --requirepass "$$CCAT_REDIS_PASSWORD" ||
+      redis-server'
+    environment:
+      - CCAT_REDIS_PASSWORD=${CCAT_REDIS_PASSWORD:-}
     ports:
       - ${CCAT_REDIS_PORT:-6379}:6379
     restart: unless-stopped

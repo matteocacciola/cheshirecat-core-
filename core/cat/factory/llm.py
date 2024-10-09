@@ -13,7 +13,7 @@ import json
 from pydantic import BaseModel, ConfigDict
 
 from cat.factory.custom_llm import LLMDefault, LLMCustom, CustomOpenAI, CustomOllama
-from cat.mad_hatter.mad_hatter import MadHatter
+from cat.looking_glass.cheshire_cat_manager import CheshireCatManager
 
 
 # Base class to manage LLM configuration.
@@ -298,7 +298,7 @@ def get_allowed_language_models(chatbot_id: str):
         LLMDefaultConfig,
     ]
 
-    mad_hatter_instance = MadHatter(chatbot_id)
+    mad_hatter_instance = CheshireCatManager().get_cheshire_cat(chatbot_id).mad_hatter
     list_llms = mad_hatter_instance.execute_hook(
         "factory_allowed_llms", list_llms_default, cat=None
     )

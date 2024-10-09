@@ -7,7 +7,7 @@ from langchain_openai import OpenAIEmbeddings, AzureOpenAIEmbeddings
 from langchain_google_genai import GoogleGenerativeAIEmbeddings
 from fastembed import TextEmbedding
 from cat.factory.custom_embedder import DumbEmbedder, CustomOpenAIEmbeddings
-from cat.mad_hatter.mad_hatter import MadHatter
+from cat.looking_glass.cheshire_cat_manager import CheshireCatManager
 from langchain_cohere import CohereEmbeddings
 
 
@@ -178,7 +178,7 @@ def get_allowed_embedder_models(chatbot_id: str):
         EmbedderFakeConfig,
     ]
 
-    mad_hatter_instance = MadHatter(chatbot_id)
+    mad_hatter_instance = CheshireCatManager().get_cheshire_cat(chatbot_id).mad_hatter
     list_embedder = mad_hatter_instance.execute_hook(
         "factory_allowed_embedders", list_embedder_default, cat=None
     )
