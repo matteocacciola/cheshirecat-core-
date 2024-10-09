@@ -1,7 +1,8 @@
 import time
+from copy import deepcopy
 from typing import List, Dict
+from pydantic import BaseModel
 from typing_extensions import Protocol
-
 from langchain.base_language import BaseLanguageModel
 from langchain_core.messages import SystemMessage
 from langchain_core.runnables import RunnableLambda
@@ -11,6 +12,7 @@ from langchain_community.llms import Cohere
 from langchain_openai import ChatOpenAI, OpenAI
 from langchain_google_genai import ChatGoogleGenerativeAI
 
+from cat.exceptions import LoadMemoryException
 from cat.factory.auth_handler import get_auth_handler_from_name
 import cat.factory.auth_handler as auth_handlers
 from cat.db import crud, models
@@ -20,7 +22,7 @@ from cat.factory.embedder import (
     EmbedderOpenAIConfig,
     EmbedderCohereConfig,
     EmbedderGeminiChatConfig,
-    get_embedder_from_name,
+    get_embedder_from_name, get_allowed_embedder_models,
 )
 from cat.factory.llm import LLMDefaultConfig
 from cat.factory.llm import get_llm_from_name
@@ -28,6 +30,7 @@ from cat.agents.main_agent import MainAgent
 from cat.log import log
 from cat.looking_glass.stray_cat import StrayCat
 from cat.mad_hatter.mad_hatter import MadHatter
+from cat.mad_hatter.registry import registry_search_plugins
 from cat.memory.long_term_memory import LongTermMemory
 from cat.rabbit_hole import RabbitHole
 from cat import utils
@@ -41,6 +44,11 @@ class Procedure(Protocol):
     #   "start_examples": [],
     # }
     triggers_map: Dict[str, List[str]]
+
+
+class Plugins(BaseModel):
+    installed: List[str]
+    registry: List[str]
 
 
 # main class
@@ -319,12 +327,11 @@ class CheshireCat:
         embedder_size = len(self.embedder.embed_query("hello world"))
 
         # Get embedder name (useful for for vectorstore aliases)
+        embedder_name = "default_embedder"
         if hasattr(self.embedder, "model"):
             embedder_name = self.embedder.model
         elif hasattr(self.embedder, "repo_id"):
             embedder_name = self.embedder.repo_id
-        else:
-            embedder_name = "default_embedder"
 
         # instantiate long term memory
         vector_memory_config = {
@@ -435,6 +442,201 @@ class CheshireCat:
         )
 
         return output
+
+    async def get_plugins(self, query: str = None) -> Plugins:
+        """
+        Get the plugins related to the current Cheshire Cat
+        Args:
+            query: the query to look for
+
+        Returns:
+            The list of plugins
+        """
+        # retrieve plugins from official repo
+        registry_plugins = await registry_search_plugins(query)
+        # index registry plugins by url
+        registry_plugins_index = {}
+        for p in registry_plugins:
+            plugin_url = p["url"]
+            registry_plugins_index[plugin_url] = p
+
+        # get active plugins
+        active_plugins = self.mad_hatter.load_active_plugins_from_db()
+
+        # list installed plugins' manifest
+        installed_plugins = []
+        for p in self.mad_hatter.plugins.values():
+            # get manifest
+            manifest = deepcopy(
+                p.manifest
+            )  # we make a copy to avoid modifying the plugin obj
+            manifest["active"] = (
+                    p.id in active_plugins
+            )  # pass along if plugin is active or not
+            manifest["upgrade"] = None
+            manifest["hooks"] = [
+                {"name": hook.name, "priority": hook.priority} for hook in p.hooks
+            ]
+            manifest["tools"] = [{"name": tool.name} for tool in p.tools]
+
+            # filter by query
+            plugin_text = [str(field) for field in manifest.values()]
+            plugin_text = " ".join(plugin_text).lower()
+            if (query is None) or (query.lower() in plugin_text):
+                for r in registry_plugins:
+                    if r["plugin_url"] == p.manifest["plugin_url"]:
+                        if r["version"] != p.manifest["version"]:
+                            manifest["upgrade"] = r["version"]
+                installed_plugins.append(manifest)
+
+            # do not show already installed plugins among registry plugins
+            registry_plugins_index.pop(manifest["plugin_url"], None)
+
+        return Plugins(installed=installed_plugins, registry=list(registry_plugins_index.values()))
+
+    def replace_llm(self, language_model_name: str, settings: Dict) -> Dict:
+        """
+        Replace the current LLM with a new one. This method is used to change the LLM of the cat.
+        Args:
+            language_model_name: name of the new LLM
+            settings: settings of the new LLM
+
+        Returns:
+            The dictionary resuming the new name and settings of the LLM
+        """
+        # create the setting and upsert it
+        final_setting = crud.upsert_setting_by_name(
+            models.Setting(name=language_model_name, category="llm_factory", value=settings),
+            chatbot_id=self.id
+        )
+
+        # general LLM settings are saved in settings table under "llm" category
+        crud.upsert_setting_by_name(
+            models.Setting(name="llm_selected", category="llm", value={"name": language_model_name}),
+            chatbot_id=self.id
+        )
+
+        status = {"name": language_model_name, "value": final_setting["value"]}
+
+        # reload llm and embedder of the cat
+        self.load_natural_language()
+
+        # create new collections
+        # (in case embedder is not configured, it will be changed automatically and aligned to vendor)
+        # TODO: should we take this feature away?
+        # Exception handling in case an incorrect key is loaded.
+        try:
+            self.load_memory()
+        except Exception as e:
+            log.error(e)
+            crud.delete_settings_by_category(category="llm", chatbot_id=self.id)
+            crud.delete_settings_by_category(category="llm_factory", chatbot_id=self.id)
+
+            raise LoadMemoryException(utils.explicit_error_message(e))
+
+        # recreate tools embeddings
+        self.mad_hatter.find_plugins()
+
+        return status
+
+    def get_selected_embedder_settings(self) -> Dict | None:
+        # get selected Embedder settings, if any
+        # embedder selected configuration is saved under "embedder_selected" name
+        selected = crud.get_setting_by_name(name="embedder_selected", chatbot_id=self.id)
+        if selected is not None:
+            selected = selected["value"]["name"]
+        else:
+            supported_embedding_models = get_allowed_embedder_models(self.id)
+
+            # TODO: take away automatic embedder settings in v2
+            # If DB does not contain a selected embedder, it means an embedder was automatically selected.
+            # Deduce selected embedder:
+            for embedder_config_class in reversed(supported_embedding_models):
+                if isinstance(self.embedder, embedder_config_class._pyclass.default):
+                    selected = embedder_config_class.__name__
+
+        return selected
+
+    def replace_embedder(self, language_embedder_name: str, settings: Dict) -> Dict:
+        """
+        Replace the current embedder with a new one. This method is used to change the embedder of the cat.
+        Args:
+            language_embedder_name: name of the new embedder
+            settings: settings of the new embedder
+
+        Returns:
+            The dictionary resuming the new name and settings of the embedder
+        """
+        # get selected config if any
+        # embedder selected configuration is saved under "embedder_selected" name
+        selected = crud.get_setting_by_name(name="embedder_selected", chatbot_id=self.id)
+
+        # create the setting and upsert it
+        # embedder type and config are saved in settings table under "embedder_factory" category
+        final_setting = crud.upsert_setting_by_name(
+            models.Setting(
+                name=language_embedder_name, category="embedder_factory", value=settings
+            ),
+            chatbot_id=self.id
+        )
+
+        # general embedder settings are saved in settings table under "embedder" category
+        crud.upsert_setting_by_name(
+            models.Setting(
+                name="embedder_selected",
+                category="embedder",
+                value={"name": language_embedder_name},
+            ),
+            chatbot_id=self.id
+        )
+
+        status = {"name": language_embedder_name, "value": final_setting["value"]}
+
+        # reload llm and embedder of the cat
+        self.load_natural_language()
+        # crete new collections (different embedder!)
+        try:
+            self.load_memory()
+        except Exception as e:
+            log.error(e)
+
+            crud.delete_settings_by_category(category="embedder", chatbot_id=self.id)
+
+            # embedder type and config are saved in settings table under "embedder_factory" category
+            crud.delete_settings_by_category(category="embedder_factory", chatbot_id=self.id)
+
+            # if a selected config is present, restore it
+            if selected is not None:
+                current_settings = crud.get_setting_by_name(name=selected["value"]["name"], chatbot_id=self.id)
+
+                language_embedder_name = selected["value"]["name"]
+                crud.upsert_setting_by_name(
+                    models.Setting(
+                        name=language_embedder_name,
+                        category="embedder_factory",
+                        value=current_settings["value"],
+                    ),
+                    chatbot_id=self.id
+                )
+
+                # embedder selected configuration is saved under "embedder_selected" name
+                crud.upsert_setting_by_name(
+                    models.Setting(
+                        name="embedder_selected",
+                        category="embedder",
+                        value={"name": language_embedder_name},
+                    ),
+                    chatbot_id=self.id
+                )
+                # reload llm and embedder of the cat
+                self.load_natural_language()
+
+            raise LoadMemoryException(utils.explicit_error_message(e))
+
+        # recreate tools embeddings
+        self.mad_hatter.find_plugins()
+
+        return status
 
     @property
     def strays(self):

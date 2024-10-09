@@ -7,7 +7,7 @@ from pydantic import ValidationError
 from cat.auth.connection import HTTPAuth, ContextualCats
 from cat.auth.permissions import AuthPermission, AuthResource
 from cat.log import log
-from cat.mad_hatter.registry import registry_search_plugins, registry_download_plugin
+from cat.mad_hatter.registry import registry_download_plugin
 
 router = APIRouter()
 
@@ -22,46 +22,7 @@ async def get_available_plugins(
 ) -> Dict:
     """List available plugins"""
 
-    # retrieve plugins from official repo
-    registry_plugins = await registry_search_plugins(query)
-    # index registry plugins by url
-    registry_plugins_index = {}
-    for p in registry_plugins:
-        plugin_url = p["url"]
-        registry_plugins_index[plugin_url] = p
-
-    # get active plugins
-    ccat = cats.cheshire_cat
-    active_plugins = ccat.mad_hatter.load_active_plugins_from_db()
-
-    # list installed plugins' manifest
-    installed_plugins = []
-    for p in ccat.mad_hatter.plugins.values():
-        # get manifest
-        manifest = deepcopy(
-            p.manifest
-        )  # we make a copy to avoid modifying the plugin obj
-        manifest["active"] = (
-            p.id in active_plugins
-        )  # pass along if plugin is active or not
-        manifest["upgrade"] = None
-        manifest["hooks"] = [
-            {"name": hook.name, "priority": hook.priority} for hook in p.hooks
-        ]
-        manifest["tools"] = [{"name": tool.name} for tool in p.tools]
-
-        # filter by query
-        plugin_text = [str(field) for field in manifest.values()]
-        plugin_text = " ".join(plugin_text).lower()
-        if (query is None) or (query.lower() in plugin_text):
-            for r in registry_plugins:
-                if r["plugin_url"] == p.manifest["plugin_url"]:
-                    if r["version"] != p.manifest["version"]:
-                        manifest["upgrade"] = r["version"]
-            installed_plugins.append(manifest)
-
-        # do not show already installed plugins among registry plugins
-        registry_plugins_index.pop(manifest["plugin_url"], None)
+    plugins = await cats.cheshire_cat.get_plugins(query)
 
     return {
         "filters": {
@@ -69,8 +30,8 @@ async def get_available_plugins(
             # "author": author, to be activated in case of more granular search
             # "tag": tag, to be activated in case of more granular search
         },
-        "installed": installed_plugins,
-        "registry": list(registry_plugins_index.values()),
+        "installed": plugins.installed,
+        "registry": plugins.registry,
     }
 
 

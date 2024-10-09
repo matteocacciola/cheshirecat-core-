@@ -1,23 +1,13 @@
 from typing import Dict
 from fastapi import APIRouter, Body, HTTPException, Depends
 
-from cat import utils
 from cat.auth.connection import HTTPAuth, ContextualCats
 from cat.auth.permissions import AuthPermission, AuthResource
-from cat.factory.embedder import get_allowed_embedder_models, get_embedders_schemas
-from cat.db import crud, models
-from cat.log import log
+from cat.exceptions import LoadMemoryException
+from cat.factory.embedder import get_embedders_schemas
+from cat.db import crud
 
 router = APIRouter()
-
-# general embedder settings are saved in settings table under this category
-EMBEDDER_SELECTED_CATEGORY = "embedder"
-
-# embedder type and config are saved in settings table under this category
-EMBEDDER_CATEGORY = "embedder_factory"
-
-# embedder selected configuration is saved under this name
-EMBEDDER_SELECTED_NAME = "embedder_selected"
 
 
 # get configured Embedders and configuration schemas
@@ -28,38 +18,17 @@ def get_embedders_settings(
     """Get the list of the Embedders"""
 
     chatbot_id = cats.cheshire_cat.id
+    selected = cats.cheshire_cat.get_selected_embedder_settings()
 
-    supported_emdedding_models = get_allowed_embedder_models(chatbot_id)
-    # get selected Embedder, if any
-    selected = crud.get_setting_by_name(name=EMBEDDER_SELECTED_NAME, chatbot_id=chatbot_id)
-    if selected is not None:
-        selected = selected["value"]["name"]
-    else:
-        # TODO: take away automatic embedder settings in v2
-        # If DB does not contain a selected embedder, it means an embedder was automatically selected.
-        # Deduce selected embedder:
-        ccat = cats.cheshire_cat
-        for embedder_config_class in reversed(supported_emdedding_models):
-            if isinstance(ccat.embedder, embedder_config_class._pyclass.default):
-                selected = embedder_config_class.__name__
-
-    saved_settings = crud.get_settings_by_category(category=EMBEDDER_CATEGORY, chatbot_id=chatbot_id)
+    # embedder type and config are saved in settings table under "embedder_factory" category
+    saved_settings = crud.get_settings_by_category(category="embedder_factory", chatbot_id=chatbot_id)
     saved_settings = {s["name"]: s for s in saved_settings}
 
-    settings = []
-    for class_name, schema in get_embedders_schemas(chatbot_id).items():
-        if class_name in saved_settings:
-            saved_setting = saved_settings[class_name]["value"]
-        else:
-            saved_setting = {}
-
-        settings.append(
-            {
-                "name": class_name,
-                "value": saved_setting,
-                "schema": schema,
-            }
-        )
+    settings = [{
+        "name": class_name,
+        "value": saved_settings[class_name]["value"] if class_name in saved_settings else {},
+        "schema": schema,
+    } for class_name, schema in get_embedders_schemas(chatbot_id).items()]
 
     return {
         "settings": settings,
@@ -118,66 +87,11 @@ def upsert_embedder_setting(
             },
         )
 
-    # get selected config if any
-    selected = crud.get_setting_by_name(name=EMBEDDER_SELECTED_NAME, chatbot_id=chatbot_id)
-
-    # create the setting and upsert it
-    final_setting = crud.upsert_setting_by_name(
-        models.Setting(
-            name=language_embedder_name, category=EMBEDDER_CATEGORY, value=payload
-        ),
-        chatbot_id=chatbot_id
-    )
-
-    crud.upsert_setting_by_name(
-        models.Setting(
-            name=EMBEDDER_SELECTED_NAME,
-            category=EMBEDDER_SELECTED_CATEGORY,
-            value={"name": language_embedder_name},
-        ),
-        chatbot_id=chatbot_id
-    )
-
-    status = {"name": language_embedder_name, "value": final_setting["value"]}
-
-    # reload llm and embedder of the cat
-    ccat.load_natural_language()
-    # crete new collections (different embedder!)
     try:
-        ccat.load_memory()
-    except Exception as e:
-        log.error(e)
-        crud.delete_settings_by_category(category=EMBEDDER_SELECTED_CATEGORY, chatbot_id=chatbot_id)
-        crud.delete_settings_by_category(category=EMBEDDER_CATEGORY, chatbot_id=chatbot_id)
-
-        # if a selected config is present, restore it
-        if selected is not None:
-            current_settings = crud.get_setting_by_name(name=selected["value"]["name"], chatbot_id=chatbot_id)
-
-            language_embedder_name = selected["value"]["name"]
-            crud.upsert_setting_by_name(
-                models.Setting(
-                    name=language_embedder_name,
-                    category=EMBEDDER_CATEGORY,
-                    value=current_settings["value"],
-                ),
-                chatbot_id=chatbot_id
-            )
-            crud.upsert_setting_by_name(
-                models.Setting(
-                    name=EMBEDDER_SELECTED_NAME,
-                    category=EMBEDDER_SELECTED_CATEGORY,
-                    value={"name": language_embedder_name},
-                ),
-                chatbot_id=chatbot_id
-            )
-            # reload llm and embedder of the cat
-            ccat.load_natural_language()
-
+        status = ccat.replace_embedder(language_embedder_name, payload)
+    except LoadMemoryException as e:
         raise HTTPException(
-            status_code=400, detail={"error": utils.explicit_error_message(e)}
+            status_code=400, detail={"error": str(e)}
         )
-    # recreate tools embeddings
-    ccat.mad_hatter.find_plugins()
 
     return status

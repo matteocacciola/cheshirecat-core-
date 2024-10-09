@@ -48,10 +48,6 @@ async def recall_memories_from_text(
 
     # Embed the query to plot it in the Memory page
     query_embedding = ccat.embedder.embed_query(text)
-    query = {
-        "text": text,
-        "vector": query_embedding,
-    }
 
     # Loop over collections and retrieve nearby memories
     recalled = {str(c): [
@@ -59,11 +55,12 @@ async def recall_memories_from_text(
     ] for c in MemoryCollection}
 
     return {
-        "query": query,
+        "query": {
+            "text": text,
+            "vector": query_embedding,
+        },
         "vectors": {
-            "embedder": str(
-                ccat.embedder.__class__.__name__
-            ),  # TODO: should be the config class name
+            "embedder": str(ccat.embedder.__class__.__name__),  # TODO: should be the config class name
             "collections": recalled,
         },
     }

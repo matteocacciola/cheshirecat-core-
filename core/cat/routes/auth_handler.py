@@ -28,20 +28,11 @@ def get_auth_handler_settings(
     saved_settings = crud.get_settings_by_category(category=AUTH_HANDLER_CATEGORY, chatbot_id=chatbot_id)
     saved_settings = {s["name"]: s for s in saved_settings}
 
-    settings = []
-    for class_name, schema in get_auth_handlers_schemas(chatbot_id).items():
-        if class_name in saved_settings:
-            saved_setting = saved_settings[class_name]["value"]
-        else:
-            saved_setting = {}
-
-        settings.append(
-            {
-                "name": class_name,
-                "value": saved_setting,
-                "schema": schema,
-            }
-        )
+    settings = [{
+        "name": class_name,
+        "value": saved_settings[class_name]["value"] if class_name in saved_settings else {},
+        "schema": schema,
+    } for class_name, schema in get_auth_handlers_schemas(chatbot_id).items()]
 
     return {
         "settings": settings,

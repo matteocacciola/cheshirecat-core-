@@ -1,0 +1,2 @@
+class LoadMemoryException(Exception):
+    pass
