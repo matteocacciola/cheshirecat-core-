@@ -8,7 +8,6 @@ from urllib.parse import urlparse
 from urllib.error import HTTPError
 from starlette.datastructures import UploadFile
 from langchain.docstore.document import Document
-from qdrant_client.http import models
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 from langchain_community.document_loaders.parsers.pdf import PDFMinerParser
 from langchain_community.document_loaders.parsers.generic import MimeTypeBasedParser
@@ -27,7 +26,7 @@ class RabbitHole:
     """Manages content ingestion. I'm late... I'm late!"""
 
     def __init__(self, ccat_id: str) -> None:
-        self.__cat: CheshireCat = CheshireCatManager().get_cheshire_cat(ccat_id)
+        self.__ccat: CheshireCat = CheshireCatManager().get_cheshire_cat(ccat_id)
 
     # each time we access the file handlers, plugins can intervene
     def __reload_file_handlers(self):
@@ -40,8 +39,8 @@ class RabbitHole:
         }
 
         # no access to stray
-        self.__file_handlers = self.__cat.mad_hatter.execute_hook(
-            "rabbithole_instantiates_parsers", self.__file_handlers, cat=self.__cat
+        self.__file_handlers = self.__ccat.mad_hatter.execute_hook(
+            "rabbithole_instantiates_parsers", self.__file_handlers, cat=self.__ccat
         )
 
     def __reload_text_splitter(self):
@@ -56,17 +55,15 @@ class RabbitHole:
         )
 
         # no access to stray
-        self.__text_splitter = self.__cat.mad_hatter.execute_hook(
-            "rabbithole_instantiates_splitter", self.__text_splitter, cat=self.__cat
+        self.__text_splitter = self.__ccat.mad_hatter.execute_hook(
+            "rabbithole_instantiates_splitter", self.__text_splitter, cat=self.__ccat
         )
 
-    def ingest_memory(self, cat: CheshireCat, file: UploadFile):
+    def ingest_memory(self, file: UploadFile):
         """Upload memories to the declarative memory from a JSON file.
 
         Parameters
         ----------
-        cat : CheshireCat
-            CheshireCat instance.
         file : UploadFile
             File object sent via `rabbithole/memory` hook.
 
@@ -87,7 +84,7 @@ class RabbitHole:
 
         # Check the embedder used for the uploaded memories is the same the Cat is using now
         upload_embedder = memories["embedder"]
-        cat_embedder = str(cat.embedder.__class__.__name__)
+        cat_embedder = str(self.__ccat.embedder.__class__.__name__)
 
         if upload_embedder != cat_embedder:
             message = f"Embedder mismatch: file embedder {upload_embedder} is different from {cat_embedder}"
@@ -107,7 +104,7 @@ class RabbitHole:
         log.info(f"Preparing to load {len(vectors)} vector memories")
 
         # Check embedding size is correct
-        embedder_size = cat.memory.vectors.declarative.embedder_size
+        embedder_size = self.__ccat.memory.vectors.declarative.embedder_size
         len_mismatch = [len(v) == embedder_size for v in vectors]
 
         if not any(len_mismatch):
@@ -116,11 +113,8 @@ class RabbitHole:
             )
             raise Exception(message)
 
-        # Upsert memories in batch mode # TODO REFACTOR: use VectorMemoryCollection.add_point
-        cat.memory.vectors.vector_db.upsert(
-            collection_name=str(MemoryCollection.DECLARATIVE),
-            points=models.Batch(ids=ids, payloads=payloads, vectors=vectors),
-        )
+        # Upsert memories in batch mode
+        self.__ccat.memory.vectors.declarative.add_points(ids, payloads, vectors)
 
     def ingest_file(
         self,

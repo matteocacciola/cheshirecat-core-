@@ -331,7 +331,7 @@ class CheshireCat:
             "embedder_name": embedder_name,
             "embedder_size": embedder_size,
         }
-        self.memory = LongTermMemory(vector_memory_config=vector_memory_config)
+        self.memory = LongTermMemory(vector_memory_config=vector_memory_config, chatbot_id=self.id)
 
     def embed_procedures(self):
         def get_key_embedded_procedures_hashes(ep):

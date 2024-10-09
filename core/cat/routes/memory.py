@@ -26,10 +26,25 @@ async def recall_memories_from_text(
     k: int = Query(default=100, description="How many memories to return."),
     cats: ContextualCats = Depends(HTTPAuth(AuthResource.MEMORY, AuthPermission.READ)),
 ) -> Dict:
+    def build_memory_dict(metadata, score, vector, id):
+        memory_dict = dict(metadata)
+        memory_dict.pop("lc_kwargs", None)  # langchain stuff, not needed
+        memory_dict["id"] = id
+        memory_dict["score"] = float(score)
+        memory_dict["vector"] = vector
+        return memory_dict
+
+    def get_memories(c: str) -> List:
+        # only episodic collection has users
+        return ccat.memory.vectors.collections[c].recall_memories_from_embedding(
+            query_embedding,
+            k=k,
+            metadata={"source": cats.stray_cat.user_id} if c == MemoryCollection.EPISODIC else None
+        )
+
     """Search k memories similar to given text."""
 
     ccat = cats.cheshire_cat
-    vector_memory = ccat.memory.vectors
 
     # Embed the query to plot it in the Memory page
     query_embedding = ccat.embedder.embed_query(text)
@@ -39,26 +54,9 @@ async def recall_memories_from_text(
     }
 
     # Loop over collections and retrieve nearby memories
-    collections = list(vector_memory.collections.keys())
-    recalled = {}
-    for c in collections:
-        user_filter = None
-        if c == str(MemoryCollection.EPISODIC):
-            # only episodic collection has users
-            user_filter = {"source": cats.stray_cat.user_id}
-
-        memories = vector_memory.collections[c].recall_memories_from_embedding(
-            query_embedding, k=k, metadata=user_filter
-        )
-
-        recalled[c] = []
-        for metadata, score, vector, id in memories:
-            memory_dict = dict(metadata)
-            memory_dict.pop("lc_kwargs", None)  # langchain stuff, not needed
-            memory_dict["id"] = id
-            memory_dict["score"] = float(score)
-            memory_dict["vector"] = vector
-            recalled[c].append(memory_dict)
+    recalled = {str(c): [
+        build_memory_dict(metadata, score, vector, id) for metadata, score, vector, id in get_memories(str(c))
+    ] for c in MemoryCollection}
 
     return {
         "query": query,
@@ -78,15 +76,10 @@ async def get_collections(
 ) -> Dict:
     """Get list of available collections"""
 
-    ccat = cats.cheshire_cat
-    vector_memory = ccat.memory.vectors
-    collections = list(vector_memory.collections.keys())
-
-    collections_metadata = []
-
-    for c in collections:
-        coll_meta = vector_memory.vector_db.get_collection(c)
-        collections_metadata += [{"name": c, "vectors_count": coll_meta.vectors_count}]
+    collections_metadata = [{
+        "name": str(c),
+        "vectors_count": cats.cheshire_cat.memory.vectors.collections[str(c)].get_vectors_count()
+    } for c in MemoryCollection]
 
     return {"collections": collections_metadata}
 
@@ -99,13 +92,8 @@ async def wipe_collections(
     """Delete and create all collections"""
 
     ccat = cats.cheshire_cat
-    collections = list(ccat.memory.vectors.collections.keys())
-    vector_memory = ccat.memory.vectors
 
-    to_return = {}
-    for c in collections:
-        ret = vector_memory.vector_db.delete_collection(collection_name=c)
-        to_return[c] = ret
+    to_return = {str(c): ccat.memory.vectors.collections[str(c)].wipe() for c in MemoryCollection}
 
     ccat.load_memory()  # recreate the long term memories
     ccat.mad_hatter.find_plugins()
@@ -122,27 +110,20 @@ async def wipe_single_collection(
     cats: ContextualCats = Depends(HTTPAuth(AuthResource.MEMORY, AuthPermission.DELETE)),
 ) -> Dict:
     """Delete and recreate a collection"""
-
-    ccat = cats.cheshire_cat
-    vector_memory = ccat.memory.vectors
-
     # check if collection exists
-    collections = list(vector_memory.collections.keys())
-    if collection_id not in collections:
+    if collection_id not in MemoryCollection:
         raise HTTPException(
             status_code=400, detail={"error": "Collection does not exist."}
         )
 
-    to_return = {}
-
-    ret = vector_memory.vector_db.delete_collection(collection_name=collection_id)
-    to_return[collection_id] = ret
+    ccat = cats.cheshire_cat
+    ret = ccat.memory.vectors.collections[collection_id].wipe()
 
     ccat.load_memory()  # recreate the long term memories
     ccat.mad_hatter.find_plugins()
 
     return {
-        "deleted": to_return,
+        "deleted": {collection_id: ret},
     }
 
 
@@ -155,32 +136,29 @@ async def create_memory_point(
 ) -> MemoryPoint:
     """Create a point in memory"""
 
+    # check if collection exists
+    if collection_id not in MemoryCollection:
+        raise HTTPException(
+            status_code=400, detail={"error": "Collection does not exist."}
+        )
+
     # do not touch procedural memory
     if collection_id == str(MemoryCollection.PROCEDURAL):
         raise HTTPException(
             status_code=400, detail={"error": "Procedural memory is read-only."}
         )
 
-    stray = cats.stray_cat
     ccat = cats.cheshire_cat
-    memory_collections = ccat.memory.vectors.collections
 
-    # check if collection exists
-    collections = list(memory_collections.keys())
-    if collection_id not in collections:
-        raise HTTPException(
-            status_code=400, detail={"error": "Collection does not exist."}
-        )
-    
     # embed content
     embedding = ccat.embedder.embed_query(point.content)
     
     # ensure source is set
     if not point.metadata.get("source"):
-        point.metadata["source"] = stray.user_id # this will do also for declarative memory
+        point.metadata["source"] = cats.stray_cat.user_id # this will do also for declarative memory
 
     # create point
-    qdrant_point = memory_collections[collection_id].add_point(
+    qdrant_point = ccat.memory.vectors.collections[collection_id].add_point(
         content=point.content,
         vector=embedding,
         metadata=point.metadata
@@ -202,21 +180,16 @@ async def delete_memory_point(
 ) -> Dict:
     """Delete a specific point in memory"""
 
-    ccat = cats.cheshire_cat
-    vector_memory = ccat.memory.vectors
-
     # check if collection exists
-    collections = list(vector_memory.collections.keys())
-    if collection_id not in collections:
+    if collection_id not in MemoryCollection:
         raise HTTPException(
             status_code=400, detail={"error": "Collection does not exist."}
         )
 
+    vector_memory = cats.cheshire_cat.memory.vectors
+
     # check if point exists
-    points = vector_memory.vector_db.retrieve(
-        collection_name=collection_id,
-        ids=[point_id],
-    )
+    points = vector_memory.collections[collection_id].retrieve_points([point_id])
     if not points:
         raise HTTPException(status_code=400, detail={"error": "Point does not exist."})
 
@@ -235,14 +208,11 @@ async def delete_memory_points_by_metadata(
     """Delete points in memory by filter"""
     metadata = metadata or {}
 
-    ccat = cats.cheshire_cat
-    vector_memory = ccat.memory.vectors
-
     # delete points
-    vector_memory.collections[collection_id].delete_points_by_metadata_filter(metadata)
+    ret = cats.cheshire_cat.memory.vectors.collections[collection_id].delete_points_by_metadata_filter(metadata)
 
     return {
-        "deleted": []  # TODO: Qdrant does not return deleted points?
+        "deleted": ret
     }
 
 

@@ -207,7 +207,6 @@ async def upload_memory(
     # Ingest memories in background and notify client
     background_tasks.add_task(
         cat.rabbit_hole.ingest_memory,
-        cat,
         deepcopy(file)
     )
 
