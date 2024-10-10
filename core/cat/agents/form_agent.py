@@ -1,5 +1,5 @@
-from cat.experimental.form import CatFormState
-from cat.agents import BaseAgent, AgentOutput
+from cat.agents.base_agent import BaseAgent, AgentOutput
+from cat.experimental.form.cat_form import CatFormState
 from cat.log import log
 from cat.looking_glass.stray_cat import StrayCat
 

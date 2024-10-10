@@ -5,7 +5,8 @@ from inspect import isfunction
 import cat.utils as utils
 from cat.looking_glass.cheshire_cat_manager import CheshireCatManager
 from cat.mad_hatter.mad_hatter import MadHatter, Plugin
-from cat.mad_hatter.decorators import CatHook, CatTool
+from cat.mad_hatter.decorators.hook import CatHook
+from cat.mad_hatter.decorators.tool import CatTool
 
 from tests.utils import create_mock_plugin_zip
 

@@ -1,7 +1,6 @@
 import uvicorn
 from contextlib import asynccontextmanager
 from scalar_fastapi import get_scalar_api_reference
-
 from fastapi import FastAPI
 from fastapi.routing import APIRoute
 from fastapi.responses import JSONResponse

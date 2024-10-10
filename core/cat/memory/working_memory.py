@@ -3,7 +3,7 @@ from typing import List
 
 from cat.utils import BaseModelDict
 from cat.convo.messages import Role, UserMessage, ModelInteraction, MessageWhy
-from cat.experimental.form import CatForm
+from cat.experimental.form.cat_form import CatForm
 
 
 class WorkingMemory(BaseModelDict):
@@ -24,8 +24,8 @@ class WorkingMemory(BaseModelDict):
 
     # stores conversation history
     history: List = []
-    user_message_json: None | UserMessage = None
-    active_form: None | CatForm = None
+    user_message_json: UserMessage | None = None
+    active_form: CatForm | None = None
 
     # recalled memories attributes
     recall_query: str = ""

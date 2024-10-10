@@ -3,13 +3,13 @@ from typing import List, Tuple, Dict
 from datetime import timedelta
 from langchain.docstore.document import Document
 
-from cat.looking_glass.stray_cat import StrayCat
-from cat.looking_glass import prompts
-from cat.utils import verbal_timedelta, BaseModelDict
-from cat.env import get_env
-from cat.agents import BaseAgent, AgentOutput
+from cat.agents.base_agent import BaseAgent, AgentOutput
 from cat.agents.memory_agent import MemoryAgent
 from cat.agents.procedures_agent import ProceduresAgent
+from cat.looking_glass import prompts
+from cat.looking_glass.stray_cat import StrayCat
+from cat.utils import verbal_timedelta, BaseModelDict
+from cat.env import get_env
 
 
 class MainAgent(BaseAgent):

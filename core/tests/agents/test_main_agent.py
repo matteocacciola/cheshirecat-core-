@@ -1,7 +1,7 @@
 import pytest
 
 from cat.agents.main_agent import MainAgent
-from cat.agents import AgentOutput
+from cat.agents.base_agent import AgentOutput
 
 
 def test_main_agent_instantiation(main_agent):

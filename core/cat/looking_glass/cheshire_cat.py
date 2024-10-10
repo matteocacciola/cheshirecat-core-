@@ -12,6 +12,7 @@ from langchain_community.llms import Cohere
 from langchain_openai import ChatOpenAI, OpenAI
 from langchain_google_genai import ChatGoogleGenerativeAI
 
+from cat.agents.main_agent import MainAgent
 from cat.exceptions import LoadMemoryException
 from cat.factory.auth_handler import get_auth_handler_from_name
 import cat.factory.auth_handler as auth_handlers
@@ -27,7 +28,6 @@ from cat.factory.embedder import (
 )
 from cat.factory.llm import LLMDefaultConfig
 from cat.factory.llm import get_llm_from_name
-from cat.agents.main_agent import MainAgent
 from cat.log import log
 from cat.looking_glass.stray_cat import StrayCat
 from cat.mad_hatter.mad_hatter import MadHatter

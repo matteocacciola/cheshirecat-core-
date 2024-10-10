@@ -13,15 +13,15 @@ from langchain_core.output_parsers.string import StrOutputParser
 from fastapi import WebSocket
 
 from cat import utils
-from cat.agents import AgentOutput
+from cat.agents.base_agent import AgentOutput
 from cat.agents.main_agent import MainAgent
 from cat.auth.permissions import AuthUserInfo
 from cat.convo.messages import CatMessage, UserMessage, MessageWhy, Role, EmbedderModelInteraction
 from cat.env import get_env
 from cat.log import log
-from cat.looking_glass.callbacks import NewTokenHandler, ModelInteractionHandler
 from cat.looking_glass.cheshire_cat import CheshireCat
 from cat.looking_glass.cheshire_cat_manager import CheshireCatManager
+from cat.looking_glass.callbacks import NewTokenHandler, ModelInteractionHandler
 from cat.looking_glass.white_rabbit import WhiteRabbit
 from cat.mad_hatter.mad_hatter import MadHatter
 from cat.memory.models import MemoryCollection

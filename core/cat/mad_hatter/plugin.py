@@ -11,8 +11,10 @@ from inspect import getmembers, isclass
 from pydantic import BaseModel, ValidationError
 from packaging.requirements import Requirement
 
-from cat.mad_hatter.decorators import CatTool, CatHook, CatPluginDecorator
-from cat.experimental.form import CatForm
+from cat.experimental.form.cat_form import CatForm
+from cat.mad_hatter.decorators.hook import CatHook
+from cat.mad_hatter.decorators.plugin_decorator import CatPluginDecorator
+from cat.mad_hatter.decorators.tool import CatTool
 from cat.utils import to_camel_case
 from cat.log import log
 
@@ -23,7 +25,7 @@ class PluginSettingsModel(BaseModel):
 
 
 # this class represents a plugin in memory
-# the plugin itsefl is managed as much as possible unix style
+# the plugin itself is managed as much as possible unix style
 #      (i.e. by saving information in the folder itself)
 
 

@@ -1,7 +1,7 @@
 import pytest
 
 from cat.looking_glass.cheshire_cat_manager import CheshireCatManager
-from cat.mad_hatter.decorators import CatHook
+from cat.mad_hatter.decorators.hook import CatHook
 from cat.convo.messages import CatMessage
 
 from tests.utils import create_mock_plugin_zip
