@@ -108,8 +108,8 @@ class HTTPAuth(ConnectionAuth):
         if current_stray:
             return current_stray
 
-        ccat_manager: CheshireCatManager = connection.app.state.ccat_manager
-        stray_cat = StrayCat(user_data=user, main_loop=ccat_manager.event_loop, chatbot_id=ccat.id)
+        event_loop = connection.app.state.event_loop
+        stray_cat = StrayCat(user_data=user, main_loop=event_loop, chatbot_id=ccat.id)
         ccat.add_stray(stray_cat)
 
         return stray_cat

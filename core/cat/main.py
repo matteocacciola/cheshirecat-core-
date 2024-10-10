@@ -1,3 +1,4 @@
+import asyncio
 import uvicorn
 from contextlib import asynccontextmanager
 from scalar_fastapi import get_scalar_api_reference
@@ -44,11 +45,15 @@ async def lifespan(app: FastAPI):
     # load the Cheshire Cat Manager
     app.state.ccat_manager = CheshireCatManager()
 
+    # set a reference to asyncio event loop
+    app.state.event_loop = asyncio.get_running_loop()
+
     # startup message with admin, public and swagger addresses
     log.welcome()
 
     yield
 
+    # shutdown Cheshire Cat Manager
     app.state.ccat_manager.shutdown()
 
 

@@ -7,14 +7,12 @@ from langchain_community.llms import (
 from langchain_openai import ChatOpenAI, OpenAI
 from langchain_cohere import ChatCohere
 from langchain_google_genai import ChatGoogleGenerativeAI
-from typing import Type, Dict, List, TYPE_CHECKING
+from typing import Type, Dict, List
 import json
 from pydantic import BaseModel, ConfigDict
 
 from cat.factory.custom_llm import LLMDefault, LLMCustom, CustomOpenAI, CustomOllama
-
-if TYPE_CHECKING:
-    from cat.looking_glass.cheshire_cat_manager import CheshireCatManager
+from cat.mad_hatter.mad_hatter import MadHatter
 
 
 # Base class to manage LLM configuration.
@@ -287,7 +285,7 @@ class LLMGeminiChatConfig(LLMSettings):
     )
 
 
-def get_allowed_language_models(chatbot_id: str) -> List[Type[LLMSettings]]:
+def get_allowed_language_models(mad_hatter: MadHatter) -> List[Type[LLMSettings]]:
     list_llms_default = [
         LLMOpenAIChatConfig,
         LLMOpenAIConfig,
@@ -303,26 +301,25 @@ def get_allowed_language_models(chatbot_id: str) -> List[Type[LLMSettings]]:
         LLMDefaultConfig,
     ]
 
-    mad_hatter_instance = CheshireCatManager().get_cheshire_cat(chatbot_id).mad_hatter
-    list_llms = mad_hatter_instance.execute_hook(
+    list_llms = mad_hatter.execute_hook(
         "factory_allowed_llms", list_llms_default, cat=None
     )
     return list_llms
 
 
-def get_llm_from_name(name: str, chatbot_id: str) -> Type[LLMSettings] | None:
+def get_llm_from_name(name: str, mad_hatter: MadHatter) -> Type[LLMSettings] | None:
     """Find the llm adapter class by name"""
-    for cls in get_allowed_language_models(chatbot_id):
+    for cls in get_allowed_language_models(mad_hatter):
         if cls.__name__ == name:
             return cls
     return None
 
 
-def get_llms_schemas(chatbot_id: str) -> Dict:
+def get_llms_schemas(mad_hatter: MadHatter) -> Dict:
     # llm_schemas contains metadata to let any client know
     # which fields are required to create the language model.
     llm_schemas = {}
-    for config_class in get_allowed_language_models(chatbot_id):
+    for config_class in get_allowed_language_models(mad_hatter):
         schema = config_class.model_json_schema()
         # useful for clients in order to call the correct config endpoints
         schema["languageModelName"] = schema["title"]

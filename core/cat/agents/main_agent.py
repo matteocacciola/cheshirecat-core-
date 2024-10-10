@@ -7,7 +7,6 @@ from cat.agents.base_agent import BaseAgent, AgentOutput
 from cat.agents.memory_agent import MemoryAgent
 from cat.agents.procedures_agent import ProceduresAgent
 from cat.looking_glass import prompts
-from cat.looking_glass.stray_cat import StrayCat
 from cat.utils import verbal_timedelta, BaseModelDict
 from cat.env import get_env
 
@@ -22,7 +21,7 @@ class MainAgent(BaseAgent):
         if get_env("CCAT_LOG_LEVEL") in ["DEBUG", "INFO"]:
             self.verbose = True
 
-    async def execute(self, stray: StrayCat, *args, **kwargs) -> AgentOutput:
+    async def execute(self, stray, *args, **kwargs) -> AgentOutput:
         # prepare input to be passed to the agent.
         #   Info will be extracted from working memory
         # Note: agent_input works both as a dict and as an object
@@ -73,7 +72,7 @@ class MainAgent(BaseAgent):
 
         return memory_agent_out
 
-    def format_agent_input(self, stray: StrayCat):
+    def format_agent_input(self, stray):
         """Format the input for the Agent.
 
         The method formats the strings of recalled memories and chat history that will be provided to the Langchain

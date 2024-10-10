@@ -1,4 +1,4 @@
-from typing import Type, Dict, TYPE_CHECKING
+from typing import Type, Dict
 from pydantic import BaseModel, ConfigDict
 
 from cat.factory.custom_auth_handler import (
@@ -6,9 +6,7 @@ from cat.factory.custom_auth_handler import (
     BaseAuthHandler,
     CoreOnlyAuthHandler,
 )
-
-if TYPE_CHECKING:
-    from cat.looking_glass.cheshire_cat_manager import CheshireCatManager
+from cat.mad_hatter.mad_hatter import MadHatter
 
 
 class AuthHandlerConfig(BaseModel):
@@ -56,23 +54,22 @@ class CoreOnlyAuthConfig(AuthHandlerConfig):
 #     )
 
 
-def get_allowed_auth_handler_strategies(chatbot_id: str) -> list[Type[AuthHandlerConfig]]:
+def get_allowed_auth_handler_strategies(mad_hatter: MadHatter) -> list[Type[AuthHandlerConfig]]:
     list_auth_handler_default = [
         CoreOnlyAuthConfig,
         # ApiKeyAuthConfig,
     ]
 
-    mad_hatter_instance = CheshireCatManager().get_cheshire_cat(chatbot_id).mad_hatter
-    list_auth_handler = mad_hatter_instance.execute_hook(
+    list_auth_handler = mad_hatter.execute_hook(
         "factory_allowed_auth_handlers", list_auth_handler_default, cat=None
     )
 
     return list_auth_handler
 
 
-def get_auth_handlers_schemas(chatbot_id: str) -> Dict:
+def get_auth_handlers_schemas(mad_hatter: MadHatter) -> Dict:
     auth_handler_schemas = {}
-    for config_class in get_allowed_auth_handler_strategies(chatbot_id):
+    for config_class in get_allowed_auth_handler_strategies(mad_hatter):
         schema = config_class.model_json_schema()
         schema["authorizatorName"] = schema["title"]
         auth_handler_schemas[schema["title"]] = schema
@@ -80,8 +77,8 @@ def get_auth_handlers_schemas(chatbot_id: str) -> Dict:
     return auth_handler_schemas
 
 
-def get_auth_handler_from_name(name: str, chatbot_id: str) -> Type[AuthHandlerConfig] | None:
-    list_auth_handler = get_allowed_auth_handler_strategies(chatbot_id)
+def get_auth_handler_from_name(name: str, mad_hatter: MadHatter) -> Type[AuthHandlerConfig] | None:
+    list_auth_handler = get_allowed_auth_handler_strategies(mad_hatter)
     for auth_handler in list_auth_handler:
         if auth_handler.__name__ == name:
             return auth_handler

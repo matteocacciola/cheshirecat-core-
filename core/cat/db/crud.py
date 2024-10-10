@@ -10,10 +10,10 @@ from cat.db.models import Setting
 USERS_KEY = "users"
 
 
-def __get(key: str) -> List | Dict:
+def __get(key: str) -> List | Dict | None:
     value = get_db().get(key)
     if not value:
-        return []
+        return None
 
     if isinstance(value, (bytes, str)):
         return json.loads(value)
@@ -21,10 +21,10 @@ def __get(key: str) -> List | Dict:
         raise ValueError(f"Unexpected type for Redis value: {type(value)}")
 
 
-def __set(key: str, value: List | Dict) -> List | Dict:
+def __set(key: str, value: List | Dict) -> List | Dict | None:
     new = get_db().set(key, json.dumps(value), get=True)
     if not new:
-        return []
+        return None
 
     if isinstance(new, (bytes, str)):
         return json.loads(new)
@@ -35,6 +35,8 @@ def __set(key: str, value: List | Dict) -> List | Dict:
 def get_settings(search: str = "", **kwargs) -> List[Dict]:
     chatbot_id: str = kwargs.get("chatbot_id")
     settings: List[Dict] = __get(chatbot_id)
+    if not settings:
+        return []
 
     settings = [setting for setting in settings if search in setting["name"]]
 
@@ -46,6 +48,8 @@ def get_settings(search: str = "", **kwargs) -> List[Dict]:
 def get_settings_by_category(category: str, **kwargs) -> List[Dict]:
     chatbot_id: str = kwargs.get("chatbot_id")
     settings: List[Dict] = __get(chatbot_id)
+    if not settings:
+        return []
 
     return [setting for setting in settings if setting["category"] == category]
 
@@ -54,18 +58,17 @@ def create_setting(payload: Setting, **kwargs) -> Dict:
     chatbot_id: str = kwargs.get("chatbot_id")
 
     # create and retrieve the record we just created
-    return __set(chatbot_id, [payload.model_dump()])
+    return __set(chatbot_id, [payload.model_dump()]) or {}
 
 
 def get_setting_by_name(name: str, **kwargs) -> Dict | None:
     chatbot_id: str = kwargs.get("chatbot_id")
     settings: List[Dict] = __get(chatbot_id)
-
-    settings = [setting for setting in settings if setting["name"] == name]
     if not settings:
         return None
 
-    return settings[0]
+    settings = [setting for setting in settings if setting["name"] == name]
+    return settings[0] if settings else None
 
 
 def get_setting_by_id(setting_id: str, **kwargs) -> Dict | None:
@@ -123,7 +126,7 @@ def upsert_setting_by_name(payload: Setting, **kwargs) -> Dict:
     if not old_setting:
         create_setting(payload, chatbot_id=chatbot_id)
     else:
-        settings: List[Dict] = __get(chatbot_id)
+        settings: List[Dict] = __get(chatbot_id) or []
         for setting in settings:
             if setting["name"] == payload.name:
                 setting.update(payload.model_dump())

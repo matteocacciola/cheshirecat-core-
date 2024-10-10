@@ -6,11 +6,10 @@ from langchain_core.output_parsers.string import StrOutputParser
 from cat.agents.base_agent import BaseAgent, AgentOutput
 from cat.looking_glass.callbacks import NewTokenHandler, ModelInteractionHandler
 from cat import utils
-from cat.looking_glass.stray_cat import StrayCat
 
 
 class MemoryAgent(BaseAgent):
-    async def execute(self, stray: StrayCat, *args, **kwargs) -> AgentOutput:
+    async def execute(self, stray, *args, **kwargs) -> AgentOutput:
         prompt_prefix = kwargs.get("prompt_prefix", "")
         prompt_suffix = kwargs.get("prompt_suffix", "")
 

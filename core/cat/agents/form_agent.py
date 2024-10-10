@@ -1,11 +1,10 @@
 from cat.agents.base_agent import BaseAgent, AgentOutput
 from cat.experimental.form.cat_form import CatFormState
 from cat.log import log
-from cat.looking_glass.stray_cat import StrayCat
 
 
 class FormAgent(BaseAgent):
-    async def execute(self, stray: StrayCat, *args, **kwargs) -> AgentOutput:
+    async def execute(self, stray, *args, **kwargs) -> AgentOutput:
         # get active form from working memory
         active_form = stray.working_memory.active_form
         

@@ -1,10 +1,9 @@
-from __future__ import annotations
 import time
 import asyncio
 import traceback
 from asyncio import AbstractEventLoop
 import tiktoken
-from typing import Literal, get_args, List, Dict, Any, TYPE_CHECKING
+from typing import Literal, get_args, List, Dict, Any
 from langchain.docstore.document import Document
 from langchain_core.language_models import BaseLanguageModel
 from langchain_core.messages import AIMessage, HumanMessage, SystemMessage, BaseMessage
@@ -14,22 +13,19 @@ from langchain_core.output_parsers.string import StrOutputParser
 from fastapi import WebSocket
 
 from cat import utils
+from cat.agents.base_agent import AgentOutput
+from cat.agents.main_agent import MainAgent
 from cat.auth.permissions import AuthUserInfo
 from cat.convo.messages import CatMessage, UserMessage, MessageWhy, Role, EmbedderModelInteraction
 from cat.env import get_env
 from cat.log import log
+from cat.looking_glass.callbacks import NewTokenHandler, ModelInteractionHandler
+from cat.looking_glass.cheshire_cat_manager import CheshireCatManager
 from cat.looking_glass.white_rabbit import WhiteRabbit
+from cat.mad_hatter.mad_hatter import MadHatter
 from cat.memory.models import MemoryCollection
-
-if TYPE_CHECKING:
-    from cat.agents.base_agent import AgentOutput
-    from cat.agents.main_agent import MainAgent
-    from cat.looking_glass.cheshire_cat import CheshireCat
-    from cat.looking_glass.cheshire_cat_manager import CheshireCatManager
-    from cat.looking_glass.callbacks import NewTokenHandler, ModelInteractionHandler
-    from cat.mad_hatter.mad_hatter import MadHatter
-    from cat.memory.working_memory import WorkingMemory
-    from cat.rabbit_hole import RabbitHole
+from cat.memory.working_memory import WorkingMemory
+from cat.rabbit_hole import RabbitHole
 
 MSG_TYPES = Literal["notification", "chat", "error", "chat_token"]
 
@@ -595,7 +591,7 @@ Allowed classes are:
         return self.__chatbot_id
 
     @property
-    def cheshire_cat(self) -> CheshireCat:
+    def cheshire_cat(self):
         ccat = CheshireCatManager().get_cheshire_cat(self.chatbot_id)
         if not ccat:
             raise ValueError(f"Cheshire Cat not found for the StrayCat {self.user_id}.")

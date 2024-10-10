@@ -22,7 +22,7 @@ from tests.utils import create_mock_plugin_zip
 def mock_classes(monkeypatch):
     # Use in memory vector db
     def mock_connect_to_vector_memory(self, *args, **kwargs):
-        self.vector_db = QdrantClient(":memory:")
+        return QdrantClient(":memory:")
 
     monkeypatch.setattr(
         VectorMemory, "connect_to_vector_memory", mock_connect_to_vector_memory
@@ -66,19 +66,25 @@ def client(monkeypatch) -> Generator[TestClient, Any, None]:
     """
     Create a new FastAPI TestClient.
     """
-    
+
     # clean up tmp files and folders
     clean_up_mocks()
     # monkeypatch classes
     mock_classes(monkeypatch)
     # delete all singletons!!!
     utils.singleton.instances = {}
-    
+
+    os.environ["CCAT_QDRANT_HOST"] = ""
     with TestClient(cheshire_cat_api) as client:
         yield client
 
-    # clean up tmp files and folders (useful when tests fail)
-    clean_up_mocks()
+    del os.environ["CCAT_QDRANT_HOST"]
+
+
+@pytest.fixture(scope="function")
+def cheshire_cat_manager():
+    return CheshireCatManager()
+
 
 # This fixture sets the CCAT_API_KEY and CCAT_API_KEY_WS environment variables,
 # making mandatory for clients to possess api keys or JWT
@@ -121,16 +127,14 @@ def just_installed_plugin(client):
 
 # fixtures to test the main agent
 @pytest.fixture
-def main_agent(client):
-    cheshire_cat_manager: CheshireCatManager = client.app.state.cheshire_cat_manager
+def main_agent(client, cheshire_cat_manager):
     cheshire_cat = cheshire_cat_manager.get_or_create_cheshire_cat("test")
 
     yield cheshire_cat.main_agent  # each test receives as argument the main agent instance
 
 # fixture to have available an instance of StrayCat
 @pytest.fixture
-def stray(client):
-    cheshire_cat_manager: CheshireCatManager = client.app.state.cheshire_cat_manager
+def stray(client, cheshire_cat_manager):
     cheshire_cat = cheshire_cat_manager.get_or_create_cheshire_cat("test")
 
     user = AuthUserInfo(id="user_alice", name="Alice")

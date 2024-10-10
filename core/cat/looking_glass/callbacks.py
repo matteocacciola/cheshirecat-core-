@@ -5,11 +5,15 @@ import tiktoken
 import time
 
 from cat.convo.messages import LLMModelInteraction
-from cat.looking_glass.stray_cat import StrayCat
 
 
 class NewTokenHandler(BaseCallbackHandler):
-    def __init__(self, stray: StrayCat):
+    def __init__(self, stray):
+        """
+        Args:
+            stray: StrayCat instance
+        """
+
         # cat could be an instance of CheshireCat or StrayCat
         self.stray = stray
 
@@ -22,7 +26,13 @@ class ModelInteractionHandler(BaseCallbackHandler):
     Langchain callback handler for tracking model interactions.
     """
 
-    def __init__(self, stray: StrayCat, source: str):
+    def __init__(self, stray, source: str):
+        """
+        Args:
+            stray: StrayCat instance
+            source: Source of the model interaction
+        """
+
         self.stray = stray
         self.stray.working_memory.model_interactions.append(
             LLMModelInteraction(

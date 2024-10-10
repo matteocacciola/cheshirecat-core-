@@ -15,20 +15,15 @@ from langchain_community.document_loaders.parsers.txt import TextParser
 from langchain_community.document_loaders.parsers.html.bs4 import BS4HTMLParser
 from langchain.document_loaders.blob_loaders.schema import Blob
 
-from cat.looking_glass.stray_cat import StrayCat
 from cat.log import log
 from cat.memory.models import MemoryCollection
-
-if TYPE_CHECKING:
-    from cat.looking_glass.cheshire_cat_manager import CheshireCatManager
-    from cat.looking_glass.cheshire_cat import CheshireCat
 
 
 class RabbitHole:
     """Manages content ingestion. I'm late... I'm late!"""
 
-    def __init__(self, ccat_id: str) -> None:
-        self.__ccat: CheshireCat = CheshireCatManager().get_cheshire_cat(ccat_id)
+    def __init__(self, cat) -> None:
+        self.__ccat = cat
 
     # each time we access the file handlers, plugins can intervene
     def __reload_file_handlers(self):
@@ -120,7 +115,7 @@ class RabbitHole:
 
     def ingest_file(
         self,
-        stray: StrayCat,
+        stray,
         file: str | UploadFile,
         chunk_size: int | None = None,
         chunk_overlap: int | None = None,
@@ -174,7 +169,7 @@ class RabbitHole:
 
     def file_to_docs(
         self,
-        stray: StrayCat,
+        stray,
         file: str | UploadFile,
         chunk_size: int | None = None,
         chunk_overlap: int | None = None
@@ -261,7 +256,7 @@ class RabbitHole:
 
     def string_to_docs(
         self,
-        stray: StrayCat,
+        stray,
         file_bytes: str,
         source: str = None,
         content_type: str = "text/plain",
@@ -319,7 +314,7 @@ class RabbitHole:
 
     def store_documents(
         self,
-        stray: StrayCat,
+        stray,
         docs: List[Document],
         source: str, # TODO V2: is this necessary?
         metadata: Dict = None
@@ -419,7 +414,7 @@ class RabbitHole:
 
         log.warning(f"Done uploading {source}")
 
-    def __split_text(self, stray: StrayCat, text: List[Document], chunk_size: int, chunk_overlap: int):
+    def __split_text(self, stray, text: List[Document], chunk_size: int, chunk_overlap: int):
         """Split text in overlapped chunks.
 
         This method executes the `rabbithole_splits_text` to split the incoming text in overlapped

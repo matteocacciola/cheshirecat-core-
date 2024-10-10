@@ -1,5 +1,3 @@
-import asyncio
-
 from cat.env import get_env
 from cat.factory.custom_auth_handler import CoreAuthHandler
 from cat.looking_glass.cheshire_cat import CheshireCat
@@ -24,9 +22,6 @@ class CheshireCatManager:
 
     def __init__(self):
         self.__cheshire_cats: set[CheshireCat] = set()
-
-        # set a reference to asyncio event loop
-        self.event_loop = asyncio.get_running_loop()
 
         # Start scheduling system
         self.white_rabbit = WhiteRabbit()
@@ -119,16 +114,12 @@ class CheshireCatManager:
         self.white_rabbit = None
         self.core_auth_handler = None
 
-        self.event_loop.stop()
-        self.event_loop.close()
-        self.event_loop = None
-
     @property
     def cheshire_cats(self):
         return self.__cheshire_cats
 
 
-def job_on_idle_strays(cat_manager: CheshireCatManager) -> None:
+def job_on_idle_strays(cat_manager: CheshireCatManager) -> bool:
     """
     Remove the objects StrayCat, if idle, from the CheshireCat objects contained into the CheshireCatManager.
     """
@@ -142,3 +133,5 @@ def job_on_idle_strays(cat_manager: CheshireCatManager) -> None:
 
         if not ccat.has_strays():
             cat_manager.remove_cheshire_cat(ccat.id)
+
+    return True

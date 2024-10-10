@@ -1,4 +1,4 @@
-from typing import Type, List, Dict, TYPE_CHECKING
+from typing import Type, List, Dict
 from pydantic import BaseModel, ConfigDict, Field
 from langchain_cohere import CohereEmbeddings
 from langchain_community.embeddings import FakeEmbeddings, FastEmbedEmbeddings
@@ -8,9 +8,7 @@ from fastembed import TextEmbedding
 
 from cat.enums import Enum
 from cat.factory.custom_embedder import DumbEmbedder, CustomOpenAIEmbeddings
-
-if TYPE_CHECKING:
-    from cat.looking_glass.cheshire_cat_manager import CheshireCatManager
+from cat.mad_hatter.mad_hatter import MadHatter
 
 
 # Base class to manage LLM configuration.
@@ -172,7 +170,7 @@ class EmbedderGeminiChatConfig(EmbedderSettings):
     )
 
 
-def get_allowed_embedder_models(chatbot_id: str) -> List[Type[EmbedderSettings]]:
+def get_allowed_embedder_models(mad_hatter: MadHatter) -> List[Type[EmbedderSettings]]:
     list_embedder_default = [
         EmbedderQdrantFastEmbedConfig,
         EmbedderOpenAIConfig,
@@ -184,25 +182,24 @@ def get_allowed_embedder_models(chatbot_id: str) -> List[Type[EmbedderSettings]]
         EmbedderFakeConfig,
     ]
 
-    mad_hatter_instance = CheshireCatManager().get_cheshire_cat(chatbot_id).mad_hatter
-    list_embedder = mad_hatter_instance.execute_hook(
+    list_embedder = mad_hatter.execute_hook(
         "factory_allowed_embedders", list_embedder_default, cat=None
     )
     return list_embedder
 
 
-def get_embedder_from_name(name: str, chatbot_id: str) -> Type[EmbedderSettings] | None:
+def get_embedder_from_name(name: str, mad_hatter: MadHatter) -> Type[EmbedderSettings] | None:
     """Find the llm adapter class by name"""
-    for cls in get_allowed_embedder_models(chatbot_id):
+    for cls in get_allowed_embedder_models(mad_hatter):
         if cls.__name__ == name:
             return cls
     return None
 
 
-def get_embedders_schemas(chatbot_id: str) -> Dict:
+def get_embedders_schemas(mad_hatter: MadHatter) -> Dict:
     # embedder_schemas contains metadata to let any client know which fields are required to create the language embedder.
     embedder_schemas = {}
-    for config_class in get_allowed_embedder_models(chatbot_id):
+    for config_class in get_allowed_embedder_models(mad_hatter):
         schema = config_class.model_json_schema()
         # useful for clients in order to call the correct config endpoints
         schema["languageEmbedderName"] = schema["title"]

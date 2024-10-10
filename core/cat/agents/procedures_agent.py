@@ -10,7 +10,6 @@ from cat.agents.form_agent import FormAgent
 from cat.looking_glass import prompts
 from cat.looking_glass.output_parser import ChooseProcedureOutputParser, LLMAction
 from cat.experimental.form.cat_form import CatForm
-from cat.looking_glass.stray_cat import StrayCat
 from cat.mad_hatter.decorators.tool import CatTool
 from cat.mad_hatter.plugin import Plugin
 from cat.log import log
@@ -22,7 +21,7 @@ class ProceduresAgent(BaseAgent):
     form_agent = FormAgent()
     allowed_procedures: Dict[str, CatTool | CatForm] = {}
 
-    async def execute(self, stray: StrayCat, *args, **kwargs) -> AgentOutput:
+    async def execute(self, stray, *args, **kwargs) -> AgentOutput:
         # Run active form if present
         form_output: AgentOutput = await self.form_agent.execute(stray)
         if form_output.return_direct:
@@ -58,7 +57,16 @@ class ProceduresAgent(BaseAgent):
 
         return AgentOutput()
 
-    async def execute_procedures(self, stray: StrayCat) -> AgentOutput:
+    async def execute_procedures(self, stray) -> AgentOutput:
+        """
+        Execute procedures.
+        Args:
+            stray: StrayCat instance
+
+        Returns:
+            AgentOutput instance
+        """
+
         mad_hatter = stray.cheshire_cat.mad_hatter
 
         # get procedures prompt from plugins
@@ -86,8 +94,19 @@ class ProceduresAgent(BaseAgent):
         return await self.execute_subagents(stray, llm_action, allowed_procedures)
 
     async def execute_chain(
-        self, stray: StrayCat, procedures_prompt_template: Any, allowed_procedures: Dict[str, CatTool | CatForm]
+        self, stray, procedures_prompt_template: Any, allowed_procedures: Dict[str, CatTool | CatForm]
     ) -> LLMAction:
+        """
+        Execute the chain to choose a procedure.
+        Args:
+            stray: StrayCat instance
+            procedures_prompt_template: Any
+            allowed_procedures: Dict[str, CatTool | CatForm]
+
+        Returns:
+            LLMAction instance
+        """
+
         # Prepare info to fill up the prompt
         prompt_variables = {
             "tools": "\n".join(
@@ -129,8 +148,19 @@ class ProceduresAgent(BaseAgent):
         return llm_action
     
     async def execute_subagents(
-        self, stray: StrayCat, llm_action: LLMAction, allowed_procedures: Dict[str, CatTool | CatForm]
+        self, stray, llm_action: LLMAction, allowed_procedures: Dict[str, CatTool | CatForm]
     ) -> AgentOutput:
+        """
+        Execute subagents.
+        Args:
+            stray: StrayCat instance
+            llm_action: LLMAction instance
+            allowed_procedures: Dict[str, CatTool | CatForm]
+
+        Returns:
+            AgentOutput instance
+        """
+
         # execute chosen tool / form
         # loop over allowed tools and forms
         if llm_action.action:

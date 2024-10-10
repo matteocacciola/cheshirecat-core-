@@ -54,14 +54,16 @@ class VectorMemory:
             qdrant_host = extract_domain_from_url(qdrant_host)
             qdrant_api_key = get_env("CCAT_QDRANT_API_KEY")
 
-            s = socket.socket()
+            s = None
             try:
+                s = socket.socket()
                 s.connect((qdrant_host, qdrant_port))
             except Exception:
                 log.error(f"QDrant does not respond to {qdrant_host}:{qdrant_port}")
                 sys.exit()
             finally:
-                s.close()
+                if s:
+                    s.close()
 
             # Qdrant vector DB client
             return QdrantClient(

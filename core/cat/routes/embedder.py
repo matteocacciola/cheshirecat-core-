@@ -17,22 +17,21 @@ def get_embedders_settings(
 ) -> Dict:
     """Get the list of the Embedders"""
 
-    chatbot_id = cats.cheshire_cat.id
-    selected = cats.cheshire_cat.get_selected_embedder_settings()
+    ccat = cats.cheshire_cat
 
     # embedder type and config are saved in settings table under "embedder_factory" category
-    saved_settings = crud.get_settings_by_category(category="embedder_factory", chatbot_id=chatbot_id)
+    saved_settings = crud.get_settings_by_category(category="embedder_factory", chatbot_id=ccat.id)
     saved_settings = {s["name"]: s for s in saved_settings}
 
     settings = [{
         "name": class_name,
         "value": saved_settings[class_name]["value"] if class_name in saved_settings else {},
         "schema": schema,
-    } for class_name, schema in get_embedders_schemas(chatbot_id).items()]
+    } for class_name, schema in get_embedders_schemas(ccat.mad_hatter).items()]
 
     return {
         "settings": settings,
-        "selected_configuration": selected,
+        "selected_configuration": ccat.get_selected_embedder_settings(),
     }
 
 
@@ -44,9 +43,9 @@ def get_embedder_settings(
 ) -> Dict:
     """Get settings and schema of the specified Embedder"""
 
-    chatbot_id = cats.cheshire_cat.id
+    ccat = cats.cheshire_cat
 
-    embedder_schemas = get_embedders_schemas(chatbot_id)
+    embedder_schemas = get_embedders_schemas(ccat.mad_hatter)
     # check that language_embedder_name is a valid name
     allowed_configurations = list(embedder_schemas.keys())
     if language_embedder_name not in allowed_configurations:
@@ -57,7 +56,7 @@ def get_embedder_settings(
             },
         )
 
-    setting = crud.get_setting_by_name(name=language_embedder_name, chatbot_id=chatbot_id)
+    setting = crud.get_setting_by_name(name=language_embedder_name, chatbot_id=ccat.id)
     schema = embedder_schemas[language_embedder_name]
 
     setting = {} if setting is None else setting["value"]
@@ -74,9 +73,8 @@ def upsert_embedder_setting(
     """Upsert the Embedder setting"""
 
     ccat = cats.cheshire_cat
-    chatbot_id = ccat.id
 
-    embedder_schemas = get_embedders_schemas(chatbot_id)
+    embedder_schemas = get_embedders_schemas(ccat.mad_hatter)
     # check that language_embedder_name is a valid name
     allowed_configurations = list(embedder_schemas.keys())
     if language_embedder_name not in allowed_configurations:

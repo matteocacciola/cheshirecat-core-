@@ -34,7 +34,7 @@ def test_refuse_issue_jwt(client):
 
 
 @pytest.mark.asyncio  # to test async functions
-async def test_issue_jwt(client):
+async def test_issue_jwt(client, cheshire_cat_manager):
     creds = {
         "username": "admin",
         "password": "admin"
@@ -50,7 +50,7 @@ async def test_issue_jwt(client):
     assert is_jwt(received_token)
 
     # is the JWT correct for core auth handler?
-    auth_handler = client.app.state.ccat_manager.core_auth_handler
+    auth_handler = cheshire_cat_manager.core_auth_handler
     user_info = await auth_handler.authorize_user_from_jwt(
         received_token, AuthResource.LLM, AuthPermission.WRITE
     )

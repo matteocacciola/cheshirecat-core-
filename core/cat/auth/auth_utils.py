@@ -57,6 +57,7 @@ def get_user_by_credentials(username: str, password: str) -> Dict | None:
     """
 
     users = crud.get_all_users()
+    print(users)
     for user in users.values():
         if user["username"] == username and user["password"] == hash_password(password):
             return user

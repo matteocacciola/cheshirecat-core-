@@ -1,6 +1,5 @@
 import pytest
 
-from cat.looking_glass.cheshire_cat_manager import CheshireCatManager
 from cat.mad_hatter.decorators.hook import CatHook
 from cat.convo.messages import CatMessage
 
@@ -9,8 +8,7 @@ from tests.utils import create_mock_plugin_zip
 
 # this function will be run before each test function
 @pytest.fixture
-def mad_hatter(client):  # client here injects the monkeypatched version of the cat manager
-    cheshire_cat_manager: CheshireCatManager = client.app.state.cheshire_cat_manager
+def mad_hatter(client, cheshire_cat_manager):  # client here injects the monkeypatched version of the cat manager
     cheshire_cat = cheshire_cat_manager.get_or_create_cheshire_cat("test")
 
     # each test is given the mad_hatter instance (it's a singleton)

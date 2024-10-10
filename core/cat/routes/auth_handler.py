@@ -32,7 +32,7 @@ def get_auth_handler_settings(
         "name": class_name,
         "value": saved_settings[class_name]["value"] if class_name in saved_settings else {},
         "schema": schema,
-    } for class_name, schema in get_auth_handlers_schemas(chatbot_id).items()]
+    } for class_name, schema in get_auth_handlers_schemas(cats.cheshire_cat.mad_hatter).items()]
 
     return {
         "settings": settings,
@@ -47,9 +47,7 @@ def get_auth_handler_setting(
 ) -> Dict:
     """Get the settings of a specific AuthHandler"""
 
-    chatbot_id = cats.cheshire_cat.id
-
-    auth_handler_schemas = get_auth_handlers_schemas(chatbot_id)
+    auth_handler_schemas = get_auth_handlers_schemas(cats.cheshire_cat.mad_hatter)
 
     allowed_configurations = list(auth_handler_schemas.keys())
     if auth_handler_name not in allowed_configurations:
@@ -60,7 +58,7 @@ def get_auth_handler_setting(
             },
         )
 
-    setting = crud.get_setting_by_name(name=auth_handler_name, chatbot_id=chatbot_id)
+    setting = crud.get_setting_by_name(name=auth_handler_name, chatbot_id=cats.cheshire_cat.id)
     schema = auth_handler_schemas[auth_handler_name]
 
     setting = {} if setting is None else setting["value"]
@@ -79,7 +77,7 @@ def upsert_authenticator_setting(
     ccat = cats.cheshire_cat
     chatbot_id = ccat.id
 
-    auth_handler_schemas = get_auth_handlers_schemas(chatbot_id)
+    auth_handler_schemas = get_auth_handlers_schemas(ccat.mad_hatter)
 
     allowed_configurations = list(auth_handler_schemas.keys())
     if auth_handler_name not in allowed_configurations:

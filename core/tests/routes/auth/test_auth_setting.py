@@ -2,14 +2,13 @@ from json import dumps
 from fastapi.encoders import jsonable_encoder
 
 from cat.factory.auth_handler import get_auth_handlers_schemas
-from cat.looking_glass.cheshire_cat_manager import CheshireCatManager
+from cat.looking_glass.cheshire_cat import CheshireCat
 
 
-def test_get_all_auth_handler_settings(client):
-    cheshire_cat_manager: CheshireCatManager = client.app.state.cheshire_cat_manager
-    cheshire_cat = cheshire_cat_manager.get_or_create_cheshire_cat("test")
+def test_get_all_auth_handler_settings(client, cheshire_cat_manager):
+    cheshire_cat: CheshireCat = cheshire_cat_manager.get_or_create_cheshire_cat("test")
 
-    auth_handler_schemas = get_auth_handlers_schemas(cheshire_cat.id)
+    auth_handler_schemas = get_auth_handlers_schemas(cheshire_cat.mad_hatter)
     response = client.get("/auth_handler/settings")
     json = response.json()
 

@@ -3,7 +3,6 @@ from typing import List, Dict
 from pydantic import BaseModel, ValidationError
 
 from cat.enums import Enum
-from cat.looking_glass.stray_cat import StrayCat
 from cat.log import log
 from cat.utils import parse_json
 
@@ -27,7 +26,13 @@ class CatForm:  # base model of forms
     triggers_map = None
     _autopilot = False
 
-    def __init__(self, cat: StrayCat) -> None:
+    def __init__(self, cat) -> None:
+        """
+
+        Args:
+            cat: StrayCat instance
+        """
+
         self._state = CatFormState.INCOMPLETE
         self._model: Dict = {}
 
@@ -37,7 +42,11 @@ class CatForm:  # base model of forms
         self._missing_fields: List[str] = []
 
     @property
-    def cat(self) -> StrayCat:
+    def cat(self):
+        """
+        Returns:
+            StrayCat: StrayCat instance
+        """
         return self._cat
 
     @property

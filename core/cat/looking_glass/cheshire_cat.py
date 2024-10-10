@@ -28,7 +28,6 @@ from cat.factory.embedder import (
 from cat.factory.llm import LLMDefaultConfig
 from cat.factory.llm import get_llm_from_name
 from cat.log import log
-from cat.looking_glass.stray_cat import StrayCat
 from cat.mad_hatter.mad_hatter import MadHatter
 from cat.mad_hatter.registry import registry_search_plugins
 from cat.memory.long_term_memory import LongTermMemory
@@ -73,7 +72,7 @@ class CheshireCat:
         self.memory = None
         self.custom_auth_handler = None
 
-        self.__strays: set[StrayCat] = set()
+        self.__strays: set = set()  # set of StrayCat instances
 
         # instantiate MadHatter (loads all plugins' hooks and tools)
         self.mad_hatter = MadHatter(self.id)
@@ -99,7 +98,7 @@ class CheshireCat:
         self.main_agent = MainAgent()
 
         # Rabbit Hole Instance
-        self.rabbit_hole = RabbitHole(self.id)
+        self.rabbit_hole = RabbitHole(self)
 
         # allows plugins to do something after the cat bootstrap is complete
         self.mad_hatter.execute_hook("after_cat_bootstrap", cat=self)
@@ -113,7 +112,16 @@ class CheshireCat:
     def __hash__(self):
         return hash(self.id)
 
-    def __next_stray(self, user_id: str) -> StrayCat | None:
+    def __next_stray(self, user_id: str):
+        """
+        Get the next stray from the Cat.
+        Args:
+            user_id: the user id
+
+        Returns:
+            The next StrayCat from the Cat
+        """
+
         return next(
             (cat for cat in self.__strays if cat.user_id == user_id),
             None
@@ -122,7 +130,7 @@ class CheshireCat:
     def __any_stray(self, user_id: str) -> bool:
         return any(cat.user_id == user_id for cat in self.__strays)
 
-    def add_stray(self, stray: StrayCat):
+    def add_stray(self, stray):
         """Add a stray to the Cat."""
 
         if not self.__any_stray(stray.user_id):
@@ -140,7 +148,7 @@ class CheshireCat:
 
         del stray
 
-    def get_stray(self, user_id: str) -> StrayCat | None:
+    def get_stray(self, user_id: str):
         """Get a stray from the Cat."""
 
         return self.__next_stray(user_id)
@@ -150,7 +158,8 @@ class CheshireCat:
 
     def shutdown(self) -> None:
         for stray in self.__strays:
-            stray.ws.close()
+            if stray.ws:
+                stray.ws.close()
 
         self.__strays.clear()
 
@@ -196,7 +205,7 @@ class CheshireCat:
         else:
             # get LLM factory class
             selected_llm_class = selected_llm["value"]["name"]
-            factory_class = get_llm_from_name(selected_llm_class, self.id)
+            factory_class = get_llm_from_name(selected_llm_class, self.mad_hatter)
 
             # obtain configuration and instantiate LLM
             selected_llm_config = crud.get_setting_by_name(name=selected_llm_class, chatbot_id=self.id)
@@ -230,7 +239,7 @@ class CheshireCat:
         if selected_embedder is not None:
             # get Embedder factory class
             selected_embedder_class = selected_embedder["value"]["name"]
-            factory_class = get_embedder_from_name(selected_embedder_class, self.id)
+            factory_class = get_embedder_from_name(selected_embedder_class, self.mad_hatter)
 
             # obtain configuration and instantiate Embedder
             selected_embedder_config = crud.get_setting_by_name(name=selected_embedder_class, chatbot_id=self.id)
@@ -306,7 +315,7 @@ class CheshireCat:
 
         # get AuthHandler factory class
         selected_auth_handler_class = selected_auth_handler["value"]["name"]
-        factory_class = auth_handlers.get_auth_handler_from_name(selected_auth_handler_class, self.id)
+        factory_class = auth_handlers.get_auth_handler_from_name(selected_auth_handler_class, self.mad_hatter)
 
         # obtain configuration and instantiate AuthHandler
         selected_auth_handler_config = crud.get_setting_by_name(name=selected_auth_handler_class, chatbot_id=self.id)
@@ -547,7 +556,7 @@ class CheshireCat:
         if selected is not None:
             selected = selected["value"]["name"]
         else:
-            supported_embedding_models = get_allowed_embedder_models(self.id)
+            supported_embedding_models = get_allowed_embedder_models(self.mad_hatter)
 
             # TODO: take away automatic embedder settings in v2
             # If DB does not contain a selected embedder, it means an embedder was automatically selected.

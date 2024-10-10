@@ -3,14 +3,12 @@ import asyncio
 
 from cat.auth.permissions import AuthUserInfo
 from cat.convo.messages import MessageWhy, CatMessage
-from cat.looking_glass.cheshire_cat_manager import CheshireCatManager
 from cat.looking_glass.stray_cat import StrayCat
 from cat.memory.working_memory import WorkingMemory
 
 
 @pytest.fixture
-def stray(client) -> StrayCat:
-    cheshire_cat_manager: CheshireCatManager = client.app.state.cheshire_cat_manager
+def stray(client, cheshire_cat_manager) -> StrayCat:
     cheshire_cat = cheshire_cat_manager.get_or_create_cheshire_cat("test")
 
     yield StrayCat(
@@ -22,7 +20,7 @@ def stray(client) -> StrayCat:
 
 def test_stray_initialization(stray):
     assert isinstance(stray, StrayCat)
-    assert stray.user_id == "Alice"
+    assert stray.user_id == "user_alice"
     assert isinstance(stray.working_memory, WorkingMemory)
 
 
@@ -42,7 +40,7 @@ def test_stray_call(stray):
 
     assert isinstance(reply, CatMessage)
     assert "You did not configure" in reply.content
-    assert reply.user_id == "Alice"
+    assert reply.user_id == "user_alice"
     assert reply.type == "chat"
     assert isinstance(reply.why, MessageWhy)
 
