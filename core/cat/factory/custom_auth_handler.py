@@ -3,9 +3,9 @@ from datetime import datetime, timedelta
 from pytz import utc
 import jwt
 
-from cat.db.crud import get_all_users
 from cat.auth.permissions import AuthPermission, AuthResource, AuthUserInfo, get_base_permissions, get_full_permissions
 from cat.auth.auth_utils import is_jwt, get_user_by_credentials
+from cat.db.crud import get_users
 from cat.env import get_env
 from cat.log import log
 
@@ -25,20 +25,19 @@ class BaseAuthHandler(ABC):  # TODOAUTH: pydantic model?
         auth_resource: AuthResource,
         auth_permission: AuthPermission,
         user_id: str = "user",
+        chatbot_id: str = "chatbot",
     ) -> AuthUserInfo | None:
         if is_jwt(credential):
             # JSON Web Token auth
-            return await self.authorize_user_from_jwt(
-                credential, auth_resource, auth_permission
-            )
+            return await self.authorize_user_from_jwt(credential, auth_resource, auth_permission, chatbot_id=chatbot_id)
         # API_KEY auth
         return await self.authorize_user_from_key(
-            user_id, credential, auth_resource, auth_permission
+            user_id, credential, auth_resource, auth_permission, chatbot_id=chatbot_id
         )
 
     @abstractmethod
     async def authorize_user_from_jwt(
-        self, token: str, auth_resource: AuthResource, auth_permission: AuthPermission
+        self, token: str, auth_resource: AuthResource, auth_permission: AuthPermission, chatbot_id: str = "chatbot"
     ) -> AuthUserInfo | None:
         # will raise: NotImplementedError
         pass
@@ -50,6 +49,7 @@ class BaseAuthHandler(ABC):  # TODOAUTH: pydantic model?
         api_key: str,
         auth_resource: AuthResource,
         auth_permission: AuthPermission,
+        chatbot_id: str = "chatbot",
     ) -> AuthUserInfo | None:
         # will raise: NotImplementedError
         pass
@@ -58,7 +58,7 @@ class BaseAuthHandler(ABC):  # TODOAUTH: pydantic model?
 # Core auth handler, verify token on local idp
 class CoreAuthHandler(BaseAuthHandler):
     async def authorize_user_from_jwt(
-        self, token: str, auth_resource: AuthResource, auth_permission: AuthPermission
+        self, token: str, auth_resource: AuthResource, auth_permission: AuthPermission, chatbot_id: str = "chatbot"
     ) -> AuthUserInfo | None:
         try:
             # decode token
@@ -69,7 +69,7 @@ class CoreAuthHandler(BaseAuthHandler):
             return None
 
         # get user from DB
-        users = get_all_users()
+        users = get_users(chatbot_id=chatbot_id)
         if payload["sub"] not in users.keys():
             # do not pass
             return None
@@ -92,6 +92,7 @@ class CoreAuthHandler(BaseAuthHandler):
         api_key: str,
         auth_resource: AuthResource,
         auth_permission: AuthPermission,
+        chatbot_id: str = "chatbot",
     ) -> AuthUserInfo | None:
         """
         Authorize a user from an API key. This method is used to authorize users when they are not using a JWT token.
@@ -100,6 +101,7 @@ class CoreAuthHandler(BaseAuthHandler):
             api_key: the API key to authorize the user
             auth_resource: the resource to authorize the user on
             auth_permission: the permission to authorize the user on
+            chatbot_id: the chatbot ID to authorize the user in
 
         Returns:
             An AuthUserInfo object if the user is authorized, None otherwise.
@@ -129,13 +131,14 @@ class CoreAuthHandler(BaseAuthHandler):
         # do not pass
         return None
     
-    async def issue_jwt(self, username: str, password: str) -> str | None:
+    async def issue_jwt(self, username: str, password: str, chatbot_id: str = "chatbot") -> str | None:
         """
         Authenticate local user credentials and return a JWT token.
 
         Args:
             username: the username of the user to authenticate
             password: the password of the user to authenticate
+            chatbot_id: the chatbot ID to authenticate the user in (default: "chatbot")
 
         Returns:
             A JWT token if the user is authenticated, None otherwise.
@@ -144,7 +147,7 @@ class CoreAuthHandler(BaseAuthHandler):
         # brutal search over users, which are stored in a simple dictionary.
         # waiting to have graph in core to store them properly
         # TODOAUTH: get rid of this shameful loop
-        user = get_user_by_credentials(username, password)
+        user = get_user_by_credentials(username, password, chatbot_id=chatbot_id)
         if not user:
             return None
 

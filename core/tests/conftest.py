@@ -9,13 +9,17 @@ from qdrant_client import QdrantClient
 from fastapi.testclient import TestClient
 
 from cat.auth.permissions import AuthUserInfo
+from cat.db import crud
 from cat.looking_glass.cheshire_cat_manager import CheshireCatManager
 from cat.looking_glass.stray_cat import StrayCat
 from cat.mad_hatter.plugin import Plugin
 from cat.main import cheshire_cat_api
 from cat.memory.vector_memory import VectorMemory
 import cat.utils as utils
+
 from tests.utils import create_mock_plugin_zip
+
+mock_plugin_path = "tests/mocks/mock_plugin/"
 
 
 # substitute classes' methods where necessary for testing purposes
@@ -45,8 +49,6 @@ def mock_classes(monkeypatch):
 def clean_up_mocks():
     # clean up service files and mocks
     to_be_removed = [
-        "cat/metadata-test.json",  # legacy position, now moved into mocks folder
-        "tests/mocks/metadata-test.json",
         "tests/mocks/mock_plugin.zip",
         "tests/mocks/mock_plugin/settings.json",
         "tests/mocks/mock_plugin_folder/mock_plugin",
@@ -58,6 +60,8 @@ def clean_up_mocks():
                 shutil.rmtree(tbr)
             else:
                 os.remove(tbr)
+
+    crud.flush_db()
 
 
 # Main fixture for the FastAPI app
@@ -74,11 +78,9 @@ def client(monkeypatch) -> Generator[TestClient, Any, None]:
     # delete all singletons!!!
     utils.singleton.instances = {}
 
-    os.environ["CCAT_QDRANT_HOST"] = ""
+    os.environ["CCAT_REDIS_DB"] = os.environ["CCAT_REDIS_DB_TEST"]
     with TestClient(cheshire_cat_api) as client:
         yield client
-
-    del os.environ["CCAT_QDRANT_HOST"]
 
 
 @pytest.fixture(scope="function")
@@ -125,18 +127,45 @@ def just_installed_plugin(client):
 
     # clean up of zip file and mock_plugin_folder is done for every test automatically (see client fixture)
 
+
+@pytest.fixture
+def cheshire_cat(client, cheshire_cat_manager):
+    cheshire_cat = cheshire_cat_manager.get_or_create_cheshire_cat("test")
+    yield cheshire_cat
+    cheshire_cat_manager.remove_cheshire_cat("test")
+
+
+# this function will be run before each test function
+@pytest.fixture
+def mad_hatter(client, cheshire_cat):  # client here injects the monkeypatched version of the cat manager
+    # each test is given the mad_hatter instance (it's a singleton)
+    mad_hatter = cheshire_cat.mad_hatter
+
+    # install plugin
+    new_plugin_zip_path = create_mock_plugin_zip(flat=True)
+    mad_hatter.install_plugin(new_plugin_zip_path)
+
+    yield mad_hatter
+
+
+# this function will be run before each test function
+@pytest.fixture
+def mad_hatter_no_plugins(client, cheshire_cat):  # client here injects the monkeypatched version of the cat manager
+    mad_hatter = cheshire_cat.mad_hatter
+
+    # each test is given the mad_hatter instance (it's a singleton)
+    yield mad_hatter
+
+
 # fixtures to test the main agent
 @pytest.fixture
-def main_agent(client, cheshire_cat_manager):
-    cheshire_cat = cheshire_cat_manager.get_or_create_cheshire_cat("test")
-
+def main_agent(client, cheshire_cat):
     yield cheshire_cat.main_agent  # each test receives as argument the main agent instance
+
 
 # fixture to have available an instance of StrayCat
 @pytest.fixture
-def stray(client, cheshire_cat_manager):
-    cheshire_cat = cheshire_cat_manager.get_or_create_cheshire_cat("test")
-
+def stray(client, cheshire_cat):
     user = AuthUserInfo(id="user_alice", name="Alice")
     stray_cat = StrayCat(user_data=user, main_loop=asyncio.new_event_loop(), chatbot_id=cheshire_cat.id)
     stray_cat.working_memory.user_message_json = {"user_id": user.id, "text": "meow"}
@@ -145,8 +174,26 @@ def stray(client, cheshire_cat_manager):
 
     yield stray_cat
 
+
+@pytest.fixture
+def stray_no_memory(client, cheshire_cat) -> StrayCat:
+    yield StrayCat(
+        user_data=AuthUserInfo(id="user_alice", name="Alice"),
+        main_loop=asyncio.new_event_loop(),
+        chatbot_id=cheshire_cat.id
+    )
+
+
 # autouse fixture will be applied to *all* the tests
 @pytest.fixture(autouse=True)
 def apply_warning_filters():
     # ignore deprecation warnings due to langchain not updating to pydantic v2
     warnings.filterwarnings("ignore", category=PydanticDeprecatedSince20)
+
+
+# this fixture will give test functions a ready instantiated plugin
+# (and having the `client` fixture, a clean setup every unit)
+@pytest.fixture
+def plugin(client, cheshire_cat):
+    p = Plugin(mock_plugin_path)
+    yield p

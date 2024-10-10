@@ -2,12 +2,9 @@ from json import dumps
 from fastapi.encoders import jsonable_encoder
 
 from cat.factory.auth_handler import get_auth_handlers_schemas
-from cat.looking_glass.cheshire_cat import CheshireCat
 
 
-def test_get_all_auth_handler_settings(client, cheshire_cat_manager):
-    cheshire_cat: CheshireCat = cheshire_cat_manager.get_or_create_cheshire_cat("test")
-
+def test_get_all_auth_handler_settings(client, cheshire_cat):
     auth_handler_schemas = get_auth_handlers_schemas(cheshire_cat.mad_hatter)
     response = client.get("/auth_handler/settings")
     json = response.json()
@@ -26,7 +23,7 @@ def test_get_all_auth_handler_settings(client, cheshire_cat_manager):
     assert json["selected_configuration"] == "CoreOnlyAuthConfig"
 
 
-def test_get_auth_handler_settings_non_existent(client):
+def test_get_auth_handler_settings_non_existent(client, cheshire_cat):
     non_existent_auth_handler_name = "AuthHandlerNonExistent"
     response = client.get(f"/auth_handler/settings/{non_existent_auth_handler_name}")
     json = response.json()

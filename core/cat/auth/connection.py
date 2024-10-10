@@ -51,7 +51,11 @@ class ConnectionAuth(ABC):
         ]
         for ah in auth_handlers:
             user: AuthUserInfo = await ah.authorize_user_from_credential(
-                credentials.credential, self.resource, self.permission, user_id=credentials.user_id
+                credentials.credential,
+                self.resource,
+                self.permission,
+                user_id=credentials.user_id,
+                chatbot_id=credentials.chatbot_id,
             )
             if user:
                 stray = await self.get_user_stray(ccat, user, connection)

@@ -2,13 +2,11 @@ from json import dumps
 from fastapi.encoders import jsonable_encoder
 
 from cat.factory.embedder import get_embedders_schemas
-from cat.looking_glass.cheshire_cat import CheshireCat
+
 from tests.utils import get_procedural_memory_contents
 
 
-def test_get_all_embedder_settings(client, cheshire_cat_manager):
-    cheshire_cat: CheshireCat = cheshire_cat_manager.get_or_create_cheshire_cat("test")
-
+def test_get_all_embedder_settings(client, cheshire_cat):
     embedder_schemas = get_embedders_schemas(cheshire_cat.mad_hatter)
     response = client.get("/embedder/settings")
     json = response.json()

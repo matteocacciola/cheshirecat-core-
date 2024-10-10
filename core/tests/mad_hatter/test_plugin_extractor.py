@@ -2,8 +2,9 @@ import os
 import shutil
 import pytest
 
-from tests.utils import create_mock_plugin_zip
 from cat.mad_hatter.plugin_extractor import PluginExtractor
+
+from tests.utils import create_mock_plugin_zip
 
 
 # plugin_is_flat is False: zip file contains just one folder, inside that folder we find the plugin

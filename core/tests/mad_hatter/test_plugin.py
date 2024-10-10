@@ -3,21 +3,12 @@ import pytest
 import fnmatch
 import subprocess
 from inspect import isfunction
-from tests.conftest import clean_up_mocks
 
 from cat.mad_hatter.mad_hatter import Plugin
 from cat.mad_hatter.decorators.hook import CatHook
 from cat.mad_hatter.decorators.tool import CatTool
 
-mock_plugin_path = "tests/mocks/mock_plugin/"
-
-
-# this fixture will give test functions a ready instantiated plugin
-# (and having the `client` fixture, a clean setup every unit)
-@pytest.fixture
-def plugin(client):
-    p = Plugin(mock_plugin_path)
-    yield p
+from tests.conftest import clean_up_mocks, mock_plugin_path
 
 
 def test_create_plugin_wrong_folder():

@@ -2,6 +2,7 @@ from typing import Dict
 import bcrypt
 import jwt
 from jwt.exceptions import InvalidTokenError
+from fastapi import Request
 
 from cat.db import crud
 
@@ -38,13 +39,14 @@ def check_password(password: str, hashed: str) -> bool:
         return False
 
 
-def get_user_by_credentials(username: str, password: str) -> Dict | None:
+def get_user_by_credentials(username: str, password: str, chatbot_id: str = "chatbot") -> Dict | None:
     """
     Get a user by their username and password. If the user is not found, return None.
 
     Args:
         username: the username of the user to look for
         password: the password of the user to look for
+        chatbot_id: the chatbot ID to look for the user in (default: "chatbot")
 
     Returns:
         The user if found, None otherwise. The user has the format:
@@ -56,10 +58,22 @@ def get_user_by_credentials(username: str, password: str) -> Dict | None:
         }
     """
 
-    users = crud.get_all_users()
-    print(users)
+    users = crud.get_users(chatbot_id=chatbot_id)
     for user in users.values():
         if user["username"] == username and user["password"] == hash_password(password):
             return user
 
     return None
+
+
+def extract_chatbot_id_from_request(request: Request) -> str:
+    return request.headers.get(
+        "chatbot_id",
+        request.path_params.get(
+            "chatbot_id",
+            request.query_params.get(
+                "chatbot_id",
+                "chatbot"
+            )
+        )
+    )

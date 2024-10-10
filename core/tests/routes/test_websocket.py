@@ -1,4 +1,5 @@
 import time
+
 from tests.utils import send_websocket_message, send_n_websocket_messages
 
 
@@ -41,7 +42,6 @@ def check_correct_websocket_reply(reply):
             assert isinstance(mi["reply"], list)
             assert isinstance(mi["reply"][0], float)
             assert mi["source"] == "recall"
-        
 
 
 def test_websocket(client):

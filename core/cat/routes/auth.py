@@ -5,6 +5,7 @@ from pydantic import BaseModel
 from fastapi import APIRouter, Request, HTTPException, status, Query
 from fastapi.responses import RedirectResponse
 
+from cat.auth.auth_utils import extract_chatbot_id_from_request
 from cat.auth.permissions import get_full_permissions
 from cat.routes.static.templates import get_jinja_templates
 
@@ -24,14 +25,15 @@ class JWTResponse(BaseModel):
 # set cookies and redirect to origin page after login
 @router.post("/redirect", include_in_schema=False)
 async def core_login_token(request: Request):
+    # get chatbot_id from request
+    chatbot_id = extract_chatbot_id_from_request(request)
+
     # get form data from submitted core login form (/auth/core_login)
     form_data = await request.form()
 
     # use username and password to authenticate user from local identity provider and get token
     auth_handler = request.app.state.ccat_manager.core_auth_handler
-    access_token = await auth_handler.issue_jwt(
-        form_data["username"], form_data["password"]
-    )
+    access_token = await auth_handler.issue_jwt(form_data["username"], form_data["password"], chatbot_id=chatbot_id)
 
     if access_token:
         response = RedirectResponse(
@@ -91,9 +93,11 @@ async def auth_token(request: Request, credentials: UserCredentials):
     This endpoint receives username and password as form-data, validates credentials and issues a JWT.
     """
 
+    chatbot_id = extract_chatbot_id_from_request(request)
+
     # use username and password to authenticate user from local identity provider and get token
     auth_handler = request.app.state.ccat_manager.core_auth_handler
-    access_token = await auth_handler.issue_jwt(credentials.username, credentials.password)
+    access_token = await auth_handler.issue_jwt(credentials.username, credentials.password, chatbot_id=chatbot_id)
 
     if access_token:
         return JWTResponse(access_token=access_token)

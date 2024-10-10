@@ -1,7 +1,5 @@
-import pytest
 from langchain.base_language import BaseLanguageModel
 from langchain_core.embeddings import Embeddings
-from cat.looking_glass.cheshire_cat import CheshireCat
 from cat.mad_hatter.mad_hatter import MadHatter
 from cat.rabbit_hole import RabbitHole
 from cat.memory.long_term_memory import LongTermMemory
@@ -12,11 +10,6 @@ from cat.factory.custom_llm import LLMDefault
 
 def get_class_from_decorated_singleton(singleton):
     return singleton().__class__
-
-
-@pytest.fixture
-def cheshire_cat(client):
-    yield CheshireCat("test")
 
 
 def test_main_modules_loaded(cheshire_cat):

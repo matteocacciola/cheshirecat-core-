@@ -17,6 +17,7 @@ services:
       - CCAT_REDIS_HOST=cheshire-redis
       - CCAT_REDIS_PORT=6379
       - CCAT_REDIS_DB=${CCAT_REDIS_DB:-0}
+      - CCAT_REDIS_DB_TEST=${CCAT_REDIS_DB_TEST:-1}
       - CCAT_REDIS_PASSWORD=${CCAT_REDIS_PASSWORD:-}
       - CCAT_QDRANT_HOST=cheshire-cat-vector-memory
       - CCAT_QDRANT_PORT=6333

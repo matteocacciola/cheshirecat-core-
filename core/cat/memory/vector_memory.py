@@ -39,7 +39,7 @@ class VectorMemory:
 
             # Update dictionary containing all collections
             # Useful for cross-searching and to create/use collections from plugins
-            self.collections[collection_name] = collection
+            self.collections[str(collection_name)] = collection
 
             # Have the collection as an instance attribute
             # (i.e. do things like cat.memory.vectors.declarative.something())

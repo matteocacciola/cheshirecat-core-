@@ -12,7 +12,7 @@ from tests.utils import send_websocket_message
 # TODOAUTH: test token refresh / invalidation / logoff
 
 
-def test_is_jwt(client):
+def test_is_jwt(client, cheshire_cat):
     assert not is_jwt("not_a_jwt.not_a_jwt.not_a_jwt")
 
     actual_jwt = jwt.encode(
@@ -23,9 +23,9 @@ def test_is_jwt(client):
     assert is_jwt(actual_jwt)
 
 
-def test_refuse_issue_jwt(client):
+def test_refuse_issue_jwt(client, cheshire_cat):
     creds = {"username": "admin", "password": "wrong"}
-    res = client.post("/auth/token", json=creds)
+    res = client.post("/auth/token", json=creds, headers={"chatbot_id": chatbot_id})
 
     # wrong credentials
     assert res.status_code == 403
@@ -34,12 +34,14 @@ def test_refuse_issue_jwt(client):
 
 
 @pytest.mark.asyncio  # to test async functions
-async def test_issue_jwt(client, cheshire_cat_manager):
+async def test_issue_jwt(client, cheshire_cat_manager, cheshire_cat):
     creds = {
         "username": "admin",
         "password": "admin"
     }
-    res = client.post("/auth/token", json=creds)
+
+    chatbot_id = cheshire_cat.id
+    res = client.post("/auth/token", json=creds, headers={"chatbot_id": chatbot_id})
     assert res.status_code == 200
 
     res_json = res.json()
@@ -52,7 +54,7 @@ async def test_issue_jwt(client, cheshire_cat_manager):
     # is the JWT correct for core auth handler?
     auth_handler = cheshire_cat_manager.core_auth_handler
     user_info = await auth_handler.authorize_user_from_jwt(
-        received_token, AuthResource.LLM, AuthPermission.WRITE
+        received_token, AuthResource.LLM, AuthPermission.WRITE, chatbot_id
     )
     assert len(user_info.id) == 36 and len(user_info.id.split("-")) == 5 # uuid4
     assert user_info.name == "admin"
@@ -71,27 +73,29 @@ async def test_issue_jwt(client, cheshire_cat_manager):
     except jwt.exceptions.DecodeError:
         assert False
 
-@pytest.mark.asyncio
-async def test_issue_jwt_for_new_user(client):
 
+@pytest.mark.asyncio
+async def test_issue_jwt_for_new_user(client, cheshire_cat):
     # create new user
     creds = {
         "username": "Alice",
         "password": "Alice",
     }
 
-    # we sohuld not obtain a JWT for this user
+    chatbot_id = cheshire_cat.id
+
+    # we should not obtain a JWT for this user
     # because it does not exist
-    res = client.post("/auth/token", json=creds)
+    res = client.post("/auth/token", json=creds, headers={"chatbot_id": chatbot_id})
     assert res.status_code == 403
     assert res.json()["detail"]["error"] == "Invalid Credentials"
 
     # let's create the user
-    res = client.post("/users", json=creds)
+    res = client.post("/users", json=creds, headers={"chatbot_id": chatbot_id})
     assert res.status_code == 200
 
     # now we should get a JWT
-    res = client.post("/auth/token", json=creds)
+    res = client.post("/auth/token", json=creds, headers={"chatbot_id": chatbot_id})
     assert res.status_code == 200
 
     # did we obtain a JWT?
@@ -99,15 +103,17 @@ async def test_issue_jwt_for_new_user(client):
     received_token = res.json()["access_token"]
     assert is_jwt(received_token)
 
+
 # test token expiration after successful login
 # NOTE: here we are using the secure_client fixture (see conftest.py)
-def test_jwt_expiration(secure_client):
-
+def test_jwt_expiration(secure_client, cheshire_cat):
     # set ultrashort JWT expiration time
     os.environ["CCAT_JWT_EXPIRE_MINUTES"] = "0.05"  # 3 seconds
 
+    chatbot_id = cheshire_cat.id
+
     # not allowed
-    response = secure_client.get("/")
+    response = secure_client.get("/", headers={"chatbot_id": chatbot_id})
     assert response.status_code == 403
     assert response.json()["detail"]["error"] == "Invalid Credentials"
 
@@ -116,12 +122,12 @@ def test_jwt_expiration(secure_client):
         "username": "admin",
         "password": "admin",  # TODOAUTH: check custom credentials
     }
-    res = secure_client.post("/auth/token", json=creds)
+    res = secure_client.post("/auth/token", json=creds, headers={"chatbot_id": chatbot_id})
     assert res.status_code == 200
     token = res.json()["access_token"]
 
     # allowed via JWT
-    headers = {"Authorization": f"Bearer {token}"}
+    headers = {"Authorization": f"Bearer {token}", "chatbot_id": chatbot_id}
     response = secure_client.get("/", headers=headers)
     assert response.status_code == 200
 
@@ -129,7 +135,7 @@ def test_jwt_expiration(secure_client):
     time.sleep(3)
 
     # not allowed because JWT expired
-    headers = {"Authorization": f"Bearer {token}"}
+    headers = {"Authorization": f"Bearer {token}", "chatbot_id": chatbot_id}
     response = secure_client.get("/", headers=headers)
     assert response.status_code == 403
     assert response.json()["detail"]["error"] == "Invalid Credentials"
@@ -140,8 +146,7 @@ def test_jwt_expiration(secure_client):
 
 # test ws and http endpoints can get user_id from JWT
 # NOTE: here we are using the secure_client fixture (see conftest.py)
-def test_jwt_imposes_user_id(secure_client):
-
+def test_jwt_imposes_user_id(secure_client, cheshire_cat):
     # not allowed
     response = secure_client.get("/")
     assert response.status_code == 403
@@ -152,7 +157,8 @@ def test_jwt_imposes_user_id(secure_client):
         "username": "admin", # TODOAUTH: use another user?
         "password": "admin",
     }
-    res = secure_client.post("/auth/token", json=creds)
+    chatbot_id = cheshire_cat.id
+    res = secure_client.post("/auth/token", json=creds, headers={"chatbot_id": chatbot_id})
     assert res.status_code == 200
     token = res.json()["access_token"]
 
@@ -163,17 +169,18 @@ def test_jwt_imposes_user_id(secure_client):
 
     # send user specific message via http
     headers = {
-        "Authorization": f"Bearer {token}"
+        "Authorization": f"Bearer {token}",
+        "chatbot_id": chatbot_id,
     }
     response = secure_client.post("/message", headers=headers, json=message)
     assert response.status_code == 200
 
     # send user specific request via ws
-    query_params = {"token": token}
+    query_params = {"token": token, "chatbot_id": chatbot_id}
     res = send_websocket_message(message, secure_client, query_params=query_params)
 
     # we now recall episodic memories from the user, there should be two of them, both by admin
-    params = {"text": "hey"}
+    params = {"text": "hey", "chatbot_id": chatbot_id}
     response = secure_client.get("/memory/recall/", headers=headers, params=params)
     json = response.json()
     assert response.status_code == 200

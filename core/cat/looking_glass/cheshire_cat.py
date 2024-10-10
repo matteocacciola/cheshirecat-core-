@@ -103,6 +103,8 @@ class CheshireCat:
         # allows plugins to do something after the cat bootstrap is complete
         self.mad_hatter.execute_hook("after_cat_bootstrap", cat=self)
 
+        self.__create_basic_users_if_not_exist()
+
     def __eq__(self, other: "CheshireCat") -> bool:
         """Check if two cats are equal."""
         if not isinstance(other, CheshireCat):
@@ -647,6 +649,10 @@ class CheshireCat:
         self.mad_hatter.find_plugins()
 
         return status
+
+    def __create_basic_users_if_not_exist(self):
+        if not crud.get_users(chatbot_id=self.id):
+            crud.create_basic_users(chatbot_id=self.id)
 
     @property
     def strays(self):

@@ -7,8 +7,6 @@ from cat.auth.auth_utils import hash_password
 from cat.db.database import get_db
 from cat.db.models import Setting
 
-USERS_KEY = "users"
-
 
 def __get(key: str) -> List | Dict | None:
     value = get_db().get(key)
@@ -136,51 +134,34 @@ def upsert_setting_by_name(payload: Setting, **kwargs) -> Dict:
     return get_setting_by_name(payload.name, chatbot_id=chatbot_id)
 
 
-def get_all_users() -> Dict[str, Dict]:
-    """
-    Get all users.
-    Returns:
-        A dictionary with the following format:
-        {
-            <id_0>: {
-                "id": <id_0>,
-                "username": "<username_0>",
-                "password": "<hashed_password_0>",
-                "permissions": <dict_of_permissions_0>
-            },
-            ...
-        }
-    """
-
-    return __get(USERS_KEY)
-
-
 # We store users in a setting and when there will be a graph db in the cat, we will store them there.
 # P.S.: I'm not proud of this.
+# create admin user and an ordinary user
+def create_basic_users(**kwargs) -> None:
+    admin_id = str(uuid4())
+    user_id = str(uuid4())
+
+    update_users({
+        admin_id: {
+            "id": admin_id,
+            "username": "admin",
+            "password": hash_password("admin"),
+            # admin has all permissions
+            "permissions": get_full_permissions()
+        },
+        user_id: {
+            "id": user_id,
+            "username": "user",
+            "password": hash_password("user"),
+            # user has minor permissions
+            "permissions": get_base_permissions()
+        }
+    }, **kwargs)
+
+
 def get_users(**kwargs) -> Dict[str, Dict]:
     users = get_setting_by_name("users", **kwargs)
-    if not users:
-        # create admin user and an ordinary user
-        admin_id = str(uuid4())
-        user_id = str(uuid4())
-
-        update_users({
-            admin_id: {
-                "id": admin_id,
-                "username": "admin",
-                "password": hash_password("admin"),
-                # admin has all permissions
-                "permissions": get_full_permissions()
-            },
-            user_id: {
-                "id": user_id,
-                "username": "user",
-                "password": hash_password("user"),
-                # user has minor permissions
-                "permissions": get_base_permissions()
-            }
-        })
-    return get_setting_by_name("users", **kwargs)["value"]
+    return users["value"] if users else {}
 
 
 def create_user(new_user: Dict, **kwargs) -> Dict | None:
@@ -238,8 +219,9 @@ def delete_user(user_id: str, **kwargs) -> Dict | None:
 def update_users(users: Dict[str, Dict], **kwargs) -> Dict | None:
     updated_users = Setting(name="users", value=users)
 
-    # add or update the set from USERS_KEY with the new users
-    all_users = {**get_all_users(), **users}
-    __set(USERS_KEY, all_users)
-
     return upsert_setting_by_name(updated_users, **kwargs)
+
+
+def flush_db():
+    get_db().flushdb()
+    return True
