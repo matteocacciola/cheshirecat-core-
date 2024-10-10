@@ -32,7 +32,7 @@ services:
     depends_on:
       cheshire-redis:
         condition: service_healthy
-      cheshire-cat-vector-memory:
+      cheshire-healthcheck:
         condition: service_healthy
 
   cheshire-redis:
@@ -62,8 +62,16 @@ services:
     volumes:
       - ./long_term_memory/vector:/qdrant/storage
     restart: unless-stopped
+
+  cheshire-healthcheck:
+    image: curlimages/curl:latest
+    container_name: cheshire_healthcheck
+    entrypoint: ["/bin/sh", "-c", "--", "while true; do sleep 30; done;"]
+    depends_on:
+      - cheshire-cat-vector-memory
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:6333/health"]
-      interval: 5s
-      timeout: 5s
+      test: ["CMD", "curl", "-f", "http://cheshire-cat-vector-memory:6333/readyz"]
+      interval: 10s
+      timeout: 2s
       retries: 5
+    restart: always
