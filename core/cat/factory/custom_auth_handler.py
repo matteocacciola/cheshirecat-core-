@@ -5,7 +5,7 @@ import jwt
 
 from cat.db.crud import get_all_users
 from cat.auth.permissions import AuthPermission, AuthResource, AuthUserInfo, get_base_permissions, get_full_permissions
-from cat.auth.auth_utils import is_jwt, check_password
+from cat.auth.auth_utils import is_jwt, get_user_by_credentials
 from cat.env import get_env
 from cat.log import log
 
@@ -17,13 +17,13 @@ class BaseAuthHandler(ABC):  # TODOAUTH: pydantic model?
     MUST be implemented by subclasses.
     """
 
+    # when there is no JWT, user id is passed via `user_id: xxx` header or via websocket path
+    # with JWT, the user id is in the token ad has priority
     async def authorize_user_from_credential(
         self,
         credential: str,
         auth_resource: AuthResource,
         auth_permission: AuthPermission,
-        # when there is no JWT, user id is passed via `user_id: xxx` header or via websocket path
-        # with JWT, the user id is in the token ad has priority
         user_id: str = "user",
     ) -> AuthUserInfo | None:
         if is_jwt(credential):
@@ -62,29 +62,29 @@ class CoreAuthHandler(BaseAuthHandler):
     ) -> AuthUserInfo | None:
         try:
             # decode token
-            payload = jwt.decode(
-                token,
-                get_env("CCAT_JWT_SECRET"),
-                algorithms=[get_env("CCAT_JWT_ALGORITHM")],
-            )
-
-            # get user from DB
-            users = get_all_users()
-            if payload["sub"] in users:
-                user = users[payload["sub"]]
-                # TODOAUTH: permissions check should be done in a method
-                if auth_resource in user["permissions"].keys() and auth_permission in user["permissions"][auth_resource]:
-                    return AuthUserInfo(
-                        id=payload["sub"],
-                        name=payload["username"],
-                        permissions=user["permissions"],
-                        extra=user,
-                    )
+            payload = jwt.decode(token, get_env("CCAT_JWT_SECRET"), algorithms=[get_env("CCAT_JWT_ALGORITHM")])
         except Exception as e:
             log.error(f"Could not auth user from JWT: {e}")
+            # do not pass
+            return None
 
-        # do not pass
-        return None
+        # get user from DB
+        users = get_all_users()
+        if payload["sub"] not in users.keys():
+            # do not pass
+            return None
+
+        user = users[payload["sub"]]
+        if auth_resource not in user["permissions"].keys() or auth_permission not in user["permissions"][auth_resource]:
+            # do not pass
+            return None
+
+        return AuthUserInfo(
+            id=payload["sub"],
+            name=payload["username"],
+            permissions=user["permissions"],
+            extra=user,
+        )
 
     async def authorize_user_from_key(
         self,
@@ -93,6 +93,17 @@ class CoreAuthHandler(BaseAuthHandler):
         auth_resource: AuthResource,
         auth_permission: AuthPermission,
     ) -> AuthUserInfo | None:
+        """
+        Authorize a user from an API key. This method is used to authorize users when they are not using a JWT token.
+        Args:
+            user_id: the user ID to authorize
+            api_key: the API key to authorize the user
+            auth_resource: the resource to authorize the user on
+            auth_permission: the permission to authorize the user on
+
+        Returns:
+            An AuthUserInfo object if the user is authorized, None otherwise.
+        """
         http_api_key = get_env("CCAT_API_KEY")
         ws_api_key = get_env("CCAT_API_KEY_WS")
 
@@ -119,33 +130,37 @@ class CoreAuthHandler(BaseAuthHandler):
         return None
     
     async def issue_jwt(self, username: str, password: str) -> str | None:
-        # authenticate local user credentials and return a JWT token
+        """
+        Authenticate local user credentials and return a JWT token.
+
+        Args:
+            username: the username of the user to authenticate
+            password: the password of the user to authenticate
+
+        Returns:
+            A JWT token if the user is authenticated, None otherwise.
+        """
 
         # brutal search over users, which are stored in a simple dictionary.
         # waiting to have graph in core to store them properly
         # TODOAUTH: get rid of this shameful loop
-        # Assuming users is a list of user objects
-        users_dict = {user["id"]: user for user in get_all_users()}
-        for user_id, user in users_dict.items():
-            if user["username"] == username and check_password(password, user["password"]):
-                # TODOAUTH: expiration with timezone needs to be tested
-                # using seconds for easier testing
-                expire_delta_in_seconds = float(get_env("CCAT_JWT_EXPIRE_MINUTES")) * 60
-                expires = datetime.now(utc) + timedelta(seconds=expire_delta_in_seconds)
-                # TODOAUTH: add issuer and redirect_uri (and verify them when a token is validated)
+        user = get_user_by_credentials(username, password)
+        if not user:
+            return None
 
-                jwt_content = {
-                    "sub": user_id,                      # Subject (the user ID)
-                    "username": username,                # Username
-                    "permissions": user["permissions"],  # User permissions
-                    "exp": expires                       # Expiry date as a Unix timestamp
-                }
-                return jwt.encode(
-                    jwt_content,
-                    get_env("CCAT_JWT_SECRET"),
-                    algorithm=get_env("CCAT_JWT_ALGORITHM"),
-                )
-        return None
+        # TODOAUTH: expiration with timezone needs to be tested
+        # using seconds for easier testing
+        expire_delta_in_seconds = float(get_env("CCAT_JWT_EXPIRE_MINUTES")) * 60
+        expires = datetime.now(utc) + timedelta(seconds=expire_delta_in_seconds)
+
+        # TODOAUTH: add issuer and redirect_uri (and verify them when a token is validated)
+        jwt_content = {
+            "sub": user["id"],                   # Subject (the user ID)
+            "username": username,                # Username
+            "permissions": user["permissions"],  # User permissions
+            "exp": expires                       # Expiry date as a Unix timestamp
+        }
+        return jwt.encode(jwt_content, get_env("CCAT_JWT_SECRET"), algorithm=get_env("CCAT_JWT_ALGORITHM"))
 
 
 # Default Auth, always deny auth by default (only core auth decides).

@@ -9,11 +9,11 @@ from cat.experimental.form import CatForm
 class WorkingMemory(BaseModelDict):
     """Cat's volatile memory.
 
-    Handy class that behaves like a `dict` to store temporary custom data.
+    Handy class that behaves like a `Dict` to store temporary custom data.
 
     Returns
     -------
-    dict[str, list]
+    Dict[str, List]
         Default instance is a dictionary with `history` key set to an empty list.
 
     Notes

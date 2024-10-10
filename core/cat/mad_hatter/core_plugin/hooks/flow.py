@@ -3,9 +3,10 @@
 Here is a collection of methods to hook into the Cat execution pipeline.
 
 """
+from typing import Dict
+from langchain.docstore.document import Document
 
 from cat.mad_hatter.decorators import hook
-from langchain.docstore.document import Document
 
 
 # Called before cat bootstrap
@@ -53,7 +54,7 @@ def after_cat_bootstrap(cat) -> None:
 # Called when a user message arrives.
 # Useful to edit/enrich user input (e.g. translation)
 @hook(priority=0)
-def before_cat_reads_message(user_message_json: dict, cat) -> dict:
+def before_cat_reads_message(user_message_json: Dict, cat) -> Dict:
     """Hook the incoming user's JSON dictionary.
 
     Allows to edit and enrich the incoming message received from the WebSocket connection.
@@ -68,7 +69,7 @@ def before_cat_reads_message(user_message_json: dict, cat) -> dict:
 
     Parameters
     ----------
-    user_message_json : dict
+    user_message_json : Dict
         JSON dictionary with the message received from the chat.
     cat : CheshireCat
         Cheshire Cat instance.
@@ -76,7 +77,7 @@ def before_cat_reads_message(user_message_json: dict, cat) -> dict:
 
     Returns
     -------
-    user_message_json : dict
+    user_message_json : Dict
         Edited JSON dictionary that will be fed to the Cat.
 
     Notes
@@ -153,7 +154,7 @@ def before_cat_recalls_memories(cat) -> None:
 
 
 @hook(priority=0)
-def before_cat_recalls_episodic_memories(episodic_recall_config: dict, cat) -> dict:
+def before_cat_recalls_episodic_memories(episodic_recall_config: Dict, cat) -> Dict:
     """Hook into semantic search in memories.
 
     Allows to intercept when the Cat queries the memories using the embedded user's input.
@@ -167,14 +168,14 @@ def before_cat_recalls_episodic_memories(episodic_recall_config: dict, cat) -> d
 
     Parameters
     ----------
-    episodic_recall_config : dict
+    episodic_recall_config : Dict
         Dictionary with data needed to recall episodic memories
     cat : CheshireCat
         Cheshire Cat instance.
 
     Returns
     -------
-    episodic_recall_config: dict
+    episodic_recall_config: Dict
         Edited dictionary that will be fed to the embedder.
 
     """
@@ -183,8 +184,8 @@ def before_cat_recalls_episodic_memories(episodic_recall_config: dict, cat) -> d
 
 @hook(priority=0)
 def before_cat_recalls_declarative_memories(
-    declarative_recall_config: dict, cat
-) -> dict:
+    declarative_recall_config: Dict, cat
+) -> Dict:
     """Hook into semantic search in memories.
 
     Allows to intercept when the Cat queries the memories using the embedded user's input.
@@ -198,14 +199,14 @@ def before_cat_recalls_declarative_memories(
 
     Parameters
     ----------
-    declarative_recall_config: dict
+    declarative_recall_config: Dict
         Dictionary with data needed to recall declarative memories
     cat : CheshireCat
         Cheshire Cat instance.
 
     Returns
     -------
-    declarative_recall_config: dict
+    declarative_recall_config: Dict
         Edited dictionary that will be fed to the embedder.
 
     """
@@ -213,7 +214,7 @@ def before_cat_recalls_declarative_memories(
 
 
 @hook(priority=0)
-def before_cat_recalls_procedural_memories(procedural_recall_config: dict, cat) -> dict:
+def before_cat_recalls_procedural_memories(procedural_recall_config: Dict, cat) -> Dict:
     """Hook into semantic search in memories.
 
     Allows to intercept when the Cat queries the memories using the embedded user's input.
@@ -227,14 +228,14 @@ def before_cat_recalls_procedural_memories(procedural_recall_config: dict, cat) 
 
     Parameters
     ----------
-    procedural_recall_config: dict
+    procedural_recall_config: Dict
         Dictionary with data needed to recall tools from procedural memory
     cat : CheshireCat
         Cheshire Cat instance.
 
     Returns
     -------
-    procedural_recall_config: dict
+    procedural_recall_config: Dict
         Edited dictionary that will be fed to the embedder.
 
     """
@@ -260,7 +261,7 @@ def after_cat_recalls_memories(cat) -> None:
 
 # Hook called just before sending response to a client.
 @hook(priority=0)
-def before_cat_sends_message(message: dict, cat) -> dict:
+def before_cat_sends_message(message: Dict, cat) -> Dict:
     """Hook the outgoing Cat's message.
 
     Allows to edit the JSON dictionary that will be sent to the client via WebSocket connection.
@@ -269,14 +270,14 @@ def before_cat_sends_message(message: dict, cat) -> dict:
 
     Parameters
     ----------
-    message : dict
+    message : Dict
         JSON dictionary to be sent to the WebSocket client.
     cat : CheshireCat
         Cheshire Cat instance.
 
     Returns
     -------
-    message : dict
+    message : Dict
         Edited JSON dictionary with the Cat's answer.
 
     Notes

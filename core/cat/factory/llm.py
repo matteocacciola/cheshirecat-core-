@@ -7,7 +7,7 @@ from langchain_community.llms import (
 from langchain_openai import ChatOpenAI, OpenAI
 from langchain_cohere import ChatCohere
 from langchain_google_genai import ChatGoogleGenerativeAI
-from typing import Type
+from typing import Type, Dict, List
 import json
 from pydantic import BaseModel, ConfigDict
 
@@ -32,6 +32,10 @@ class LLMSettings(BaseModel):
                 "Language model configuration class has self._pyclass==None. Should be a valid LLM class"
             )
         return cls._pyclass.default(**config)
+
+    @property
+    def pyclass(self) -> Type:
+        return self._pyclass
 
 
 class LLMDefaultConfig(LLMSettings):
@@ -281,7 +285,7 @@ class LLMGeminiChatConfig(LLMSettings):
     )
 
 
-def get_allowed_language_models(chatbot_id: str):
+def get_allowed_language_models(chatbot_id: str) -> List[Type[LLMSettings]]:
     list_llms_default = [
         LLMOpenAIChatConfig,
         LLMOpenAIConfig,
@@ -304,7 +308,7 @@ def get_allowed_language_models(chatbot_id: str):
     return list_llms
 
 
-def get_llm_from_name(name: str, chatbot_id: str):
+def get_llm_from_name(name: str, chatbot_id: str) -> Type[LLMSettings] | None:
     """Find the llm adapter class by name"""
     for cls in get_allowed_language_models(chatbot_id):
         if cls.__name__ == name:
@@ -312,7 +316,7 @@ def get_llm_from_name(name: str, chatbot_id: str):
     return None
 
 
-def get_llms_schemas(chatbot_id: str):
+def get_llms_schemas(chatbot_id: str) -> Dict:
     # llm_schemas contains metadata to let any client know
     # which fields are required to create the language model.
     llm_schemas = {}

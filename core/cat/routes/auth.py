@@ -5,7 +5,7 @@ from pydantic import BaseModel
 from fastapi import APIRouter, Request, HTTPException, status, Query
 from fastapi.responses import RedirectResponse
 
-from cat.auth.permissions import AuthPermission, AuthResource, get_full_permissions
+from cat.auth.permissions import get_full_permissions
 from cat.routes.static.templates import get_jinja_templates
 
 router = APIRouter()
@@ -79,7 +79,7 @@ async def auth_index(request: Request, referer: str = Query(None), retry: int = 
 
 # TODOAUTH /logout endpoint
 
-@router.get("/available-permissions", response_model=Dict[AuthResource, List[AuthPermission]])
+@router.get("/available-permissions", response_model=Dict[str, List[str]])
 async def get_available_permissions():
     """Returns all available resources and permissions."""
     return get_full_permissions()

@@ -6,7 +6,7 @@ These hooks allow to intercept the uploaded documents at different places before
 
 """
 
-from typing import List
+from typing import List, Dict
 from langchain.text_splitter import TextSplitter
 from langchain.docstore.document import Document
 from qdrant_client.http.models import PointStruct
@@ -15,21 +15,21 @@ from cat.mad_hatter.decorators import hook
 
 
 @hook(priority=0)
-def rabbithole_instantiates_parsers(file_handlers: dict, cat) -> dict:
+def rabbithole_instantiates_parsers(file_handlers: Dict, cat) -> Dict:
     """Hook the available parsers for ingesting files in the declarative memory.
 
     Allows replacing or extending existing supported mime types and related parsers to customize the file ingestion.
 
     Parameters
     ----------
-    file_handlers : dict
+    file_handlers : Dict
         Keys are the supported mime types and values are the related parsers.
     cat : CheshireCat
         Cheshire Cat instance.
 
     Returns
     -------
-    file_handlers : dict
+    file_handlers : Dict
         Edited dictionary of supported mime types and related parsers.
     """
     return file_handlers

@@ -21,7 +21,7 @@ class CatTool(BaseTool):
 
         description = func.__doc__.strip()
 
-        # call parent contructor
+        # call parent constructor
         super().__init__(
             name=name, func=func, description=description, return_direct=return_direct
         )

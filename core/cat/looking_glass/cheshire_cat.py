@@ -22,7 +22,8 @@ from cat.factory.embedder import (
     EmbedderOpenAIConfig,
     EmbedderCohereConfig,
     EmbedderGeminiChatConfig,
-    get_embedder_from_name, get_allowed_embedder_models,
+    get_embedder_from_name,
+    get_allowed_embedder_models,
 )
 from cat.factory.llm import LLMDefaultConfig
 from cat.factory.llm import get_llm_from_name
@@ -552,7 +553,7 @@ class CheshireCat:
             # If DB does not contain a selected embedder, it means an embedder was automatically selected.
             # Deduce selected embedder:
             for embedder_config_class in reversed(supported_embedding_models):
-                if isinstance(self.embedder, embedder_config_class._pyclass.default):
+                if isinstance(self.embedder, embedder_config_class.pyclass.default):
                     selected = embedder_config_class.__name__
 
         return selected

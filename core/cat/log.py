@@ -48,7 +48,7 @@ class CatLogEngine:
         # https://github.com/pdfminer/pdfminer.six/issues/347
         logging.getLogger("pdfminer").setLevel(logging.WARNING)
 
-    def show_log_level(self, record):
+    def show_log_level(self, record: dict):
         """Allows to show stuff in the log based on the global setting.
 
         Parameters

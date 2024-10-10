@@ -1,7 +1,6 @@
 import pytest
-from langchain_community.llms import BaseLLM
+from langchain.base_language import BaseLanguageModel
 from langchain_core.embeddings import Embeddings
-
 from cat.looking_glass.cheshire_cat import CheshireCat
 from cat.mad_hatter.mad_hatter import MadHatter
 from cat.rabbit_hole import RabbitHole
@@ -25,7 +24,7 @@ def test_main_modules_loaded(cheshire_cat):
     assert isinstance(cheshire_cat.rabbit_hole, RabbitHole)
     assert isinstance(cheshire_cat.memory, LongTermMemory)
     assert isinstance(cheshire_cat.main_agent, MainAgent)
-    assert isinstance(cheshire_cat.llm, BaseLLM)
+    assert isinstance(cheshire_cat.llm, BaseLanguageModel)
     assert isinstance(cheshire_cat.embedder, Embeddings)
 
 

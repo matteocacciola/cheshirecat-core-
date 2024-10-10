@@ -137,7 +137,7 @@ class ProceduresAgent(BaseAgent):
         if llm_action.action:
             chosen_procedure = allowed_procedures.get(llm_action.action, None)
             try:
-                if Plugin._is_cat_tool(chosen_procedure):
+                if Plugin.is_cat_tool(chosen_procedure):
                     # execute tool
                     tool_output = await chosen_procedure._arun(llm_action.action_input, stray=stray)
                     return AgentOutput(
@@ -147,7 +147,7 @@ class ProceduresAgent(BaseAgent):
                             ((llm_action.action, llm_action.action_input), tool_output)
                         ]
                     )
-                if Plugin._is_cat_form(chosen_procedure):
+                if Plugin.is_cat_form(chosen_procedure):
                     # create form
                     form_instance = chosen_procedure(stray)
                     # store active form in working memory

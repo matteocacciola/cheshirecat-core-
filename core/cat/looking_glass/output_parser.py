@@ -12,9 +12,7 @@ class LLMAction(BaseModel):
     action_input: Any = None
 
 class ChooseProcedureOutputParser(BaseCumulativeTransformOutputParser):
-
     def parse(self, llm_output: str) -> LLMAction:
-
         try:
             llm_action = parse_json(llm_output, pydantic_model=LLMAction)
         except Exception as e:
@@ -23,8 +21,7 @@ class ChooseProcedureOutputParser(BaseCumulativeTransformOutputParser):
 
         # Extract action input
         # TODOV2: return proper types (not only strings)
-        if llm_action.action_input and \
-                type(llm_action.action_input) not in [str, None]:
+        if llm_action.action_input and type(llm_action.action_input) not in [str, None]:
             llm_action.action_input = json.dumps(llm_action.action_input) # TODOV2: remove this dumps and return proper type
 
         return llm_action

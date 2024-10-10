@@ -1,10 +1,10 @@
-from enum import Enum
 from typing import Dict, List
 
-
 from cat.utils import BaseModelDict
+from cat.enums import Enum
 
-class AuthResource(str, Enum):
+
+class AuthResource(Enum):
     CRUD = "CRUD"
     STATUS = "STATUS"
     MEMORY = "MEMORY"
@@ -18,7 +18,8 @@ class AuthResource(str, Enum):
     PLUGINS = "PLUGINS"
     STATIC = "STATIC"
 
-class AuthPermission(str, Enum):
+
+class AuthPermission(Enum):
     WRITE = "WRITE"
     EDIT = "EDIT"
     LIST = "LIST"
@@ -26,17 +27,14 @@ class AuthPermission(str, Enum):
     DELETE = "DELETE"
 
 
-def get_full_permissions() -> Dict[AuthResource, List[AuthPermission]]:
+def get_full_permissions() -> Dict[str, List[str]]:
     """
     Returns all available resources and permissions.
     """
-    perms = {}
-    for res in AuthResource:
-        perms[res.name] = [p.name for p in AuthPermission]
-    return perms
+    return {str(res): [str(p) for p in AuthPermission] for res in AuthResource}
 
 
-def get_base_permissions() -> Dict[str, list[str]]:
+def get_base_permissions() -> Dict[str, List[str]]:
     """
     Returns the default permissions for new users (chat only!).
     """
@@ -59,7 +57,7 @@ class AuthUserInfo(BaseModelDict):
     name: str
 
     # permissions
-    permissions: Dict[AuthResource, List[AuthPermission]] = get_base_permissions()
+    permissions: Dict[str, List[str]] = get_base_permissions()
 
     # only put in here what you are comfortable to pass plugins:
     # - profile data

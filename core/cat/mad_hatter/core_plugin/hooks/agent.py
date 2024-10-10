@@ -15,7 +15,7 @@ def before_agent_starts(agent_input: Dict, cat) -> Dict:
 
     Parameters
     --------
-    agent_input: dict
+    agent_input: Dict
         Input that is about to be passed to the agent.
     cat : CheshireCat
         Cheshire Cat instance.
@@ -30,14 +30,14 @@ def before_agent_starts(agent_input: Dict, cat) -> Dict:
 
 
 @hook(priority=0)
-def agent_fast_reply(fast_reply, cat) -> Union[None, Dict]:
+def agent_fast_reply(fast_reply: Dict, cat) -> Union[None, Dict]:
     """This hook is useful to shortcut the Cat response.
     If you do not want the agent to run, return the final response from here and it will end up in the chat without the agent being executed.
 
     Parameters
     --------
-    fast_reply: dict
-        Input is dict (initially empty), which can be enriched with an "output" key with the shortcut response.
+    fast_reply: Dict
+        Input is a dictionary (initially empty), which can be enriched with an "output" key with the shortcut response.
     cat : CheshireCat
         Cheshire Cat instance.
 

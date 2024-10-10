@@ -1,7 +1,6 @@
 import time
-from typing import List, Tuple
+from typing import List, Tuple, Dict
 from datetime import timedelta
-
 from langchain.docstore.document import Document
 
 from cat.looking_glass.stray_cat import StrayCat
@@ -44,7 +43,7 @@ class MainAgent(BaseAgent):
         )
         if isinstance(fast_reply, AgentOutput):
             return fast_reply
-        if isinstance(fast_reply, dict) and "output" in fast_reply:
+        if isinstance(fast_reply, Dict) and "output" in fast_reply:
             return AgentOutput(**fast_reply)
 
         # obtain prompt parts from plugins
@@ -88,7 +87,7 @@ class MainAgent(BaseAgent):
         Returns
         -------
         BaseModelDict
-            Formatted output to be parsed by the Agent executor. Works both as a dict and as an object.
+            Formatted output to be parsed by the Agent executor. Works both as a dictionary and as an object.
 
         Notes
         -----

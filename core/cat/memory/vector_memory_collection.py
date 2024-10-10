@@ -130,7 +130,7 @@ class VectorMemoryCollection:
         )
 
     # adapted from https://github.com/langchain-ai/langchain/blob/bfc12a4a7644cfc4d832cc4023086a7a5374f46a/libs/langchain/langchain/vectorstores/qdrant.py#L1965
-    def _qdrant_filter_from_dict(self, filter: dict) -> Filter | None:
+    def _qdrant_filter_from_dict(self, filter: Dict) -> Filter | None:
         if not filter:
             return None
 
@@ -146,12 +146,12 @@ class VectorMemoryCollection:
     def _build_condition(self, key: str, value: Any) -> List[FieldCondition]:
         out = []
 
-        if isinstance(value, dict):
+        if isinstance(value, Dict):
             for _key, value in value.items():
                 out.extend(self._build_condition(f"{key}.{_key}", value))
-        elif isinstance(value, list):
+        elif isinstance(value, List):
             for _value in value:
-                if isinstance(_value, dict):
+                if isinstance(_value, Dict):
                     out.extend(self._build_condition(f"{key}[]", _value))
                 else:
                     out.extend(self._build_condition(f"{key}", _value))
@@ -181,7 +181,7 @@ class VectorMemoryCollection:
         self,
         content: str,
         vector: Iterable,
-        metadata: dict = None,
+        metadata: Dict = None,
         id: str | None = None,
         **kwargs: Any,
     ) -> PointStruct | None:
@@ -190,7 +190,7 @@ class VectorMemoryCollection:
         Args:
             content: original text.
             vector: Embedding vector.
-            metadata: Optional metadata dict associated with the text.
+            metadata: Optional metadata dictionary associated with the text.
             id:
                 Optional id to associate with the point. Id has to be an uuid-like string.
 

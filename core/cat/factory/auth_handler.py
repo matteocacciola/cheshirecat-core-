@@ -1,4 +1,4 @@
-from typing import Type
+from typing import Type, Dict
 from pydantic import BaseModel, ConfigDict
 
 from cat.looking_glass.cheshire_cat_manager import CheshireCatManager
@@ -22,6 +22,10 @@ class AuthHandlerConfig(BaseModel):
                 "AuthHandler configuration class has self._pyclass==None. Should be a valid AuthHandler class"
             )
         return cls._pyclass.default(**config)
+
+    @property
+    def pyclass(self) -> Type:
+        return self._pyclass
 
 
 class CoreOnlyAuthConfig(AuthHandlerConfig):
@@ -50,7 +54,7 @@ class CoreOnlyAuthConfig(AuthHandlerConfig):
 #     )
 
 
-def get_allowed_auth_handler_strategies(chatbot_id: str):
+def get_allowed_auth_handler_strategies(chatbot_id: str) -> list[Type[AuthHandlerConfig]]:
     list_auth_handler_default = [
         CoreOnlyAuthConfig,
         # ApiKeyAuthConfig,
@@ -64,7 +68,7 @@ def get_allowed_auth_handler_strategies(chatbot_id: str):
     return list_auth_handler
 
 
-def get_auth_handlers_schemas(chatbot_id: str):
+def get_auth_handlers_schemas(chatbot_id: str) -> Dict:
     auth_handler_schemas = {}
     for config_class in get_allowed_auth_handler_strategies(chatbot_id):
         schema = config_class.model_json_schema()
@@ -74,7 +78,7 @@ def get_auth_handlers_schemas(chatbot_id: str):
     return auth_handler_schemas
 
 
-def get_auth_handler_from_name(name: str, chatbot_id: str):
+def get_auth_handler_from_name(name: str, chatbot_id: str) -> Type[AuthHandlerConfig] | None:
     list_auth_handler = get_allowed_auth_handler_strategies(chatbot_id)
     for auth_handler in list_auth_handler:
         if auth_handler.__name__ == name:

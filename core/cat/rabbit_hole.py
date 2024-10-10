@@ -3,7 +3,7 @@ import time
 import json
 import mimetypes
 import httpx
-from typing import List
+from typing import List, Dict
 from urllib.parse import urlparse
 from urllib.error import HTTPError
 from starlette.datastructures import UploadFile
@@ -122,7 +122,7 @@ class RabbitHole:
         file: str | UploadFile,
         chunk_size: int | None = None,
         chunk_overlap: int | None = None,
-        metadata: dict = None
+        metadata: Dict = None
     ):
         """Load a file in the Cat's declarative memory.
 
@@ -140,7 +140,7 @@ class RabbitHole:
             Number of tokens in each document chunk.
         chunk_overlap : int
             Number of overlapping tokens between consecutive chunks.
-        metadata : dict
+        metadata : Dict
             Metadata to be stored with each chunk.
 
         Notes
@@ -320,7 +320,7 @@ class RabbitHole:
         stray: StrayCat,
         docs: List[Document],
         source: str, # TODO V2: is this necessary?
-        metadata: dict = None
+        metadata: Dict = None
     ) -> None:
         """Add documents to the Cat's declarative memory.
 
@@ -335,7 +335,7 @@ class RabbitHole:
             List of Langchain `Document` to be inserted in the Cat's declarative memory.
         source : str
             Source name to be added as a metadata. It can be a file name or an URL.
-        metadata : dict
+        metadata : Dict
             Metadata to be stored with each chunk.
 
         Notes
@@ -417,7 +417,7 @@ class RabbitHole:
 
         log.warning(f"Done uploading {source}")
 
-    def __split_text(self, stray: StrayCat, text, chunk_size: int, chunk_overlap: int):
+    def __split_text(self, stray: StrayCat, text: List[Document], chunk_size: int, chunk_overlap: int):
         """Split text in overlapped chunks.
 
         This method executes the `rabbithole_splits_text` to split the incoming text in overlapped
@@ -427,7 +427,7 @@ class RabbitHole:
         ----------
         stray : StrayCat
             StrayCat instance.
-        text : list[Document]
+        text : List[Document]
             Content of the loaded file.
         chunk_size : int
             Number of tokens in each document chunk.

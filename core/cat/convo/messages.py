@@ -1,9 +1,10 @@
-from typing import List, Literal
-from cat.utils import BaseModelDict
-from langchain_core.messages import BaseMessage, AIMessage, HumanMessage
-from enum import Enum
+from typing import List, Literal, Dict
+from langchain_core.messages import AIMessage, HumanMessage
 from pydantic import BaseModel, Field, ConfigDict
 import time
+
+from cat.utils import BaseModelDict
+from cat.enums import Enum
 
 
 class Role(Enum):
@@ -42,13 +43,13 @@ class MessageWhy(BaseModelDict):
     Variables:
         input (str): input message
         intermediate_steps (List): intermediate steps
-        memory (dict): memory
+        memory (Dict): memory
         model_interactions (List[LLMModelInteraction | EmbedderModelInteraction]): model interactions
     """
 
     input: str
     intermediate_steps: List
-    memory: dict
+    memory: Dict
     model_interactions: List[LLMModelInteraction | EmbedderModelInteraction]
 
 
@@ -80,18 +81,13 @@ class UserMessage(BaseModelDict):
 
 def convert_to_langchain_message(
     messages: List[UserMessage | CatMessage],
-) -> List[BaseMessage]:
-    messages = []
-    for m in messages:
-        if isinstance(m, CatMessage):
-            messages.append(
-                HumanMessage(content=m.content, response_metadata={"userId": m.user_id})
-            )
-        else:
-            messages.append(
-                AIMessage(content=m.text, response_metadata={"userId": m.user_id})
-            )
-    return messages
+) -> List[HumanMessage | AIMessage]:
+    return [
+        HumanMessage(content=m.text, response_metadata={"userId": m.user_id})
+        if isinstance(m, UserMessage)
+        else AIMessage(content=m.content, response_metadata={"userId": m.user_id})
+        for m in messages
+    ]
 
 
 def convert_to_cat_message(cat_message: AIMessage, why: MessageWhy) -> CatMessage:

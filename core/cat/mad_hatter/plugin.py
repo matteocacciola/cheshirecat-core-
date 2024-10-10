@@ -6,7 +6,7 @@ import tempfile
 import traceback
 import importlib
 import subprocess
-from typing import Dict, List
+from typing import Dict, List, Tuple
 from inspect import getmembers, isclass
 from pydantic import BaseModel, ValidationError
 from packaging.requirements import Requirement
@@ -306,9 +306,9 @@ class Plugin:
             try:
                 plugin_module = importlib.import_module(py_filename)
 
-                hooks += getmembers(plugin_module, self._is_cat_hook)
-                tools += getmembers(plugin_module, self._is_cat_tool)
-                forms += getmembers(plugin_module, self._is_cat_form)
+                hooks += getmembers(plugin_module, self.is_cat_hook)
+                tools += getmembers(plugin_module, self.is_cat_tool)
+                forms += getmembers(plugin_module, self.is_cat_form)
                 plugin_overrides += getmembers(
                     plugin_module, self._is_cat_plugin_override
                 )
@@ -332,19 +332,19 @@ class Plugin:
         url = self.manifest.get("plugin_url")
         return f"To resolve any problem related to {name} plugin, contact the creator using github issue at the link {url}"
 
-    def _clean_hook(self, hook: CatHook):
+    def _clean_hook(self, hook: Tuple[str, CatHook]):
         # getmembers returns a tuple
         h = hook[1]
         h.plugin_id = self._id
         return h
 
-    def _clean_tool(self, tool: CatTool):
+    def _clean_tool(self, tool: Tuple[str, CatTool]):
         # getmembers returns a tuple
         t = tool[1]
         t.plugin_id = self._id
         return t
 
-    def _clean_form(self, form: CatForm):
+    def _clean_form(self, form: Tuple[str, CatForm]):
         # getmembers returns a tuple
         f = form[1]
         f.plugin_id = self._id
@@ -357,15 +357,15 @@ class Plugin:
     # a plugin hook function has to be decorated with @hook
     # (which returns an instance of CatHook)
     @staticmethod
-    def _is_cat_hook(obj):
+    def is_cat_hook(obj):
         return isinstance(obj, CatHook)
 
     @staticmethod
-    def _is_cat_form(obj):
+    def is_cat_form(obj):
         if not isclass(obj) or obj is CatForm:
             return False
 
-        if not issubclass(obj, CatForm) or not obj._autopilot:
+        if not issubclass(obj, CatForm) or not obj.autopilot:
             return False
 
         return True
@@ -373,7 +373,7 @@ class Plugin:
     # a plugin tool function has to be decorated with @tool
     # (which returns an instance of CatTool)
     @staticmethod
-    def _is_cat_tool(obj):
+    def is_cat_tool(obj):
         return isinstance(obj, CatTool)
 
     # a plugin override function has to be decorated with @plugin
@@ -409,3 +409,7 @@ class Plugin:
     @property
     def forms(self):
         return self._forms
+
+    @property
+    def plugin_overrides(self):
+        return self._plugin_overrides

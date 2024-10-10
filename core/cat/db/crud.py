@@ -134,6 +134,21 @@ def upsert_setting_by_name(payload: Setting, **kwargs) -> Dict:
 
 
 def get_all_users() -> Dict[str, Dict]:
+    """
+    Get all users.
+    Returns:
+        A dictionary with the following format:
+        {
+            <id_0>: {
+                "id": <id_0>,
+                "username": "<username_0>",
+                "password": "<hashed_password_0>",
+                "permissions": <dict_of_permissions_0>
+            },
+            ...
+        }
+    """
+
     return __get(USERS_KEY)
 
 
@@ -163,6 +178,58 @@ def get_users(**kwargs) -> Dict[str, Dict]:
             }
         })
     return get_setting_by_name("users", **kwargs)["value"]
+
+
+def create_user(new_user: Dict, **kwargs) -> Dict | None:
+    chatbot_id: str = kwargs.get("chatbot_id")
+    users_db = get_users(chatbot_id=chatbot_id)
+
+    # check for user duplication with shameful loop
+    for u in users_db.values():
+        if u["username"] == new_user["username"]:
+            return None
+
+    # hash password
+    new_user["password"] = hash_password(new_user["password"])
+
+    # create user
+    new_id = str(uuid4())
+    users_db[new_id] = {"id": new_id, **new_user}
+    update_users(users_db, chatbot_id=chatbot_id)
+
+    return users_db[new_id]
+
+
+def get_user(user_id: str, **kwargs) -> Dict | None:
+    chatbot_id: str = kwargs.get("chatbot_id")
+
+    users_db = get_users(chatbot_id=chatbot_id)
+    if user_id not in users_db:
+        return None
+
+    return users_db[user_id]
+
+
+def update_user(user_id: str, updated_info: Dict, **kwargs) -> Dict:
+    chatbot_id: str = kwargs.get("chatbot_id")
+    users_db = get_users(chatbot_id=chatbot_id)
+
+    users_db[user_id] = updated_info
+
+    return update_users(users_db, **kwargs)
+
+
+def delete_user(user_id: str, **kwargs) -> Dict | None:
+    chatbot_id: str = kwargs.get("chatbot_id")
+    users_db = get_users(chatbot_id=chatbot_id)
+
+    if user_id not in users_db:
+        raise None
+
+    user = users_db.pop(user_id)
+    update_users(users_db, **kwargs)
+
+    return user
 
 
 def update_users(users: Dict[str, Dict], **kwargs) -> Dict | None:

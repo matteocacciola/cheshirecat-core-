@@ -326,19 +326,19 @@ class StrayCat:
 
         return output
 
-    async def __call__(self, message_dict):
+    async def __call__(self, message_dict: Dict) -> Dict:
         """Call the Cat instance.
 
         This method is called on the user's message received from the client.
 
         Parameters
         ----------
-        message_dict : dict
+        message_dict : Dict
             Dictionary received from the Websocket client.
 
         Returns
         -------
-        final_output : dict
+        final_output : Dict
             Dictionary with the Cat's answer to be sent to the client.
 
         Notes
@@ -503,7 +503,7 @@ class StrayCat:
 
         """
 
-        if isinstance(labels, dict):
+        if isinstance(labels, Dict):
             labels_names = labels.keys()
             examples_list = "\n\nExamples:"
             for label, examples in labels.items():

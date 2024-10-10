@@ -1,5 +1,6 @@
-from typing import Optional, List, Any, Mapping, Dict
+from typing import List, Any, Mapping, Dict
 import requests
+from langchain_core.callbacks import CallbackManagerForLLMRun, AsyncCallbackManagerForLLMRun
 
 from langchain_core.language_models.llms import LLM
 from langchain_openai.chat_models import ChatOpenAI
@@ -12,10 +13,22 @@ class LLMDefault(LLM):
     def _llm_type(self):
         return ""
 
-    def _call(self, prompt, stop=None):
+    def _call(
+        self,
+        prompt: str,
+        stop: List[str] | None = None,
+        run_manager: CallbackManagerForLLMRun | None = None,
+        **kwargs: Any,
+    ) -> str:
         return "AI: You did not configure a Language Model. " "Do it in the settings!"
 
-    async def _acall(self, prompt, stop=None):
+    async def _acall(
+        self,
+        prompt: str,
+        stop: List[str] | None = None,
+        run_manager: AsyncCallbackManagerForLLMRun | None = None,
+        **kwargs: Any,
+    ) -> str:
         return "AI: You did not configure a Language Model. " "Do it in the settings!"
 
 
@@ -38,9 +51,9 @@ class LLMCustom(LLM):
     def _call(
         self,
         prompt: str,
-        stop: Optional[List[str]] = None,
-        # run_manager: Optional[CallbackManagerForLLMRun] = None,
-        run_manager: Optional[Any] = None,
+        stop: List[str] | None = None,
+        run_manager: Any | None = None,
+        **kwargs: Any,
     ) -> str:
         request_body = {
             "text": prompt,

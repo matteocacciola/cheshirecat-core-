@@ -154,7 +154,7 @@ def levenshtein_distance(prediction: str, reference: str) -> int:
     return result["score"]
 
 
-def parse_json(json_string: str, pydantic_model: BaseModel = None) -> dict:
+def parse_json(json_string: str, pydantic_model: BaseModel = None) -> Dict:
     # instantiate parser
     parser = JsonOutputParser(pydantic_object=pydantic_model)
 

@@ -1,8 +1,8 @@
 import json
-from enum import Enum
 from typing import List, Dict
 from pydantic import BaseModel, ValidationError
 
+from cat.enums import Enum
 from cat.looking_glass.stray_cat import StrayCat
 from cat.log import log
 from cat.utils import parse_json
@@ -39,6 +39,14 @@ class CatForm:  # base model of forms
     @property
     def cat(self) -> StrayCat:
         return self._cat
+
+    @property
+    def state(self) -> CatFormState:
+        return self._state
+
+    @property
+    def autopilot(self) -> bool:
+        return self._autopilot
 
     def submit(self, form_data) -> str:
         raise NotImplementedError

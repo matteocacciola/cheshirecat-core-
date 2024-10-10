@@ -86,7 +86,7 @@ class WhiteRabbit:
         Returns
         -------
         Dict[str, str] | None
-            A dict with id, name and next_run if the job exists, otherwise None.
+            A dictionary with id, name and next_run if the job exists, otherwise None.
         """
         job = self.scheduler.get_job(job_id)
         return (
@@ -102,7 +102,7 @@ class WhiteRabbit:
         Returns
         -------
         List[Dict[str, str]]
-            A list of jobs. Each job is a dict with id, name and next_run.
+            A list of jobs. Each job is a dictionary with id, name and next_run.
         """
         jobs = self.scheduler.get_jobs()
 

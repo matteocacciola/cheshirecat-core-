@@ -13,7 +13,7 @@ class FormAgent(BaseAgent):
             # no active form
             return AgentOutput()
 
-        if active_form._state == CatFormState.CLOSED:
+        if active_form.state == CatFormState.CLOSED:
             # form is closed, delete it from working memory
             stray.working_memory.active_form = None
             return AgentOutput()
