@@ -19,9 +19,7 @@ class ModelInteraction(BaseModel):
     input_tokens: int
     started_at: float = Field(default_factory=lambda: time.time())
 
-    model_config = ConfigDict(
-        protected_namespaces=()
-    )
+    model_config = ConfigDict(protected_namespaces=())
 
 
 class LLMModelInteraction(ModelInteraction):

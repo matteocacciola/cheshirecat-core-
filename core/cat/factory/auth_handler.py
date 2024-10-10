@@ -1,12 +1,14 @@
-from typing import Type, Dict
+from typing import Type, Dict, TYPE_CHECKING
 from pydantic import BaseModel, ConfigDict
 
-from cat.looking_glass.cheshire_cat_manager import CheshireCatManager
 from cat.factory.custom_auth_handler import (
     # ApiKeyAuthHandler,
     BaseAuthHandler,
     CoreOnlyAuthHandler,
 )
+
+if TYPE_CHECKING:
+    from cat.looking_glass.cheshire_cat_manager import CheshireCatManager
 
 
 class AuthHandlerConfig(BaseModel):

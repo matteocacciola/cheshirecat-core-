@@ -1,4 +1,4 @@
-from typing import Type, List, Dict
+from typing import Type, List, Dict, TYPE_CHECKING
 from pydantic import BaseModel, ConfigDict, Field
 from langchain_cohere import CohereEmbeddings
 from langchain_community.embeddings import FakeEmbeddings, FastEmbedEmbeddings
@@ -8,7 +8,9 @@ from fastembed import TextEmbedding
 
 from cat.enums import Enum
 from cat.factory.custom_embedder import DumbEmbedder, CustomOpenAIEmbeddings
-from cat.looking_glass.cheshire_cat_manager import CheshireCatManager
+
+if TYPE_CHECKING:
+    from cat.looking_glass.cheshire_cat_manager import CheshireCatManager
 
 
 # Base class to manage LLM configuration.

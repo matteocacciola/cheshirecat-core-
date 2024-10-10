@@ -19,14 +19,14 @@ class UserBase(BaseModel):
 class UserCreate(UserBase):
     password: str = Field(min_length=5)
     # no additional fields allowed
-    model_config: ConfigDict = {"extra": "forbid"}
+    model_config = ConfigDict(extra="forbid")
 
 
 class UserUpdate(UserBase):
     username: str = Field(default=None, min_length=2)
     password: str = Field(default=None, min_length=4)
     permissions: Dict[str, List[str]] = None
-    model_config: ConfigDict = {"extra": "forbid"}
+    model_config = ConfigDict(extra="forbid")
 
 
 class UserResponse(UserBase):

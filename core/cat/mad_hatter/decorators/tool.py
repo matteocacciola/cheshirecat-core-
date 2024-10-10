@@ -1,6 +1,6 @@
 import inspect
 
-from typing import Union, Callable, List
+from typing import Callable, List
 from inspect import signature
 
 from langchain_core.tools import BaseTool
@@ -75,7 +75,7 @@ class CatTool(BaseTool):
 # @tool decorator, a modified version of a langchain Tool that also takes a Cat instance as argument
 # adapted from https://github.com/hwchase17/langchain/blob/master/langchain/agents/tools.py
 def tool(
-    *args: Union[str, Callable], return_direct: bool = False, examples: List[str] = None
+    *args: str | Callable, return_direct: bool = False, examples: List[str] = None
 ) -> Callable:
     """
     Make tools out of functions, can be used with or without arguments.

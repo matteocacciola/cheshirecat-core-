@@ -7,12 +7,14 @@ from langchain_community.llms import (
 from langchain_openai import ChatOpenAI, OpenAI
 from langchain_cohere import ChatCohere
 from langchain_google_genai import ChatGoogleGenerativeAI
-from typing import Type, Dict, List
+from typing import Type, Dict, List, TYPE_CHECKING
 import json
 from pydantic import BaseModel, ConfigDict
 
 from cat.factory.custom_llm import LLMDefault, LLMCustom, CustomOpenAI, CustomOllama
-from cat.looking_glass.cheshire_cat_manager import CheshireCatManager
+
+if TYPE_CHECKING:
+    from cat.looking_glass.cheshire_cat_manager import CheshireCatManager
 
 
 # Base class to manage LLM configuration.

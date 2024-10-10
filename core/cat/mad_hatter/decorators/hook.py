@@ -1,4 +1,4 @@
-from typing import Union, Callable
+from typing import Callable
 
 
 # class to represent a @hook
@@ -15,7 +15,7 @@ class CatHook:
 
 # @hook decorator. Any function in a plugin decorated by @hook and named properly (among list of available hooks) is used by the Cat
 # @hook priority defaults to 1, the higher the more important. Hooks in the default core plugin have all priority=0 so they are automatically overwritten from plugins
-def hook(*args: Union[str, Callable], priority: int = 1) -> Callable:
+def hook(*args: str | Callable, priority: int = 1) -> Callable:
     """
     Make hooks out of functions, can be used with or without arguments.
     Examples:

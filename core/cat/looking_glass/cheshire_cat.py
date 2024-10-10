@@ -14,7 +14,6 @@ from langchain_google_genai import ChatGoogleGenerativeAI
 
 from cat.agents.main_agent import MainAgent
 from cat.exceptions import LoadMemoryException
-from cat.factory.auth_handler import get_auth_handler_from_name
 import cat.factory.auth_handler as auth_handlers
 from cat.db import crud, models
 from cat.factory.embedder import (
@@ -35,6 +34,7 @@ from cat.mad_hatter.registry import registry_search_plugins
 from cat.memory.long_term_memory import LongTermMemory
 from cat.rabbit_hole import RabbitHole
 from cat import utils
+
 
 class Procedure(Protocol):
     name: str
@@ -306,7 +306,7 @@ class CheshireCat:
 
         # get AuthHandler factory class
         selected_auth_handler_class = selected_auth_handler["value"]["name"]
-        factory_class = get_auth_handler_from_name(selected_auth_handler_class, self.id)
+        factory_class = auth_handlers.get_auth_handler_from_name(selected_auth_handler_class, self.id)
 
         # obtain configuration and instantiate AuthHandler
         selected_auth_handler_config = crud.get_setting_by_name(name=selected_auth_handler_class, chatbot_id=self.id)

@@ -4,7 +4,7 @@ Here is a collection of methods to hook into the *Agent* execution pipeline.
 
 """
 
-from typing import List, Union, Dict
+from typing import List, Dict
 
 from cat.mad_hatter.decorators import hook
 
@@ -30,7 +30,7 @@ def before_agent_starts(agent_input: Dict, cat) -> Dict:
 
 
 @hook(priority=0)
-def agent_fast_reply(fast_reply: Dict, cat) -> Union[None, Dict]:
+def agent_fast_reply(fast_reply: Dict, cat) -> Dict | None:
     """This hook is useful to shortcut the Cat response.
     If you do not want the agent to run, return the final response from here and it will end up in the chat without the agent being executed.
 
@@ -43,7 +43,7 @@ def agent_fast_reply(fast_reply: Dict, cat) -> Union[None, Dict]:
 
     Returns
     --------
-    response : Union[None, Dict]
+    response : Dict | None
         Cat response if you want to avoid using the agent, or None / {} if you want the agent to be executed.
         See below for examples of Cat response
 

@@ -3,7 +3,7 @@ import time
 import json
 import mimetypes
 import httpx
-from typing import List, Dict
+from typing import List, Dict, TYPE_CHECKING
 from urllib.parse import urlparse
 from urllib.error import HTTPError
 from starlette.datastructures import UploadFile
@@ -15,11 +15,13 @@ from langchain_community.document_loaders.parsers.txt import TextParser
 from langchain_community.document_loaders.parsers.html.bs4 import BS4HTMLParser
 from langchain.document_loaders.blob_loaders.schema import Blob
 
-from cat.looking_glass.cheshire_cat import CheshireCat
-from cat.looking_glass.cheshire_cat_manager import CheshireCatManager
 from cat.looking_glass.stray_cat import StrayCat
 from cat.log import log
 from cat.memory.models import MemoryCollection
+
+if TYPE_CHECKING:
+    from cat.looking_glass.cheshire_cat_manager import CheshireCatManager
+    from cat.looking_glass.cheshire_cat import CheshireCat
 
 
 class RabbitHole:

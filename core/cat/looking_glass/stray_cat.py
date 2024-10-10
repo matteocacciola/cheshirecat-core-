@@ -1,9 +1,10 @@
+from __future__ import annotations
 import time
 import asyncio
 import traceback
 from asyncio import AbstractEventLoop
 import tiktoken
-from typing import Literal, get_args, List, Dict, Union, Any
+from typing import Literal, get_args, List, Dict, Any, TYPE_CHECKING
 from langchain.docstore.document import Document
 from langchain_core.language_models import BaseLanguageModel
 from langchain_core.messages import AIMessage, HumanMessage, SystemMessage, BaseMessage
@@ -13,20 +14,22 @@ from langchain_core.output_parsers.string import StrOutputParser
 from fastapi import WebSocket
 
 from cat import utils
-from cat.agents.base_agent import AgentOutput
-from cat.agents.main_agent import MainAgent
 from cat.auth.permissions import AuthUserInfo
 from cat.convo.messages import CatMessage, UserMessage, MessageWhy, Role, EmbedderModelInteraction
 from cat.env import get_env
 from cat.log import log
-from cat.looking_glass.cheshire_cat import CheshireCat
-from cat.looking_glass.cheshire_cat_manager import CheshireCatManager
-from cat.looking_glass.callbacks import NewTokenHandler, ModelInteractionHandler
 from cat.looking_glass.white_rabbit import WhiteRabbit
-from cat.mad_hatter.mad_hatter import MadHatter
 from cat.memory.models import MemoryCollection
-from cat.memory.working_memory import WorkingMemory
-from cat.rabbit_hole import RabbitHole
+
+if TYPE_CHECKING:
+    from cat.agents.base_agent import AgentOutput
+    from cat.agents.main_agent import MainAgent
+    from cat.looking_glass.cheshire_cat import CheshireCat
+    from cat.looking_glass.cheshire_cat_manager import CheshireCatManager
+    from cat.looking_glass.callbacks import NewTokenHandler, ModelInteractionHandler
+    from cat.mad_hatter.mad_hatter import MadHatter
+    from cat.memory.working_memory import WorkingMemory
+    from cat.rabbit_hole import RabbitHole
 
 MSG_TYPES = Literal["notification", "chat", "error", "chat_token"]
 
@@ -123,7 +126,7 @@ class StrayCat:
         else:
             self.__send_ws_json({"type": msg_type, "content": content})
 
-    def send_chat_message(self, message: Union[str, CatMessage], save=False):
+    def send_chat_message(self, message: str | CatMessage, save=False):
         if self.ws is None:
             log.warning(f"No websocket connection is open for user {self.user_id}")
             return
@@ -142,7 +145,7 @@ class StrayCat:
     def send_notification(self, content: str):
         self.send_ws_message(content=content, msg_type="notification")
 
-    def send_error(self, error: Union[str, Exception]):
+    def send_error(self, error: str | Exception):
         if self.ws is None:
             log.warning(f"No websocket connection is open for user {self.user_id}")
             return

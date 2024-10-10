@@ -6,7 +6,7 @@ from abc import ABC, abstractmethod
 from urllib.parse import urlencode
 from fastapi import Request, WebSocket, HTTPException, WebSocketException
 from fastapi.requests import HTTPConnection
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 
 from cat.auth.permissions import AuthPermission, AuthResource, AuthUserInfo
 from cat.looking_glass.cheshire_cat import CheshireCat
@@ -24,6 +24,8 @@ class Credentials(BaseModel):
 class ContextualCats(BaseModel):
     cheshire_cat: CheshireCat
     stray_cat: StrayCat
+
+    model_config = ConfigDict(arbitrary_types_allowed=True)
 
 
 class ConnectionAuth(ABC):

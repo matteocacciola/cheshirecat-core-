@@ -144,7 +144,7 @@ class UploadURLConfig(BaseModel):
         default={},
         description="Metadata to be stored with each chunk (e.g. author, category, etc.)"
     )
-    model_config: ConfigDict = {"extra": "forbid"}
+    model_config = ConfigDict(extra="forbid")
 
 @router.post("/web")
 async def upload_url(

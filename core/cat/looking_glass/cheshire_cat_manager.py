@@ -2,7 +2,6 @@ import asyncio
 
 from cat.env import get_env
 from cat.factory.custom_auth_handler import CoreAuthHandler
-from cat.jobs.job_on_idle_strays import job_on_idle_strays
 from cat.looking_glass.cheshire_cat import CheshireCat
 from cat.looking_glass.white_rabbit import WhiteRabbit
 from cat.utils import singleton
@@ -127,3 +126,19 @@ class CheshireCatManager:
     @property
     def cheshire_cats(self):
         return self.__cheshire_cats
+
+
+def job_on_idle_strays(cat_manager: CheshireCatManager) -> None:
+    """
+    Remove the objects StrayCat, if idle, from the CheshireCat objects contained into the CheshireCatManager.
+    """
+
+    ccats = cat_manager.cheshire_cats
+
+    for ccat in ccats:
+        for stray in ccat.strays:
+            if stray.is_idle:
+                ccat.remove_stray(stray)
+
+        if not ccat.has_strays():
+            cat_manager.remove_cheshire_cat(ccat.id)
