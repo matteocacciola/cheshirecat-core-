@@ -13,6 +13,7 @@ from langchain.evaluation import StringDistance, load_evaluator, EvaluatorType
 from langchain_core.output_parsers import JsonOutputParser
 from langchain_core.prompts import PromptTemplate
 from langchain_core.utils import get_colored_text
+from enum import Enum as BaseEnum, EnumMeta
 
 from cat.log import log
 from cat.env import get_env
@@ -200,8 +201,7 @@ def match_prompt_variables(
             log.warning(f"Prompt variable '{m}' not found in prompt template, removed")
             del prompt_variables[m]
         if m in tmp_prompt.input_variables:
-            prompt_template = \
-                prompt_template.replace("{" + m + "}", "")
+            prompt_template = prompt_template.replace("{" + m + "}", "")
             log.warning(f"Placeholder '{m}' not found in prompt variables, removed")
             
     return prompt_variables, prompt_template
@@ -242,6 +242,11 @@ def langchain_log_output(langchain_output, title):
         print(langchain_output)
     print(get_colored_text("========================================", "blue"))
     return langchain_output
+
+
+def format_upload_file(upload_file: UploadFile) -> UploadFile:
+    file_content = upload_file.file.read()
+    return UploadFile(filename=upload_file.filename, file=io.BytesIO(file_content))
 
 
 # This is our masterwork during tea time
@@ -313,6 +318,22 @@ class BaseModelDict(BaseModel):
         return key in self.keys()
 
 
-def format_upload_file(upload_file: UploadFile) -> UploadFile:
-    file_content = upload_file.file.read()
-    return UploadFile(filename=upload_file.filename, file=io.BytesIO(file_content))
+class MetaEnum(EnumMeta):
+    """
+    Enables the use of the `in` operator for enums.
+    For example:
+    if el not in Elements:
+        raise ValueError("invalid element")
+    """
+
+    def __contains__(cls, item):
+        try:
+            cls(item)  # pylint: disable=E1120
+        except ValueError:
+            return False
+        return True
+
+
+class Enum(BaseEnum, metaclass=MetaEnum):
+    def __str__(self):
+        return self.value

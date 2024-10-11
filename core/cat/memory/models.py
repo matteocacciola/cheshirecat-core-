@@ -1,4 +1,4 @@
-from cat.enums import Enum as BaseEnum
+from cat.utils import Enum as BaseEnum
 
 
 class MemoryCollection(BaseEnum):

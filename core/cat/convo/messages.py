@@ -3,8 +3,7 @@ from langchain_core.messages import AIMessage, HumanMessage
 from pydantic import BaseModel, Field, ConfigDict
 import time
 
-from cat.utils import BaseModelDict
-from cat.enums import Enum
+from cat.utils import BaseModelDict, Enum
 
 
 class Role(Enum):

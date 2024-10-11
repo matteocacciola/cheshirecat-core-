@@ -1,9 +1,10 @@
 import time
 from typing import List
 
-from cat.utils import BaseModelDict
+from cat.agents import AgentInput
 from cat.convo.messages import Role, UserMessage, ModelInteraction, MessageWhy
 from cat.experimental.form.cat_form import CatForm
+from cat.utils import BaseModelDict
 
 
 class WorkingMemory(BaseModelDict):
@@ -32,6 +33,8 @@ class WorkingMemory(BaseModelDict):
     episodic_memories: List = []
     declarative_memories: List = []
     procedural_memories: List = []
+
+    agent_input: AgentInput | None = None
 
     # track models usage
     model_interactions: List[ModelInteraction] = []

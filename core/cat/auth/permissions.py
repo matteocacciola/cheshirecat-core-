@@ -1,7 +1,6 @@
 from typing import Dict, List
 
-from cat.utils import BaseModelDict
-from cat.enums import Enum
+from cat.utils import BaseModelDict, Enum
 
 
 class AuthResource(Enum):

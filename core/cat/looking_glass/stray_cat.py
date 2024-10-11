@@ -352,9 +352,6 @@ class StrayCat:
         user_message = UserMessage.model_validate(message_dict)
         log.info(user_message)
 
-        ccat = self.cheshire_cat
-        mad_hatter = ccat.mad_hatter
-
         # set a few easy access variables
         self.working_memory.user_message_json = user_message
 
@@ -362,6 +359,7 @@ class StrayCat:
         self.working_memory.model_interactions = []
 
         # hook to modify/enrich user input
+        mad_hatter = self.cheshire_cat.mad_hatter
         self.working_memory.user_message_json = mad_hatter.execute_hook(
             "before_cat_reads_message", self.working_memory.user_message_json, cat=self
         )

@@ -4,6 +4,14 @@ from abc import ABC, abstractmethod
 from cat.utils import BaseModelDict
 
 
+class AgentInput(BaseModelDict):
+    episodic_memory: str
+    declarative_memory: str
+    tools_output: str
+    input: str
+    chat_history: str
+
+
 class AgentOutput(BaseModelDict):
     output: str | None = None
     intermediate_steps: List = []

@@ -2,9 +2,8 @@ import json
 from typing import List, Dict
 from pydantic import BaseModel, ValidationError
 
-from cat.enums import Enum
 from cat.log import log
-from cat.utils import parse_json
+from cat.utils import Enum, parse_json
 
 
 # Conversational Form State

@@ -30,7 +30,7 @@ class ProceduresAgent(BaseAgent):
         # Select and run useful procedures
         procedural_memories = stray.working_memory.procedural_memories
         if len(procedural_memories) > 0:
-            log.debug(f"Procedural memories retrived: {len(procedural_memories)}.")
+            log.debug(f"Procedural memories retrieved: {len(procedural_memories)}.")
 
             try:
                 procedures_result = await self.execute_procedures(stray)
@@ -42,14 +42,11 @@ class ProceduresAgent(BaseAgent):
                 intermediate_steps = procedures_result.intermediate_steps
 
                 # Adding the tools_output key in agent input, needed by the memory chain
-                # TODO: find a more elegant way to pass this information
                 if len(intermediate_steps) > 0:
                     stray.working_memory.agent_input.tools_output = "## Context of executed system tools: \n"
-                    for proc_res in intermediate_steps:
-                        # ((step[0].tool, step[0].tool_input), step[1])
-                        stray.working_memory.agent_input.tools_output += (
-                            f" - {proc_res[0][0]}: {proc_res[1]}\n"
-                        )
+                    stray.working_memory.agent_input.tools_output += " - ".join([
+                        f"{proc_res[0][0]}: {proc_res[1]}\n" for proc_res in intermediate_steps
+                    ])
                 return procedures_result
             except Exception as e:
                 log.error(e)
@@ -119,8 +116,9 @@ class ProceduresAgent(BaseAgent):
         }
 
         # Ensure prompt inputs and prompt placeholders map
-        prompt_variables, procedures_prompt_template = \
-            utils.match_prompt_variables(prompt_variables, procedures_prompt_template)
+        prompt_variables, procedures_prompt_template = utils.match_prompt_variables(
+            prompt_variables, procedures_prompt_template
+        )
 
         # Generate prompt
         prompt = ChatPromptTemplate(

@@ -3,7 +3,7 @@ from typing import List, Tuple, Dict
 from datetime import timedelta
 from langchain.docstore.document import Document
 
-from cat.agents.base_agent import BaseAgent, AgentOutput
+from cat.agents import AgentInput, AgentOutput, BaseAgent
 from cat.agents.memory_agent import MemoryAgent
 from cat.agents.procedures_agent import ProceduresAgent
 from cat.looking_glass import prompts
@@ -27,7 +27,7 @@ class MainAgent(BaseAgent):
         # Note: agent_input works both as a dict and as an object
         mad_hatter = stray.cheshire_cat.mad_hatter
 
-        agent_input : BaseModelDict = self.format_agent_input(stray)
+        agent_input: BaseModelDict = self.format_agent_input(stray)
         agent_input = mad_hatter.execute_hook(
             "before_agent_starts", agent_input, cat=stray
         )
@@ -55,7 +55,7 @@ class MainAgent(BaseAgent):
 
         # run tools and forms
         procedures_agent = ProceduresAgent()
-        procedures_agent_out : AgentOutput = await procedures_agent.execute(stray)
+        procedures_agent_out: AgentOutput = await procedures_agent.execute(stray)
         if procedures_agent_out.return_direct:
             return procedures_agent_out
 
@@ -63,7 +63,7 @@ class MainAgent(BaseAgent):
         # - no procedures were recalled or selected or
         # - procedures have all return_direct=False
         memory_agent = MemoryAgent()
-        memory_agent_out : AgentOutput = await memory_agent.execute(
+        memory_agent_out: AgentOutput = await memory_agent.execute(
             # TODO: should all agents only receive stray?
             stray, prompt_prefix=prompt_prefix, prompt_suffix=prompt_suffix
         )
@@ -72,7 +72,7 @@ class MainAgent(BaseAgent):
 
         return memory_agent_out
 
-    def format_agent_input(self, stray):
+    def format_agent_input(self, stray) -> AgentInput:
         """Format the input for the Agent.
 
         The method formats the strings of recalled memories and chat history that will be provided to the Langchain
@@ -85,7 +85,7 @@ class MainAgent(BaseAgent):
 
         Returns
         -------
-        BaseModelDict
+        AgentInput
             Formatted output to be parsed by the Agent executor. Works both as a dictionary and as an object.
 
         Notes
@@ -113,7 +113,7 @@ class MainAgent(BaseAgent):
         # TODOV2: take away
         conversation_history_formatted_content = stray.stringify_chat_history()
 
-        return BaseModelDict(**{
+        return AgentInput(**{
             "episodic_memory": episodic_memory_formatted_content,
             "declarative_memory": declarative_memory_formatted_content,
             "tools_output": "",
