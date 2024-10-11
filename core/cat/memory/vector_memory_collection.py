@@ -22,6 +22,8 @@ from qdrant_client.http.models import (
     OptimizersConfigDiff,
     Record,
     UpdateResult,
+    HasIdCondition,
+    Payload,
 )
 from langchain.docstore.document import Document
 
@@ -48,8 +50,6 @@ class VectorMemoryCollection:
         self.embedder_name = embedder_name
         self.embedder_size = embedder_size
 
-        self.__db_collection_name = f"{self.collection_name}_{self.__chatbot_id}"
-
         # Check if memory collection exists also in vectorDB, otherwise create it
         self.create_db_collection_if_not_exists()
 
@@ -58,43 +58,43 @@ class VectorMemoryCollection:
 
         # log collection info
         log.debug(f"Chatbot {self.__chatbot_id}, Collection {self.collection_name}:")
-        log.debug(self.client.get_collection(self.__db_collection_name))
+        log.debug(self.client.get_collection(self.collection_name))
 
     def check_embedding_size(self):
         # having the same size does not necessarily imply being the same embedder
         # having vectors with the same size but from different embedder in the same vector space is wrong
         same_size = (
-            self.client.get_collection(self.__db_collection_name).config.params.vectors.size
+            self.client.get_collection(self.collection_name).config.params.vectors.size
             == self.embedder_size
         )
         alias = self.embedder_name + "_" + self.collection_name
         if (
-            same_size and alias == self.client.get_collection_aliases(self.__db_collection_name)
+            same_size and alias == self.client.get_collection_aliases(self.collection_name)
                 .aliases[0]
                 .alias_name
         ):
-            log.debug(f'Chatbot {self.__chatbot_id}, Collection "{self.collection_name}" has the same embedder')
-        else:
-            log.warning(f'Chatbot {self.__chatbot_id}, Collection "{self.collection_name}" has different embedder')
-            # Memory snapshot saving can be turned off in the .env file with:
-            # SAVE_MEMORY_SNAPSHOTS=false
-            if get_env("CCAT_SAVE_MEMORY_SNAPSHOTS") == "true":
-                # dump collection on disk before deleting
-                self.save_dump()
-                log.info(f"Chatbot {self.__chatbot_id}, Dump '{self.collection_name}' completed")
+            log.debug(f"Collection \"{self.collection_name}\" has the same embedder")
+            return
 
-            self.wipe()
-            log.warning(f"Chatbot {self.__chatbot_id}, Collection '{self.collection_name}' deleted")
-            self.create_collection()
+        log.warning(f"Collection \"{self.collection_name}\" has different embedder")
+        # Memory snapshot saving can be turned off in the .env file with:
+        # SAVE_MEMORY_SNAPSHOTS=false
+        if get_env("CCAT_SAVE_MEMORY_SNAPSHOTS") == "true":
+            # dump collection on disk before deleting
+            self.save_dump()
+
+        self.wipe()
+        log.warning(f"Collection \"{self.collection_name}\" deleted")
+        self.create_collection()
 
     def create_db_collection_if_not_exists(self):
         # is collection present in DB?
         collections_response = self.client.get_collections()
         for c in collections_response.collections:
-            if c.name == self.__db_collection_name:
+            if c.name == self.collection_name:
                 # collection exists. Do nothing
                 log.info(
-                    f"Chatbot {self.__chatbot_id}, Collection '{self.collection_name}' already present in vector store"
+                    f"Collection \"{self.collection_name}\" already present in vector store"
                 )
                 return
 
@@ -102,9 +102,9 @@ class VectorMemoryCollection:
 
     # create collection
     def create_collection(self):
-        log.warning(f"Chatbot {self.__chatbot_id}, Creating collection '{self.collection_name}' ...")
+        log.warning(f"Creating collection \"{self.collection_name}\" ...")
         self.client.recreate_collection(
-            collection_name=self.__db_collection_name,
+            collection_name=self.collection_name,
             vectors_config=VectorParams(
                 size=self.embedder_size, distance=Distance.COSINE
             ),
@@ -122,7 +122,7 @@ class VectorMemoryCollection:
             change_aliases_operations=[
                 CreateAliasOperation(
                     create_alias=CreateAlias(
-                        collection_name=self.__db_collection_name,
+                        collection_name=self.collection_name,
                         alias_name=self.embedder_name + "_" + self.collection_name,
                     )
                 )
@@ -130,17 +130,24 @@ class VectorMemoryCollection:
         )
 
     # adapted from https://github.com/langchain-ai/langchain/blob/bfc12a4a7644cfc4d832cc4023086a7a5374f46a/libs/langchain/langchain/vectorstores/qdrant.py#L1965
-    def _qdrant_filter_from_dict(self, filter: Dict) -> Filter | None:
-        if not filter:
+    def _qdrant_filter_from_dict(self, dict_filter: Dict) -> Filter | None:
+        if not dict_filter:
             return None
 
         return Filter(
-            must=[
-                condition
-                for key, value in filter.items()
-                for condition in self._build_condition(key, value)
-            ]
+            must=[condition for key, value in dict_filter.items() for condition in self._build_condition(key, value)]
         )
+
+    def _qdrant_build_tenant_filter(self) -> Filter:
+        return Filter(must=[FieldCondition(key="group_id", match=MatchValue(value=self.__chatbot_id))])
+
+    def _qdrant_combine_filter_with_tenant(self, other_filter: Filter | None = None):
+        combined_filter = self._qdrant_build_tenant_filter()
+
+        if other_filter:
+            combined_filter = Filter(must=[*combined_filter.must, *other_filter.must])
+
+        return combined_filter
 
     # adapted from https://github.com/langchain-ai/langchain/blob/bfc12a4a7644cfc4d832cc4023086a7a5374f46a/libs/langchain/langchain/vectorstores/qdrant.py#L1941
     def _build_condition(self, key: str, value: Any) -> List[FieldCondition]:
@@ -175,7 +182,17 @@ class VectorMemoryCollection:
             the list of points
         """
 
-        return self.client.retrieve(collection_name=self.__db_collection_name, ids=points)
+        filter = self._qdrant_combine_filter_with_tenant(Filter(must=[HasIdCondition(has_id=points)]))
+        results = self.client.scroll(
+            collection_name=self.collection_name,
+            scroll_filter=filter,
+            limit=len(points),
+            with_payload=True,
+            with_vectors=True,
+        )
+
+        points_found, _ = results
+        return points_found
 
     def add_point(
         self,
@@ -198,29 +215,26 @@ class VectorMemoryCollection:
             PointStruct: The stored point.
         """
 
-        # TODO: may be adapted to upload batches of points as langchain does.
-        # Not necessary now as the bottleneck is the embedder
         point = PointStruct(
             id=id or uuid.uuid4().hex,
             payload={
                 "page_content": content,
                 "metadata": metadata,
+                "group_id": self.__chatbot_id,
             },
             vector=vector,
         )
 
-        update_status = self.client.upsert(
-            collection_name=self.__db_collection_name, points=[point], **kwargs
-        )
+        update_status = self.client.upsert(collection_name=self.collection_name, points=[point], **kwargs)
 
         if update_status.status == "completed":
             # returning stored point
             return point # TODOV2 return internal MemoryPoint
-        else:
-            return None
+
+        return None
 
     # add points in collection
-    def add_points(self, ids: List, payloads: List, vectors: List):
+    def add_points(self, ids: List, payloads: List[Payload], vectors: List):
         """
         Upsert memories in batch mode
         Args:
@@ -232,25 +246,30 @@ class VectorMemoryCollection:
             the response of the upsert operation
         """
 
+        for p in payloads:
+            p["group_id"] = self.__chatbot_id
+
         points = Batch(ids=ids, payloads=payloads, vectors=vectors)
 
         res = self.client.upsert(
-            collection_name=self.__db_collection_name,
+            collection_name=self.collection_name,
             points=points,
         )
         return res
 
     def delete_points_by_metadata_filter(self, metadata=None) -> UpdateResult:
+        combined_filter = self._qdrant_combine_filter_with_tenant(self._qdrant_filter_from_dict(metadata))
+
         res = self.client.delete(
-            collection_name=self.__db_collection_name,
-            points_selector=self._qdrant_filter_from_dict(metadata),
+            collection_name=self.collection_name,
+            points_selector=combined_filter,
         )
         return res
 
     # delete point in collection
     def delete_points(self, points_ids: List) -> UpdateResult:
         res = self.client.delete(
-            collection_name=self.__db_collection_name,
+            collection_name=self.collection_name,
             points_selector=points_ids,
         )
         return res
@@ -259,11 +278,13 @@ class VectorMemoryCollection:
     def recall_memories_from_embedding(
             self, embedding, metadata: Dict | None = None, k: int | None = 5, threshold: float | None =None
     ) -> List:
+        combined_filter = self._qdrant_combine_filter_with_tenant(self._qdrant_filter_from_dict(metadata))
+
         # retrieve memories
         memories = self.client.search(
-            collection_name=self.__db_collection_name,
+            collection_name=self.collection_name,
             query_vector=embedding,
-            query_filter=self._qdrant_filter_from_dict(metadata),
+            query_filter=combined_filter,
             with_payload=True,
             with_vectors=True,
             limit=k,
@@ -299,10 +320,13 @@ class VectorMemoryCollection:
         return langchain_documents_from_points
 
     # retrieve all the points in the collection
-    def get_all_points(self):
+    def get_all_points(self) -> List[Record]:
+        tenant_filter = self._qdrant_build_tenant_filter()
+
         # retrieving the points
         all_points, _ = self.client.scroll(
-            collection_name=self.__db_collection_name,
+            collection_name=self.collection_name,
+            scroll_filter=tenant_filter,
             with_vectors=True,
             limit=10000,  # yeah, good for now dear :*
         )
@@ -314,8 +338,6 @@ class VectorMemoryCollection:
 
     # dump collection on disk before deleting
     def save_dump(self, folder="dormouse/"):
-        folder = os.path.join(folder, self.__chatbot_id)
-
         # only do snapshotting if using remote Qdrant
         if not self.db_is_remote():
             return
@@ -324,44 +346,46 @@ class VectorMemoryCollection:
         port = self.client._client._port
 
         if os.path.isdir(folder):
-            log.info(f"Chatbot {self.__chatbot_id}, Directory dormouse exists")
+            log.info(f"Directory dormouse exists")
         else:
-            log.warning(f"Chatbot {self.__chatbot_id}, Directory dormouse does NOT exists, creating it.")
+            log.warning(f"Directory dormouse does NOT exists, creating it.")
             os.mkdir(folder)
 
-        self.snapshot_info = self.client.create_snapshot(
-            collection_name=self.__db_collection_name
-        )
+        self.snapshot_info = self.client.create_snapshot(collection_name=self.collection_name)
         snapshot_url_in = (
             "http://"
             + str(host)
             + ":"
             + str(port)
             + "/collections/"
-            + self.__db_collection_name
+            + self.collection_name
             + "/snapshots/"
             + self.snapshot_info.name
         )
         snapshot_url_out = os.path.join(folder, self.snapshot_info.name)
         # rename snapshots for an easier restore in the future
-        alias = self.client.get_collection_aliases(self.__db_collection_name).aliases[0].alias_name
+        alias = self.client.get_collection_aliases(self.collection_name).aliases[0].alias_name
         response = requests.get(snapshot_url_in)
         open(snapshot_url_out, "wb").write(response.content)
 
         new_name = os.path.join(folder, alias.replace("/", "-") + ".snapshot")
         os.rename(snapshot_url_out, new_name)
 
-        for s in self.client.list_snapshots(self.__db_collection_name):
-            self.client.delete_snapshot(collection_name=self.__db_collection_name, snapshot_name=s.name)
-        log.warning(f'Chatbot {self.__chatbot_id}, Dump "{new_name}" completed')
+        for s in self.client.list_snapshots(self.collection_name):
+            self.client.delete_snapshot(collection_name=self.collection_name, snapshot_name=s.name)
+        log.warning(f"Dump \"{new_name}\" completed")
 
     def get_vectors_count(self) -> int:
-        return self.client.count(collection_name=self.__db_collection_name).count
+        tenant_filter = self._qdrant_build_tenant_filter()
+
+        return self.client.count(collection_name=self.collection_name, count_filter=tenant_filter).count
 
     def wipe(self) -> bool:
+        tenant_filter = self._qdrant_build_tenant_filter()
+
         try:
-            self.client.delete_collection(collection_name=self.__db_collection_name)
+            self.client.delete(collection_name=self.collection_name, points_selector=tenant_filter)
             return True
         except Exception as e:
-            log.error(f"Chatbot {self.__chatbot_id}, Error deleting collection {self.collection_name}: {e}")
+            log.error(f"Error deleting collection {self.collection_name}: {e}")
             return False
