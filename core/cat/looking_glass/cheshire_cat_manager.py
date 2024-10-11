@@ -1,5 +1,6 @@
 import asyncio
 
+from cat.agents.main_agent import MainAgent
 from cat.env import get_env
 from cat.factory.custom_auth_handler import CoreAuthHandler
 from cat.looking_glass.cheshire_cat import CheshireCat
@@ -32,6 +33,9 @@ class CheshireCatManager:
         )
 
         self.core_auth_handler = CoreAuthHandler()
+
+        # Main agent instance (for reasoning)
+        self.main_agent = MainAgent()
 
     def __next(self, chatbot_id: str) -> CheshireCat | None:
         return next(

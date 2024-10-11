@@ -395,7 +395,7 @@ class StrayCat:
 
         # reply with agent
         try:
-            agent_output: AgentOutput = await ccat.main_agent.execute(self)
+            agent_output: AgentOutput = await self.main_agent.execute(self)
         except Exception as e:
             # This error happens when the LLM
             #   does not respect prompt instructions.
@@ -620,7 +620,7 @@ Allowed classes are:
 
     @property
     def main_agent(self) -> MainAgent:
-        return self.cheshire_cat.main_agent
+        return CheshireCatManager().main_agent
 
     @property
     def white_rabbit(self) -> WhiteRabbit:

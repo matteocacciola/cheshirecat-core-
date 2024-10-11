@@ -3,7 +3,7 @@ import time
 import json
 import mimetypes
 import httpx
-from typing import List, Dict, TYPE_CHECKING
+from typing import List, Dict
 from urllib.parse import urlparse
 from urllib.error import HTTPError
 from starlette.datastructures import UploadFile
@@ -16,6 +16,7 @@ from langchain_community.document_loaders.parsers.html.bs4 import BS4HTMLParser
 from langchain.document_loaders.blob_loaders.schema import Blob
 
 from cat.log import log
+from cat.mad_hatter.mad_hatter import MadHatter
 from cat.memory.models import MemoryCollection
 
 
@@ -36,7 +37,7 @@ class RabbitHole:
         }
 
         # no access to stray
-        self.__file_handlers = self.__ccat.mad_hatter.execute_hook(
+        self.__file_handlers = self.mad_hatter.execute_hook(
             "rabbithole_instantiates_parsers", self.__file_handlers, cat=self.__ccat
         )
 
@@ -52,7 +53,7 @@ class RabbitHole:
         )
 
         # no access to stray
-        self.__text_splitter = self.__ccat.mad_hatter.execute_hook(
+        self.__text_splitter = self.mad_hatter.execute_hook(
             "rabbithole_instantiates_splitter", self.__text_splitter, cat=self.__ccat
         )
 
@@ -81,7 +82,7 @@ class RabbitHole:
 
         # Check the embedder used for the uploaded memories is the same the Cat is using now
         upload_embedder = memories["embedder"]
-        cat_embedder = str(self.__ccat.embedder.__class__.__name__)
+        cat_embedder = str(self.embedder.__class__.__name__)
 
         if upload_embedder != cat_embedder:
             message = f"Embedder mismatch: file embedder {upload_embedder} is different from {cat_embedder}"
@@ -101,7 +102,7 @@ class RabbitHole:
         log.info(f"Preparing to load {len(vectors)} vector memories")
 
         # Check embedding size is correct
-        embedder_size = self.__ccat.memory.vectors.declarative.embedder_size
+        embedder_size = self.memory.vectors.declarative.embedder_size
         len_mismatch = [len(v) == embedder_size for v in vectors]
 
         if not any(len_mismatch):
@@ -111,7 +112,7 @@ class RabbitHole:
             raise Exception(message)
 
         # Upsert memories in batch mode
-        self.__ccat.memory.vectors.declarative.add_points(ids, payloads, vectors)
+        self.memory.vectors.declarative.add_points(ids, payloads, vectors)
 
     def ingest_file(
         self,
@@ -490,3 +491,15 @@ class RabbitHole:
     def text_splitter(self):
         self.__reload_text_splitter()
         return self.__text_splitter
+
+    @property
+    def embedder(self):
+        return self.__ccat.embedder
+
+    @property
+    def memory(self):
+        return self.__ccat.memory
+
+    @property
+    def mad_hatter(self) -> MadHatter:
+        return self.__ccat.mad_hatter

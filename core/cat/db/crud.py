@@ -30,9 +30,8 @@ def __set(key: str, value: List | Dict) -> List | Dict | None:
         raise ValueError(f"Unexpected type for Redis value: {type(new)}")
 
 
-def get_settings(search: str = "", **kwargs) -> List[Dict]:
-    chatbot_id: str = kwargs.get("chatbot_id")
-    settings: List[Dict] = __get(chatbot_id)
+def get_settings(key_id: str, search: str = "") -> List[Dict]:
+    settings: List[Dict] = __get(key_id)
     if not settings:
         return []
 
@@ -43,28 +42,24 @@ def get_settings(search: str = "", **kwargs) -> List[Dict]:
     return settings
 
 
-def get_settings_by_category(category: str, **kwargs) -> List[Dict]:
-    chatbot_id: str = kwargs.get("chatbot_id")
-    settings: List[Dict] = __get(chatbot_id)
+def get_settings_by_category(key_id: str, category: str) -> List[Dict]:
+    settings: List[Dict] = __get(key_id)
     if not settings:
         return []
 
     return [setting for setting in settings if setting["category"] == category]
 
 
-def create_setting(payload: Setting, **kwargs) -> Dict:
-    chatbot_id: str = kwargs.get("chatbot_id")
-
-    settings: List[Dict] = __get(chatbot_id) or []
+def create_setting(key_id: str, payload: Setting) -> Dict:
+    settings: List[Dict] = __get(key_id) or []
     settings.append(payload.model_dump())
 
     # create and retrieve the record we just created
-    return __set(chatbot_id, settings)
+    return __set(key_id, settings)
 
 
-def get_setting_by_name(name: str, **kwargs) -> Dict | None:
-    chatbot_id: str = kwargs.get("chatbot_id")
-    settings: List[Dict] = __get(chatbot_id)
+def get_setting_by_name(key_id: str, name: str) -> Dict | None:
+    settings: List[Dict] = __get(key_id)
     if not settings:
         return None
 
@@ -72,9 +67,8 @@ def get_setting_by_name(name: str, **kwargs) -> Dict | None:
     return settings[0] if settings else None
 
 
-def get_setting_by_id(setting_id: str, **kwargs) -> Dict | None:
-    chatbot_id: str = kwargs.get("chatbot_id")
-    settings: List[Dict] = __get(chatbot_id)
+def get_setting_by_id(key_id: str, setting_id: str) -> Dict | None:
+    settings: List[Dict] = __get(key_id)
 
     settings = [setting for setting in settings if setting["setting_id"] == setting_id]
     if not settings:
@@ -83,31 +77,28 @@ def get_setting_by_id(setting_id: str, **kwargs) -> Dict | None:
     return settings[0]
 
 
-def delete_setting_by_id(setting_id: str, **kwargs) -> None:
-    chatbot_id: str = kwargs.get("chatbot_id")
-    settings: List[Dict] = __get(chatbot_id)
+def delete_setting_by_id(key_id: str, setting_id: str) -> None:
+    settings: List[Dict] = __get(key_id)
 
     if not settings:
         return
 
     settings = [setting for setting in settings if setting["setting_id"] != setting_id]
-    __set(chatbot_id, settings)
+    __set(key_id, settings)
 
 
-def delete_settings_by_category(category: str, **kwargs) -> None:
-    chatbot_id: str = kwargs.get("chatbot_id")
-    settings: List[Dict] = __get(chatbot_id)
+def delete_settings_by_category(key_id: str, category: str) -> None:
+    settings: List[Dict] = __get(key_id)
 
     if not settings:
         return
 
     settings = [setting for setting in settings if setting["category"] != category]
-    __set(chatbot_id, settings)
+    __set(key_id, settings)
 
 
-def update_setting_by_id(payload: Setting, **kwargs) -> Dict | None:
-    chatbot_id: str = kwargs.get("chatbot_id")
-    settings: List[Dict] = __get(chatbot_id)
+def update_setting_by_id(key_id: str, payload: Setting) -> Dict | None:
+    settings: List[Dict] = __get(key_id)
 
     if not settings:
         return None
@@ -116,35 +107,34 @@ def update_setting_by_id(payload: Setting, **kwargs) -> Dict | None:
         if setting["setting_id"] == payload.setting_id:
             setting.update(payload.model_dump())
 
-    __set(chatbot_id, settings)
-    return get_setting_by_id(payload.setting_id)
+    __set(key_id, settings)
+    return get_setting_by_id(key_id, payload.setting_id)
 
 
-def upsert_setting_by_name(payload: Setting, **kwargs) -> Dict:
-    chatbot_id: str = kwargs.get("chatbot_id")
-    old_setting = get_setting_by_name(payload.name, chatbot_id=chatbot_id)
+def upsert_setting_by_name(key_id: str, payload: Setting) -> Dict:
+    old_setting = get_setting_by_name(key_id, payload.name)
 
     if not old_setting:
-        create_setting(payload, chatbot_id=chatbot_id)
+        create_setting(key_id, payload)
     else:
-        settings: List[Dict] = __get(chatbot_id) or []
+        settings: List[Dict] = __get(key_id) or []
         for setting in settings:
             if setting["name"] == payload.name:
                 setting.update(payload.model_dump())
 
-        __set(chatbot_id, settings)
+        __set(key_id, settings)
 
-    return get_setting_by_name(payload.name, chatbot_id=chatbot_id)
+    return get_setting_by_name(key_id, payload.name)
 
 
 # We store users in a setting and when there will be a graph db in the cat, we will store them there.
 # P.S.: I'm not proud of this.
 # create admin user and an ordinary user
-def create_basic_users(**kwargs) -> None:
+def create_basic_users(key_id: str) -> None:
     admin_id = str(uuid4())
     user_id = str(uuid4())
 
-    update_users({
+    update_users(key_id, {
         admin_id: {
             "id": admin_id,
             "username": "admin",
@@ -159,17 +149,16 @@ def create_basic_users(**kwargs) -> None:
             # user has minor permissions
             "permissions": get_base_permissions()
         }
-    }, **kwargs)
+    })
 
 
-def get_users(**kwargs) -> Dict[str, Dict]:
-    users = get_setting_by_name("users", **kwargs)
+def get_users(key_id: str) -> Dict[str, Dict]:
+    users = get_setting_by_name(key_id, "users")
     return users["value"] if users else {}
 
 
-def create_user(new_user: Dict, **kwargs) -> Dict | None:
-    chatbot_id: str = kwargs.get("chatbot_id")
-    users_db = get_users(chatbot_id=chatbot_id)
+def create_user(key_id: str, new_user: Dict) -> Dict | None:
+    users_db = get_users(key_id)
 
     # check for user duplication with shameful loop
     for u in users_db.values():
@@ -182,25 +171,21 @@ def create_user(new_user: Dict, **kwargs) -> Dict | None:
     # create user
     new_id = str(uuid4())
     users_db[new_id] = {"id": new_id, **new_user}
-    update_users(users_db, chatbot_id=chatbot_id)
+    update_users(key_id, users_db)
 
     return users_db[new_id]
 
 
-def get_user(user_id: str, **kwargs) -> Dict | None:
-    chatbot_id: str = kwargs.get("chatbot_id")
-
-    users_db = get_users(chatbot_id=chatbot_id)
+def get_user(key_id, user_id: str) -> Dict | None:
+    users_db = get_users(key_id)
     if user_id not in users_db:
         return None
 
     return users_db[user_id]
 
 
-def get_user_by_username(username: str, **kwargs) -> Dict | None:
-    chatbot_id: str = kwargs.get("chatbot_id")
-
-    users_db = get_users(chatbot_id=chatbot_id)
+def get_user_by_username(key_id: str, username: str) -> Dict | None:
+    users_db = get_users(key_id)
     for user in users_db.values():
         if user["username"] == username:
             return user
@@ -208,32 +193,29 @@ def get_user_by_username(username: str, **kwargs) -> Dict | None:
     return None
 
 
-def update_user(user_id: str, updated_info: Dict, **kwargs) -> Dict:
-    chatbot_id: str = kwargs.get("chatbot_id")
-    users_db = get_users(chatbot_id=chatbot_id)
-
+def update_user(key_id: str, user_id: str, updated_info: Dict) -> Dict:
+    users_db = get_users(key_id)
     users_db[user_id] = updated_info
 
-    return update_users(users_db, **kwargs)
+    return update_users(key_id, users_db)
 
 
-def delete_user(user_id: str, **kwargs) -> Dict | None:
-    chatbot_id: str = kwargs.get("chatbot_id")
-    users_db = get_users(chatbot_id=chatbot_id)
+def delete_user(key_id: str, user_id: str) -> Dict | None:
+    users_db = get_users(key_id)
 
     if user_id not in users_db:
         return None
 
     user = users_db.pop(user_id)
-    update_users(users_db, **kwargs)
+    update_users(key_id, users_db)
 
     return user
 
 
-def update_users(users: Dict[str, Dict], **kwargs) -> Dict | None:
+def update_users(key_id, users: Dict[str, Dict]) -> Dict | None:
     updated_users = Setting(name="users", value=users)
 
-    return upsert_setting_by_name(updated_users, **kwargs)
+    return upsert_setting_by_name(key_id, updated_users)
 
 
 def flush_db():
@@ -241,18 +223,18 @@ def flush_db():
     return True
 
 
-def get_all(**kwargs):
-    return __get(kwargs.get("chatbot_id"))
+def get_all(key_id: str):
+    return __get(key_id)
 
 
-def get_user_by_credentials(username: str, password: str, chatbot_id: str = "chatbot") -> Dict | None:
+def get_user_by_credentials(key_id: str, username: str, password: str) -> Dict | None:
     """
     Get a user by their username and password. If the user is not found, return None.
 
     Args:
+        key_id: the key to look for Redis
         username: the username of the user to look for
         password: the password of the user to look for
-        chatbot_id: the chatbot ID to look for the user in (default: "chatbot")
 
     Returns:
         The user if found, None otherwise. The user has the format:
@@ -264,7 +246,7 @@ def get_user_by_credentials(username: str, password: str, chatbot_id: str = "cha
         }
     """
 
-    users = get_users(chatbot_id=chatbot_id)
+    users = get_users(key_id)
     for user in users.values():
         if user["username"] == username and check_password(password, user["password"]):
             return user

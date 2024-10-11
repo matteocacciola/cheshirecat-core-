@@ -22,12 +22,12 @@ def get_llms_settings(
 
     # get selected LLM, if any
     # llm selected configuration is saved under "llm_selected" name
-    selected = crud.get_setting_by_name(name="llm_selected", chatbot_id=ccat.id)
+    selected = crud.get_setting_by_name(ccat.id, "llm_selected")
     if selected is not None:
         selected = selected["value"]["name"]
 
     # llm type and config are saved in settings table under "llm_factory" category
-    saved_settings = crud.get_settings_by_category(category="llm_factory", chatbot_id=ccat.id)
+    saved_settings = crud.get_settings_by_category(ccat.id, "llm_factory")
     saved_settings = {s["name"]: s for s in saved_settings}
 
     settings = [{
@@ -63,7 +63,7 @@ def get_llm_settings(
             },
         )
 
-    setting = crud.get_setting_by_name(name=language_model_name, chatbot_id=ccat.id)
+    setting = crud.get_setting_by_name(ccat.id, language_model_name)
     schema = llm_schemas[language_model_name]
 
     setting = {} if setting is None else setting["value"]

@@ -161,7 +161,7 @@ class MadHatter:
         return plugin_id in self.plugins.keys()
 
     def load_active_plugins_from_db(self):
-        active_plugins = crud.get_setting_by_name("active_plugins", chatbot_id=self.chatbot_id)
+        active_plugins = crud.get_setting_by_name(self.chatbot_id, "active_plugins")
 
         if active_plugins is None:
             active_plugins = []
@@ -216,7 +216,7 @@ class MadHatter:
 
             # update DB with list of active plugins, delete duplicate plugins
             active_plugins = list(set(self.active_plugins))
-            crud.upsert_setting_by_name(Setting(name="active_plugins", value=active_plugins), chatbot_id=self.chatbot_id)
+            crud.upsert_setting_by_name(self.chatbot_id, Setting(name="active_plugins", value=active_plugins))
 
             # update cache and embeddings
             self.sync_hooks_tools_and_forms()

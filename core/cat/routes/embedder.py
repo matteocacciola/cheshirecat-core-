@@ -20,7 +20,7 @@ def get_embedders_settings(
     ccat = cats.cheshire_cat
 
     # embedder type and config are saved in settings table under "embedder_factory" category
-    saved_settings = crud.get_settings_by_category(category="embedder_factory", chatbot_id=ccat.id)
+    saved_settings = crud.get_settings_by_category(ccat.id, "embedder_factory")
     saved_settings = {s["name"]: s for s in saved_settings}
 
     settings = [{
@@ -56,7 +56,7 @@ def get_embedder_settings(
             },
         )
 
-    setting = crud.get_setting_by_name(name=language_embedder_name, chatbot_id=ccat.id)
+    setting = crud.get_setting_by_name(ccat.id, language_embedder_name)
     schema = embedder_schemas[language_embedder_name]
 
     setting = {} if setting is None else setting["value"]

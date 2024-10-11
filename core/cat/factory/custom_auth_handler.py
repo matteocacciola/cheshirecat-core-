@@ -69,7 +69,7 @@ class CoreAuthHandler(BaseAuthHandler):
             return None
 
         # get user from DB
-        users = get_users(chatbot_id=chatbot_id)
+        users = get_users(chatbot_id)
         if payload["sub"] not in users.keys():
             # do not pass
             return None
@@ -150,7 +150,7 @@ class CoreAuthHandler(BaseAuthHandler):
         # brutal search over users, which are stored in a simple dictionary.
         # waiting to have graph in core to store them properly
         # TODOAUTH: get rid of this shameful loop
-        user = get_user_by_credentials(username, password, chatbot_id=chatbot_id)
+        user = get_user_by_credentials(chatbot_id, username, password)
         if not user:
             return None
 

@@ -12,7 +12,6 @@ from langchain_community.llms import Cohere
 from langchain_openai import ChatOpenAI, OpenAI
 from langchain_google_genai import ChatGoogleGenerativeAI
 
-from cat.agents.main_agent import MainAgent
 from cat.exceptions import LoadMemoryException
 import cat.factory.auth_handler as auth_handlers
 from cat.db import crud, models
@@ -93,9 +92,6 @@ class CheshireCat:
         # every time the mad_hatter finishes syncing hooks, tools and forms, it will notify the Cat (so it can embed tools in vector memory)
         self.mad_hatter.on_finish_plugins_sync_callback = self.embed_procedures
         self.embed_procedures()  # first time launched manually
-
-        # Main agent instance (for reasoning)
-        self.main_agent = MainAgent()
 
         # Rabbit Hole Instance
         self.rabbit_hole = RabbitHole(self)
@@ -199,7 +195,7 @@ class CheshireCat:
 
         """
 
-        selected_llm = crud.get_setting_by_name(name="llm_selected", chatbot_id=self.id)
+        selected_llm = crud.get_setting_by_name(self.id, "llm_selected")
 
         if selected_llm is None:
             # return default LLM
@@ -210,7 +206,7 @@ class CheshireCat:
             factory_class = get_llm_from_name(selected_llm_class, self.mad_hatter)
 
             # obtain configuration and instantiate LLM
-            selected_llm_config = crud.get_setting_by_name(name=selected_llm_class, chatbot_id=self.id)
+            selected_llm_config = crud.get_setting_by_name(self.id, selected_llm_class)
             try:
                 llm = factory_class.get_llm_from_config(selected_llm_config["value"])
             except Exception:
@@ -236,7 +232,7 @@ class CheshireCat:
         """
         # Embedding LLM
 
-        selected_embedder = crud.get_setting_by_name(name="embedder_selected", chatbot_id=self.id)
+        selected_embedder = crud.get_setting_by_name(self.id, "embedder_selected")
 
         if selected_embedder is not None:
             # get Embedder factory class
@@ -244,7 +240,7 @@ class CheshireCat:
             factory_class = get_embedder_from_name(selected_embedder_class, self.mad_hatter)
 
             # obtain configuration and instantiate Embedder
-            selected_embedder_config = crud.get_setting_by_name(name=selected_embedder_class, chatbot_id=self.id)
+            selected_embedder_config = crud.get_setting_by_name(self.id, selected_embedder_class)
             try:
                 embedder = factory_class.get_embedder_from_config(selected_embedder_config["value"])
             except AttributeError:
@@ -292,35 +288,35 @@ class CheshireCat:
 
     def load_auth(self):
         # Custom auth_handler # TODOAUTH: change the name to custom_auth
-        selected_auth_handler = crud.get_setting_by_name(name="auth_handler_selected", chatbot_id=self.id)
+        selected_auth_handler = crud.get_setting_by_name(self.id, "auth_handler_selected")
 
         # if no auth_handler is saved, use default one and save to db
         if selected_auth_handler is None:
             # create the auth settings
             crud.upsert_setting_by_name(
+                self.id,
                 models.Setting(
                     name="CoreOnlyAuthConfig", category="auth_handler_factory", value={}
                 ),
-                chatbot_id=self.id,
             )
             crud.upsert_setting_by_name(
+                self.id,
                 models.Setting(
                     name="auth_handler_selected",
                     category="auth_handler_factory",
                     value={"name": "CoreOnlyAuthConfig"},
                 ),
-                chatbot_id=self.id,
             )
 
             # reload from db
-            selected_auth_handler = crud.get_setting_by_name(name="auth_handler_selected", chatbot_id=self.id)
+            selected_auth_handler = crud.get_setting_by_name(self.id, "auth_handler_selected")
 
         # get AuthHandler factory class
         selected_auth_handler_class = selected_auth_handler["value"]["name"]
         factory_class = auth_handlers.get_auth_handler_from_name(selected_auth_handler_class, self.mad_hatter)
 
         # obtain configuration and instantiate AuthHandler
-        selected_auth_handler_config = crud.get_setting_by_name(name=selected_auth_handler_class, chatbot_id=self.id)
+        selected_auth_handler_config = crud.get_setting_by_name(self.id, selected_auth_handler_class)
         try:
             auth_handler = factory_class.get_auth_handler_from_config(selected_auth_handler_config["value"])
         except Exception:
@@ -518,14 +514,14 @@ class CheshireCat:
         """
         # create the setting and upsert it
         final_setting = crud.upsert_setting_by_name(
+            self.id,
             models.Setting(name=language_model_name, category="llm_factory", value=settings),
-            chatbot_id=self.id
         )
 
         # general LLM settings are saved in settings table under "llm" category
         crud.upsert_setting_by_name(
+            self.id,
             models.Setting(name="llm_selected", category="llm", value={"name": language_model_name}),
-            chatbot_id=self.id
         )
 
         status = {"name": language_model_name, "value": final_setting["value"]}
@@ -541,8 +537,8 @@ class CheshireCat:
             self.load_memory()
         except Exception as e:
             log.error(e)
-            crud.delete_settings_by_category(category="llm", chatbot_id=self.id)
-            crud.delete_settings_by_category(category="llm_factory", chatbot_id=self.id)
+            crud.delete_settings_by_category(self.id, "llm")
+            crud.delete_settings_by_category(self.id, "llm_factory")
 
             raise LoadMemoryException(utils.explicit_error_message(e))
 
@@ -554,7 +550,7 @@ class CheshireCat:
     def get_selected_embedder_settings(self) -> Dict | None:
         # get selected Embedder settings, if any
         # embedder selected configuration is saved under "embedder_selected" name
-        selected = crud.get_setting_by_name(name="embedder_selected", chatbot_id=self.id)
+        selected = crud.get_setting_by_name(self.id, "embedder_selected")
         if selected is not None:
             selected = selected["value"]["name"]
         else:
@@ -581,25 +577,25 @@ class CheshireCat:
         """
         # get selected config if any
         # embedder selected configuration is saved under "embedder_selected" name
-        selected = crud.get_setting_by_name(name="embedder_selected", chatbot_id=self.id)
+        selected = crud.get_setting_by_name(self.id, "embedder_selected")
 
         # create the setting and upsert it
         # embedder type and config are saved in settings table under "embedder_factory" category
         final_setting = crud.upsert_setting_by_name(
+            self.id,
             models.Setting(
                 name=language_embedder_name, category="embedder_factory", value=settings
             ),
-            chatbot_id=self.id
         )
 
         # general embedder settings are saved in settings table under "embedder" category
         crud.upsert_setting_by_name(
+            self.id,
             models.Setting(
                 name="embedder_selected",
                 category="embedder",
                 value={"name": language_embedder_name},
             ),
-            chatbot_id=self.id
         )
 
         status = {"name": language_embedder_name, "value": final_setting["value"]}
@@ -612,33 +608,33 @@ class CheshireCat:
         except Exception as e:
             log.error(e)
 
-            crud.delete_settings_by_category(category="embedder", chatbot_id=self.id)
+            crud.delete_settings_by_category(self.id, "embedder")
 
             # embedder type and config are saved in settings table under "embedder_factory" category
-            crud.delete_settings_by_category(category="embedder_factory", chatbot_id=self.id)
+            crud.delete_settings_by_category(self.id, "embedder_factory")
 
             # if a selected config is present, restore it
             if selected is not None:
-                current_settings = crud.get_setting_by_name(name=selected["value"]["name"], chatbot_id=self.id)
+                current_settings = crud.get_setting_by_name(self.id, selected["value"]["name"])
 
                 language_embedder_name = selected["value"]["name"]
                 crud.upsert_setting_by_name(
+                    self.id,
                     models.Setting(
                         name=language_embedder_name,
                         category="embedder_factory",
                         value=current_settings["value"],
                     ),
-                    chatbot_id=self.id
                 )
 
                 # embedder selected configuration is saved under "embedder_selected" name
                 crud.upsert_setting_by_name(
+                    self.id,
                     models.Setting(
                         name="embedder_selected",
                         category="embedder",
                         value={"name": language_embedder_name},
                     ),
-                    chatbot_id=self.id
                 )
                 # reload llm and embedder of the cat
                 self.load_natural_language()
@@ -651,8 +647,8 @@ class CheshireCat:
         return status
 
     def __create_basic_users_if_not_exist(self):
-        if not crud.get_users(chatbot_id=self.id):
-            crud.create_basic_users(chatbot_id=self.id)
+        if not crud.get_users(self.id):
+            crud.create_basic_users(self.id)
 
     @property
     def strays(self):

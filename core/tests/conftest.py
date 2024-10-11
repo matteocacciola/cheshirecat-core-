@@ -164,8 +164,8 @@ def mad_hatter_no_plugins(client, cheshire_cat):  # client here injects the monk
 
 # fixtures to test the main agent
 @pytest.fixture
-def main_agent(client, cheshire_cat):
-    yield cheshire_cat.main_agent  # each test receives as argument the main agent instance
+def main_agent(client, cheshire_cat_manager):
+    yield cheshire_cat_manager.main_agent  # each test receives as argument the main agent instance
 
 
 # fixture to have available an instance of StrayCat

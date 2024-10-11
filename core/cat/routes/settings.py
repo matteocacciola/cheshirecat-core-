@@ -15,7 +15,7 @@ def get_settings(
 ):
     """Get the entire list of settings available in the database"""
 
-    settings = crud.get_settings(search=search, chatbot_id=cats.cheshire_cat.id)
+    settings = crud.get_settings(cats.cheshire_cat.id, search=search)
 
     return {"settings": settings}
 
@@ -31,7 +31,7 @@ def create_setting(
     payload = models.Setting(**payload.model_dump())
 
     # save to DB
-    new_setting = crud.create_setting(payload, chatbot_id=cats.cheshire_cat.id)
+    new_setting = crud.create_setting(cats.cheshire_cat.id, payload)
 
     return {"setting": new_setting}
 
@@ -43,7 +43,7 @@ def get_setting(
 ):
     """Get the specific setting from the database"""
 
-    setting = crud.get_setting_by_id(setting_id, chatbot_id=cats.cheshire_cat.id)
+    setting = crud.get_setting_by_id(cats.cheshire_cat.id, setting_id)
     if not setting:
         raise HTTPException(
             status_code=404,
@@ -65,7 +65,7 @@ def update_setting(
     chatbot_id = cats.cheshire_cat.id
 
     # does the setting exist?
-    setting = crud.get_setting_by_id(setting_id, chatbot_id=chatbot_id)
+    setting = crud.get_setting_by_id(chatbot_id, setting_id)
     if not setting:
         raise HTTPException(
             status_code=404,
@@ -79,7 +79,7 @@ def update_setting(
     payload.setting_id = setting_id  # force this to be the setting_id
 
     # save to DB
-    updated_setting = crud.update_setting_by_id(payload, chatbot_id=chatbot_id)
+    updated_setting = crud.update_setting_by_id(chatbot_id, payload)
 
     return {"setting": updated_setting}
 
@@ -94,7 +94,7 @@ def delete_setting(
     chatbot_id = cats.cheshire_cat.id
 
     # does the setting exist?
-    setting = crud.get_setting_by_id(setting_id, chatbot_id=chatbot_id)
+    setting = crud.get_setting_by_id(chatbot_id, setting_id)
     if not setting:
         raise HTTPException(
             status_code=404,
@@ -104,6 +104,6 @@ def delete_setting(
         )
 
     # delete
-    crud.delete_setting_by_id(setting_id, chatbot_id=chatbot_id)
+    crud.delete_setting_by_id(chatbot_id, setting_id)
 
     return {"deleted": setting_id}

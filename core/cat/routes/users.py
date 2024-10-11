@@ -39,7 +39,7 @@ def create_user(
     cats: ContextualCats = Depends(HTTPAuth(AuthResource.USERS, AuthPermission.WRITE)),
 ):
     chatbot_id = cats.cheshire_cat.id
-    created_user = crud.create_user(new_user.model_dump(), chatbot_id=chatbot_id)
+    created_user = crud.create_user(chatbot_id, new_user.model_dump())
     if not created_user:
         raise HTTPException(status_code=403, detail={"error": "Cannot duplicate user"})
 
@@ -52,7 +52,7 @@ def read_users(
     limit: int = 100,
     cats: ContextualCats = Depends(HTTPAuth(AuthResource.USERS, AuthPermission.LIST)),
 ):
-    users_db = crud.get_users(chatbot_id=cats.cheshire_cat.id)
+    users_db = crud.get_users(cats.cheshire_cat.id)
 
     users = list(users_db.values())[skip: skip + limit]
     return users
@@ -62,7 +62,7 @@ def read_user(
     user_id: str,
     cats: ContextualCats = Depends(HTTPAuth(AuthResource.USERS, AuthPermission.READ)),
 ):
-    users_db = crud.get_users(chatbot_id=cats.cheshire_cat.id)
+    users_db = crud.get_users(cats.cheshire_cat.id)
 
     if user_id not in users_db:
         raise HTTPException(status_code=404, detail={"error": "User not found"})
@@ -75,7 +75,7 @@ def update_user(
     cats: ContextualCats = Depends(HTTPAuth(AuthResource.USERS, AuthPermission.EDIT)),
 ):
     chatbot_id = cats.cheshire_cat.id
-    stored_user = crud.get_user(user_id, chatbot_id=chatbot_id)
+    stored_user = crud.get_user(chatbot_id, user_id)
     if not stored_user:
         raise HTTPException(status_code=404, detail={"error": "User not found"})
     
@@ -83,7 +83,7 @@ def update_user(
         user.password = hash_password(user.password)
     updated_info = stored_user | user.model_dump(exclude_unset=True)
 
-    crud.update_user(user_id, updated_info, chatbot_id=chatbot_id)
+    crud.update_user(chatbot_id, user_id, updated_info)
     return updated_info
 
 @router.delete("/{user_id}", response_model=UserResponse)
@@ -92,7 +92,7 @@ def delete_user(
     cats: ContextualCats = Depends(HTTPAuth(AuthResource.USERS, AuthPermission.DELETE)),
 ):
     chatbot_id = cats.cheshire_cat.id
-    deleted_user = crud.delete_user(user_id, chatbot_id=chatbot_id)
+    deleted_user = crud.delete_user(chatbot_id, user_id)
     if not deleted_user:
         raise HTTPException(status_code=404, detail={"error": "User not found"})
 

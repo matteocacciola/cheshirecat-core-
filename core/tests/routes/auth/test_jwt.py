@@ -188,7 +188,7 @@ def test_jwt_imposes_user_id(secure_client, cheshire_cat):
     assert response.status_code == 200
     episodic_memories = json["vectors"]["collections"]["episodic"]
     assert len(episodic_memories) == 2
-    user_db = crud.get_user_by_username(creds["username"], chatbot_id=chatbot_id)
+    user_db = crud.get_user_by_username(chatbot_id, creds["username"])
     for em in episodic_memories:
         assert em["metadata"]["source"] == user_db["id"]
         assert em["page_content"] == "hey"

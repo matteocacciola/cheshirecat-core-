@@ -18,11 +18,11 @@ def get_auth_handler_settings(
     chatbot_id = cats.cheshire_cat.id
 
     # get selected AuthHandler
-    selected = crud.get_setting_by_name(name="auth_handler_selected", chatbot_id=chatbot_id)
+    selected = crud.get_setting_by_name(chatbot_id, "auth_handler_selected")
     if selected is not None:
         selected = selected["value"]["name"]
 
-    saved_settings = crud.get_settings_by_category(category="auth_handler_factory", chatbot_id=chatbot_id)
+    saved_settings = crud.get_settings_by_category(chatbot_id, "auth_handler_factory")
     saved_settings = {s["name"]: s for s in saved_settings}
 
     settings = [{
@@ -55,7 +55,7 @@ def get_auth_handler_setting(
             },
         )
 
-    setting = crud.get_setting_by_name(name=auth_handler_name, chatbot_id=cats.cheshire_cat.id)
+    setting = crud.get_setting_by_name(cats.cheshire_cat.id, auth_handler_name)
     schema = auth_handler_schemas[auth_handler_name]
 
     setting = {} if setting is None else setting["value"]
@@ -86,19 +86,19 @@ def upsert_authenticator_setting(
         )
 
     crud.upsert_setting_by_name(
+        chatbot_id,
         models.Setting(
             name=auth_handler_name, value=payload, category="auth_handler_factory"
         ),
-        chatbot_id=chatbot_id,
     )
 
     crud.upsert_setting_by_name(
+        chatbot_id,
         models.Setting(
             name="auth_handler_selected",
             value={"name": auth_handler_name},
             category="auth_handler_factory",
         ),
-        chatbot_id=chatbot_id,
     )
 
     ccat.load_auth()
