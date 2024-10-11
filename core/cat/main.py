@@ -54,7 +54,7 @@ async def lifespan(app: FastAPI):
     yield
 
     # shutdown Cheshire Cat Manager
-    app.state.ccat_manager.shutdown()
+    await app.state.ccat_manager.shutdown()
 
 
 def custom_generate_unique_id(route: APIRoute):

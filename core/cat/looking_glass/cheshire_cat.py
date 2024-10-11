@@ -138,14 +138,14 @@ class CheshireCat:
         if not self.__any_stray(stray.user_id):
             self.__strays.add(stray)
 
-    def remove_stray(self, user_id: str):
+    async def remove_stray(self, user_id: str):
         """Remove a stray from the Cat."""
 
         stray = self.__next_stray(user_id)
         if not stray:
             return
 
-        stray.ws.close()
+        await stray.ws.close()
         self.__strays.remove(stray)
 
         del stray
@@ -158,10 +158,10 @@ class CheshireCat:
     def has_strays(self) -> bool:
         return bool(self.__strays)
 
-    def shutdown(self) -> None:
+    async def shutdown(self) -> None:
         for stray in self.__strays:
             if stray.ws:
-                stray.ws.close()
+                await stray.ws.close()
 
         self.__strays.clear()
 

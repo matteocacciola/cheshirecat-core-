@@ -1,3 +1,5 @@
+import asyncio
+
 from cat.env import get_env
 from cat.factory.custom_auth_handler import CoreAuthHandler
 from cat.looking_glass.cheshire_cat import CheshireCat
@@ -26,7 +28,7 @@ class CheshireCatManager:
         # Start scheduling system
         self.white_rabbit = WhiteRabbit()
         self.__check_idle_strays_job_id = self.white_rabbit.schedule_cron_job(
-            lambda: job_on_idle_strays(self), second=int(get_env("CCAT_STRAYCAT_TIMEOUT"))
+            lambda: job_on_idle_strays(self, asyncio.new_event_loop()), second=int(get_env("CCAT_STRAYCAT_TIMEOUT"))
         )
 
         self.core_auth_handler = CoreAuthHandler()
@@ -85,7 +87,7 @@ class CheshireCatManager:
 
         return new_cat
 
-    def shutdown(self) -> None:
+    async def shutdown(self) -> None:
         """
         Shuts down the Cheshire Cat Manager. It closes all the strays' connections and stops the scheduling system.
 
@@ -93,7 +95,7 @@ class CheshireCatManager:
             None
         """
         for ccat in self.__cheshire_cats:
-            ccat.shutdown()
+            await ccat.shutdown()
         self.__cheshire_cats.clear()
 
         self.white_rabbit.remove_job(self.__check_idle_strays_job_id)
@@ -106,7 +108,7 @@ class CheshireCatManager:
         return self.__cheshire_cats
 
 
-def job_on_idle_strays(cat_manager: CheshireCatManager) -> bool:
+def job_on_idle_strays(cat_manager: CheshireCatManager, loop) -> bool:
     """
     Remove the objects StrayCat, if idle, from the CheshireCat objects contained into the CheshireCatManager.
     """
@@ -116,7 +118,7 @@ def job_on_idle_strays(cat_manager: CheshireCatManager) -> bool:
     for ccat in ccats:
         for stray in ccat.strays:
             if stray.is_idle:
-                ccat.remove_stray(stray)
+                asyncio.run_coroutine_threadsafe(ccat.remove_stray(stray), loop=loop).result()
 
         if not ccat.has_strays():
             cat_manager.remove_cheshire_cat(ccat.id)

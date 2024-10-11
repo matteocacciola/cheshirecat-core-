@@ -1,10 +1,7 @@
-from typing import Dict
 import bcrypt
 import jwt
 from jwt.exceptions import InvalidTokenError
 from fastapi.requests import HTTPConnection
-
-from cat.db import crud
 
 
 def is_jwt(token: str) -> bool:
@@ -37,33 +34,6 @@ def check_password(password: str, hashed: str) -> bool:
         return bcrypt.checkpw(password.encode("utf-8"), hashed.encode("utf-8"))
     except Exception:
         return False
-
-
-def get_user_by_credentials(username: str, password: str, chatbot_id: str = "chatbot") -> Dict | None:
-    """
-    Get a user by their username and password. If the user is not found, return None.
-
-    Args:
-        username: the username of the user to look for
-        password: the password of the user to look for
-        chatbot_id: the chatbot ID to look for the user in (default: "chatbot")
-
-    Returns:
-        The user if found, None otherwise. The user has the format:
-        {
-            "id": <id_0>,
-            "username": "<username_0>",
-            "password": "<hashed_password_0>",
-            "permissions": <dict_of_permissions_0>
-        }
-    """
-
-    users = crud.get_users(chatbot_id=chatbot_id)
-    for user in users.values():
-        if user["username"] == username and check_password(password, user["password"]):
-            return user
-
-    return None
 
 
 def extract_chatbot_id_from_request(request: HTTPConnection) -> str:

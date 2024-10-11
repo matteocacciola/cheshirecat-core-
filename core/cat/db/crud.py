@@ -3,7 +3,7 @@ from typing import Dict, List
 from uuid import uuid4
 
 from cat.auth.permissions import get_full_permissions, get_base_permissions
-from cat.auth.auth_utils import hash_password
+from cat.auth.auth_utils import hash_password, check_password
 from cat.db.database import get_db
 from cat.db.models import Setting
 
@@ -243,3 +243,30 @@ def flush_db():
 
 def get_all(**kwargs):
     return __get(kwargs.get("chatbot_id"))
+
+
+def get_user_by_credentials(username: str, password: str, chatbot_id: str = "chatbot") -> Dict | None:
+    """
+    Get a user by their username and password. If the user is not found, return None.
+
+    Args:
+        username: the username of the user to look for
+        password: the password of the user to look for
+        chatbot_id: the chatbot ID to look for the user in (default: "chatbot")
+
+    Returns:
+        The user if found, None otherwise. The user has the format:
+        {
+            "id": <id_0>,
+            "username": "<username_0>",
+            "password": "<hashed_password_0>",
+            "permissions": <dict_of_permissions_0>
+        }
+    """
+
+    users = get_users(chatbot_id=chatbot_id)
+    for user in users.values():
+        if user["username"] == username and check_password(password, user["password"]):
+            return user
+
+    return None
