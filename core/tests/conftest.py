@@ -143,7 +143,7 @@ def cheshire_cat(client, cheshire_cat_manager):
 # this function will be run before each test function
 @pytest.fixture
 def mad_hatter(client, cheshire_cat):  # client here injects the monkeypatched version of the cat manager
-    # each test is given the mad_hatter instance (it's a singleton)
+    # each test is given the mad_hatter instance
     mad_hatter = cheshire_cat.mad_hatter
 
     # install plugin
@@ -158,7 +158,16 @@ def mad_hatter(client, cheshire_cat):  # client here injects the monkeypatched v
 def mad_hatter_no_plugins(client, cheshire_cat):  # client here injects the monkeypatched version of the cat manager
     mad_hatter = cheshire_cat.mad_hatter
 
-    # each test is given the mad_hatter instance (it's a singleton)
+    # each test is given the mad_hatter instance
+    yield mad_hatter
+
+
+# this function will be run before each test function
+@pytest.fixture
+def mad_hatter_cheshirecat_manager(client, cheshire_cat_manager):  # client here injects the monkeypatched version of the cat manager
+    mad_hatter = cheshire_cat_manager.mad_hatter
+
+    # each test is given the mad_hatter instance
     yield mad_hatter
 
 

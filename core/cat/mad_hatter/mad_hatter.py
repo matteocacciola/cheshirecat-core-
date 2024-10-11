@@ -28,8 +28,8 @@ class MadHatter:
     # - orders plugged in hooks by name and priority
     # - exposes functionality to the cat
 
-    def __init__(self, chatbot_id: str):
-        self.__chatbot_id = chatbot_id
+    def __init__(self, key_id: str):
+        self.__key_id = key_id
 
         self.plugins: Dict[str, Plugin] = {}  # plugins dictionary
 
@@ -161,7 +161,7 @@ class MadHatter:
         return plugin_id in self.plugins.keys()
 
     def load_active_plugins_from_db(self):
-        active_plugins = crud.get_setting_by_name(self.chatbot_id, "active_plugins")
+        active_plugins = crud.get_setting_by_name(self.__key_id, "active_plugins")
 
         if active_plugins is None:
             active_plugins = []
@@ -176,53 +176,52 @@ class MadHatter:
 
     # activate / deactivate plugin
     def toggle_plugin(self, plugin_id):
-        if self.plugin_exists(plugin_id):
-            plugin_is_active = plugin_id in self.active_plugins
+        if not self.plugin_exists(plugin_id):
+            raise Exception(f"Plugin {plugin_id} not present in plugins folder")
 
-            # update list of active plugins
-            if plugin_is_active:
-                log.warning(f"Toggle plugin {plugin_id}: Deactivate")
+        plugin_is_active = plugin_id in self.active_plugins
 
-                # Execute hook on plugin deactivation
-                # Deactivation hook must happen before actual deactivation,
-                # otherwise the hook will not be available in _plugin_overrides anymore
-                for hook in self.plugins[plugin_id].plugin_overrides:
-                    if hook.name == "deactivated":
-                        hook.function(self.plugins[plugin_id])
+        # update list of active plugins
+        if plugin_is_active:
+            log.warning(f"Toggle plugin {plugin_id}: Deactivate")
 
-                # Deactivate the plugin
-                self.plugins[plugin_id].deactivate()
-                # Remove the plugin from the list of active plugins
-                self.active_plugins.remove(plugin_id)
-            else:
-                log.warning(f"Toggle plugin {plugin_id}: Activate")
+            # Execute hook on plugin deactivation
+            # Deactivation hook must happen before actual deactivation,
+            # otherwise the hook will not be available in _plugin_overrides anymore
+            for hook in self.plugins[plugin_id].plugin_overrides:
+                if hook.name == "deactivated":
+                    hook.function(self.plugins[plugin_id])
 
-                # Activate the plugin
-                try:
-                    self.plugins[plugin_id].activate()
-                except Exception as e:
-                    # Couldn't activate the plugin
-                    raise e
-
-                # Execute hook on plugin activation
-                # Activation hook must happen before actual activation,
-                # otherwise the hook will still not be available in _plugin_overrides
-                for hook in self.plugins[plugin_id].plugin_overrides:
-                    if hook.name == "activated":
-                        hook.function(self.plugins[plugin_id])
-
-                # Add the plugin in the list of active plugins
-                self.active_plugins.append(plugin_id)
-
-            # update DB with list of active plugins, delete duplicate plugins
-            active_plugins = list(set(self.active_plugins))
-            crud.upsert_setting_by_name(self.chatbot_id, Setting(name="active_plugins", value=active_plugins))
-
-            # update cache and embeddings
-            self.sync_hooks_tools_and_forms()
-
+            # Deactivate the plugin
+            self.plugins[plugin_id].deactivate()
+            # Remove the plugin from the list of active plugins
+            self.active_plugins.remove(plugin_id)
         else:
-            raise Exception("Plugin {plugin_id} not present in plugins folder")
+            log.warning(f"Toggle plugin {plugin_id}: Activate")
+
+            # Activate the plugin
+            try:
+                self.plugins[plugin_id].activate()
+            except Exception as e:
+                # Couldn't activate the plugin
+                raise e
+
+            # Execute hook on plugin activation
+            # Activation hook must happen before actual activation,
+            # otherwise the hook will still not be available in _plugin_overrides
+            for hook in self.plugins[plugin_id].plugin_overrides:
+                if hook.name == "activated":
+                    hook.function(self.plugins[plugin_id])
+
+            # Add the plugin in the list of active plugins
+            self.active_plugins.append(plugin_id)
+
+        # update DB with list of active plugins, delete duplicate plugins
+        active_plugins = list(set(self.active_plugins))
+        crud.upsert_setting_by_name(self.__key_id, Setting(name="active_plugins", value=active_plugins))
+
+        # update cache and embeddings
+        self.sync_hooks_tools_and_forms()
 
     # execute requested hook
     def execute_hook(self, hook_name, *args, cat):
@@ -297,7 +296,3 @@ class MadHatter:
     @property
     def procedures(self):
         return self.tools + self.forms
-
-    @property
-    def chatbot_id(self):
-        return self.__chatbot_id

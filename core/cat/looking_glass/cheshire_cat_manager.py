@@ -5,6 +5,7 @@ from cat.env import get_env
 from cat.factory.custom_auth_handler import CoreAuthHandler
 from cat.looking_glass.cheshire_cat import CheshireCat
 from cat.looking_glass.white_rabbit import WhiteRabbit
+from cat.mad_hatter.mad_hatter import MadHatter
 from cat.utils import singleton
 
 
@@ -31,6 +32,8 @@ class CheshireCatManager:
         self.__check_idle_strays_job_id = self.white_rabbit.schedule_cron_job(
             lambda: job_on_idle_strays(self, asyncio.new_event_loop()), second=int(get_env("CCAT_STRAYCAT_TIMEOUT"))
         )
+
+        self.mad_hatter = MadHatter("core")
 
         self.core_auth_handler = CoreAuthHandler()
 
