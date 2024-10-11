@@ -29,7 +29,7 @@ class MadHatter:
     # - exposes functionality to the cat
 
     def __init__(self, chatbot_id: str):
-        self.chatbot_id = chatbot_id
+        self.__chatbot_id = chatbot_id
 
         self.plugins: Dict[str, Plugin] = {}  # plugins dictionary
 
@@ -297,3 +297,7 @@ class MadHatter:
     @property
     def procedures(self):
         return self.tools + self.forms
+
+    @property
+    def chatbot_id(self):
+        return self.__chatbot_id
