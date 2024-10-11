@@ -66,8 +66,6 @@ class CheshireCat:
         # bootstrap the Cat! ^._.^
         self.id = chatbot_id
 
-        self.embedder = None
-        self.llm = None
         self.memory = None
         self.custom_auth_handler = None
 
@@ -83,7 +81,8 @@ class CheshireCat:
         self.mad_hatter.execute_hook("before_cat_bootstrap", cat=self)
 
         # load LLM and embedder
-        self.load_natural_language()
+        self.llm = self.load_language_model()
+        self.embedder = self.load_language_embedder()
 
         # Load memories (vector collections and working_memory)
         self.load_memory()
@@ -160,25 +159,6 @@ class CheshireCat:
                 await stray.ws.close()
 
         self.__strays.clear()
-
-    def load_natural_language(self):
-        """Load Natural Language related objects.
-
-        The method exposes in the Cat all the NLP related stuff. Specifically, it sets the language models
-        (LLM and Embedder).
-
-        Warnings
-        --------
-        When using small Language Models it is suggested to turn off the memories and make the main prompt smaller
-        to prevent them to fail.
-
-        See Also
-        --------
-        agent_prompt_prefix
-        """
-        # LLM and embedder
-        self.llm = self.load_language_model()
-        self.embedder = self.load_language_embedder()
 
     def load_language_model(self) -> BaseLanguageModel:
         """Large Language Model (LLM) selection.
@@ -526,8 +506,8 @@ class CheshireCat:
 
         status = {"name": language_model_name, "value": final_setting["value"]}
 
-        # reload llm and embedder of the cat
-        self.load_natural_language()
+        # reload the llm of the cat
+        self.llm = self.load_language_model()
 
         # create new collections
         # (in case embedder is not configured, it will be changed automatically and aligned to vendor)
@@ -600,8 +580,8 @@ class CheshireCat:
 
         status = {"name": language_embedder_name, "value": final_setting["value"]}
 
-        # reload llm and embedder of the cat
-        self.load_natural_language()
+        # reload the embedder of the cat
+        self.embedder = self.load_language_embedder()
         # crete new collections (different embedder!)
         try:
             self.load_memory()
@@ -636,8 +616,8 @@ class CheshireCat:
                         value={"name": language_embedder_name},
                     ),
                 )
-                # reload llm and embedder of the cat
-                self.load_natural_language()
+                # reload the embedder of the cat
+                self.embedder = self.load_language_embedder()
 
             raise LoadMemoryException(utils.explicit_error_message(e))
 
