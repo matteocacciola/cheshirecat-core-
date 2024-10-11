@@ -47,8 +47,8 @@ class Procedure(Protocol):
 
 
 class Plugins(BaseModel):
-    installed: List[str]
-    registry: List[str]
+    installed: List[Dict]
+    registry: List[Dict]
 
 
 # main class
