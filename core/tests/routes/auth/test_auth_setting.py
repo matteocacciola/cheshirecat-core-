@@ -6,7 +6,7 @@ from cat.factory.auth_handler import get_auth_handlers_schemas
 
 def test_get_all_auth_handler_settings(client, cheshire_cat):
     auth_handler_schemas = get_auth_handlers_schemas(cheshire_cat.mad_hatter)
-    response = client.get("/auth_handler/settings", headers={"chatbot_id": cheshire_cat.id})
+    response = client.get("/auth_handler/settings", headers={"agent_id": cheshire_cat.id})
     json = response.json()
 
     assert response.status_code == 200
@@ -26,7 +26,7 @@ def test_get_all_auth_handler_settings(client, cheshire_cat):
 def test_get_auth_handler_settings_non_existent(client, cheshire_cat):
     non_existent_auth_handler_name = "AuthHandlerNonExistent"
     response = client.get(
-        f"/auth_handler/settings/{non_existent_auth_handler_name}", headers={"chatbot_id": cheshire_cat.id}
+        f"/auth_handler/settings/{non_existent_auth_handler_name}", headers={"agent_id": cheshire_cat.id}
     )
     json = response.json()
 

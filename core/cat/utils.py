@@ -7,7 +7,8 @@ from datetime import timedelta
 from urllib.parse import urlparse
 from typing import Dict, Tuple
 from pydantic import BaseModel, ConfigDict
-
+import io
+from fastapi import UploadFile
 from langchain.evaluation import StringDistance, load_evaluator, EvaluatorType
 from langchain_core.output_parsers import JsonOutputParser
 from langchain_core.prompts import PromptTemplate
@@ -310,3 +311,8 @@ class BaseModelDict(BaseModel):
 
     def __contains__(self, key):
         return key in self.keys()
+
+
+def format_upload_file(upload_file: UploadFile) -> UploadFile:
+    file_content = upload_file.file.read()
+    return UploadFile(filename=upload_file.filename, file=io.BytesIO(file_content))

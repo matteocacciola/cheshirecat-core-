@@ -8,7 +8,7 @@ from fastapi import Request, WebSocket, HTTPException, WebSocketException
 from fastapi.requests import HTTPConnection
 from pydantic import BaseModel, ConfigDict
 
-from cat.auth.auth_utils import extract_chatbot_id_from_request, extract_user_id_from_request
+from cat.auth.auth_utils import extract_agent_id_from_request, extract_user_id_from_request, extract_token
 from cat.auth.permissions import AuthPermission, AuthResource, AuthUserInfo
 from cat.looking_glass.cheshire_cat import CheshireCat
 from cat.looking_glass.cheshire_cat_manager import CheshireCatManager
@@ -16,10 +16,13 @@ from cat.looking_glass.stray_cat import StrayCat
 from cat.log import log
 
 
-class Credentials(BaseModel):
-    chatbot_id: str
+class SuperCredentials(BaseModel):
     user_id: str
     credential: str | None
+
+
+class Credentials(SuperCredentials):
+    agent_id: str
 
 
 class ContextualCats(BaseModel):
@@ -27,6 +30,31 @@ class ContextualCats(BaseModel):
     stray_cat: StrayCat
 
     model_config = ConfigDict(arbitrary_types_allowed=True)
+
+
+class ConnectionSuperAdminAuth:
+    def __init__(self, resource: AuthResource, permission: AuthPermission):
+        self.resource = resource
+        self.permission = permission
+
+    async def __call__(self, request: Request) -> CheshireCatManager:
+        # extract credentials (user_id, token_or_key) from connection
+        user_id = extract_user_id_from_request(request)
+        token = extract_token(request)
+
+        ccat_manager: CheshireCatManager = request.app.state.ccat_manager
+
+        user: AuthUserInfo = await ccat_manager.core_auth_handler.authorize_user_from_credential(
+            token,
+            self.resource,
+            self.permission,
+            ccat_manager.config_key,
+            user_id=user_id,
+        )
+        if user:
+            return ccat_manager
+
+        raise HTTPException(status_code=403, detail={"error": "Invalid Credentials"})
 
 
 class ConnectionAuth(ABC):
@@ -42,7 +70,7 @@ class ConnectionAuth(ABC):
         credentials = await self.extract_credentials(connection)
 
         ccat_manager: CheshireCatManager = connection.app.state.ccat_manager
-        ccat = ccat_manager.get_or_create_cheshire_cat(credentials.chatbot_id)
+        ccat = ccat_manager.get_or_create_cheshire_cat(credentials.agent_id)
 
         auth_handlers = [
             # try to get user from local id
@@ -55,8 +83,8 @@ class ConnectionAuth(ABC):
                 credentials.credential,
                 self.resource,
                 self.permission,
+                credentials.agent_id,
                 user_id=credentials.user_id,
-                chatbot_id=credentials.chatbot_id,
             )
             if user:
                 stray = await self.get_user_stray(ccat, user, connection)
@@ -84,29 +112,14 @@ class HTTPAuth(ConnectionAuth):
         Extract user_id and token/key from headers
         """
 
-        # when using CCAT_API_KEY, chatbot_id and user_id are passed in headers
-        chatbot_id = extract_chatbot_id_from_request(connection)
+        # when using CCAT_API_KEY, agent_id and user_id are passed in headers
+        agent_id = extract_agent_id_from_request(connection)
         user_id = extract_user_id_from_request(connection)
 
         # Proper Authorization header
-        token = connection.headers.get("Authorization", None)
-        if token and ("Bearer " in token):
-            token = token.replace("Bearer ", "")
+        token = extract_token(connection)
 
-        if not token:
-            # Legacy header to pass CCAT_API_KEY
-            token = connection.headers.get("access_token", None)
-            if token:
-                log.warning(
-                    "Deprecation Warning: `access_token` header will not be supported in v2."
-                    "Pass your token/key using the `Authorization: Bearer <token>` format."
-                )
-        
-        # some clients may send an empty string instead of just not setting the header
-        if token == "":
-            token = None
-
-        return Credentials(chatbot_id=chatbot_id, user_id=user_id, credential=token)
+        return Credentials(agent_id=agent_id, user_id=user_id, credential=token)
 
     async def get_user_stray(self, ccat: CheshireCat, user: AuthUserInfo, connection: Request) -> StrayCat:
         current_stray = ccat.get_stray(user.id)
@@ -129,14 +142,14 @@ class WebSocketAuth(ConnectionAuth):
         Extract chatbot_id and user_id from WebSocket path params
         Extract token from WebSocket query string
         """
-        chatbot_id = extract_chatbot_id_from_request(connection)
+        agent_id = extract_agent_id_from_request(connection)
         user_id = extract_user_id_from_request(connection)
 
         # TODO AUTH: is there a more secure way to pass the token over websocket?
         #   Headers do not work from the browser
         token = connection.query_params.get("token", None)
 
-        return Credentials(chatbot_id=chatbot_id, user_id=user_id, credential=token)
+        return Credentials(agent_id=agent_id, user_id=user_id, credential=token)
 
     async def get_user_stray(self, ccat: CheshireCat, user: AuthUserInfo, connection: WebSocket) -> StrayCat:
         stray = ccat.get_stray(user.id)
@@ -172,7 +185,7 @@ class CoreFrontendAuth(HTTPAuth):
         if token is None or token == "":
             self.not_allowed(connection)
 
-        return Credentials(chatbot_id="chatbot", user_id="user", credential=token)
+        return Credentials(agent_id="chatbot", user_id="user", credential=token)
     
     def not_allowed(self, connection: Request):
         referer_query = urlencode({"referer": connection.url.path})

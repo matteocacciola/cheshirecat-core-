@@ -9,7 +9,7 @@ def test_session_creation_from_websocket(client, cheshire_cat):
 
     # send websocket message
     mex = {"text": "Where do I go?"}
-    res = send_websocket_message(mex, client, user_id=user_id, query_params={"chatbot_id": cheshire_cat.id})
+    res = send_websocket_message(mex, client, user_id=user_id, query_params={"agent_id": cheshire_cat.id})
 
     # check response
     assert "You did not configure" in res["content"]
@@ -37,7 +37,7 @@ def test_session_creation_from_http(client, cheshire_cat):
 
         # sending file from Alice
         response = client.post(
-            "/rabbithole/", files=files, headers={"user_id": user_id, "chatbot_id": cheshire_cat.id}
+            "/rabbithole/", files=files, headers={"user_id": user_id, "agent_id": cheshire_cat.id}
         )
 
     # check response

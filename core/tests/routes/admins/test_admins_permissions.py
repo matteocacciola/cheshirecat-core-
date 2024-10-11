@@ -15,37 +15,37 @@ from cat.env import get_env
 @pytest.mark.parametrize("endpoint", [
     {
         "method": "GET",
-        "path": "/users",
+        "path": "/admins",
         "payload": None
     },
     {
         "method": "GET",
-        "path": "/users/ID_PLACEHOLDER",
+        "path": "/admins/ID_PLACEHOLDER",
         "payload": None
     },
     {
         "method": "POST",
-        "path": "/users",
+        "path": "/admins",
         "payload": {"username": "Alice", "password": "12345"}
     },
     {
         "method": "PUT",
-        "path": "/users/ID_PLACEHOLDER",
+        "path": "/admins/ID_PLACEHOLDER",
         "payload": {"username": "Alice2"}
     },
     {
         "method": "DELETE",
-        "path": "/users/ID_PLACEHOLDER",
+        "path": "/admins/ID_PLACEHOLDER",
         "payload": None
     }
 ])
 
 
-def test_users_permissions(secure_client, credentials, endpoint):
-    # create new user that will be edited by calling the endpoints
+def test_admins_permissions(secure_client, credentials, endpoint):
+    # create new admin that will be edited by calling the endpoints
     # we create it using directly CCAT_API_KEY
     response = secure_client.post(
-        "/users",
+        "/admins",
         json={
             "username": "Caterpillar",
             "password": "U R U"
@@ -56,28 +56,28 @@ def test_users_permissions(secure_client, credentials, endpoint):
         }
     )
     assert response.status_code == 200
-    target_user_id = response.json()["id"]
+    target_admin_id = response.json()["id"]
 
     # tests for `admin` and `user` using the endpoints
 
     # no JWT, no pass
     res = secure_client.request(
         endpoint["method"],
-        endpoint["path"].replace("ID_PLACEHOLDER", target_user_id),
+        endpoint["path"].replace("ID_PLACEHOLDER", target_admin_id),
         json=endpoint["payload"]
     )
     assert res.status_code == 403
     assert res.json()["detail"]["error"] == "Invalid Credentials"
-    
+
     # obtain JWT
-    res = secure_client.post("/auth/token", json=credentials)
+    res = secure_client.post("/auth/token", json=credentials, headers={"agent_id": "core"})
     assert res.status_code == 200
     jwt = res.json()["access_token"]
 
     # now using JWT
     res = secure_client.request(
         endpoint["method"],
-        endpoint["path"].replace("ID_PLACEHOLDER", target_user_id),
+        endpoint["path"].replace("ID_PLACEHOLDER", target_admin_id),
         json=endpoint["payload"],
         headers={"Authorization": f"Bearer {jwt}"} # using credentials
     )

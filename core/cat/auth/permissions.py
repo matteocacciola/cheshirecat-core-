@@ -17,6 +17,7 @@ class AuthResource(Enum):
     UPLOAD = "UPLOAD"
     PLUGINS = "PLUGINS"
     STATIC = "STATIC"
+    ADMIN = "ADMIN"
 
 
 class AuthPermission(Enum):

@@ -604,7 +604,7 @@ Allowed classes are:
 
     @property
     def embedder(self):
-        return self.cheshire_cat.embedder
+        return CheshireCatManager().embedder
 
     @property
     def memory(self):

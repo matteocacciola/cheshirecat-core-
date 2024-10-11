@@ -3,6 +3,8 @@ import jwt
 from jwt.exceptions import InvalidTokenError
 from fastapi.requests import HTTPConnection
 
+from cat.log import log
+
 
 def is_jwt(token: str) -> bool:
     """
@@ -36,13 +38,13 @@ def check_password(password: str, hashed: str) -> bool:
         return False
 
 
-def extract_chatbot_id_from_request(request: HTTPConnection) -> str:
+def extract_agent_id_from_request(request: HTTPConnection) -> str:
     return request.headers.get(
-        "chatbot_id",
+        "agent_id",
         request.path_params.get(
-            "chatbot_id",
+            "agent_id",
             request.query_params.get(
-                "chatbot_id",
+                "agent_id",
                 "chatbot"
             )
         )
@@ -60,3 +62,22 @@ def extract_user_id_from_request(request: HTTPConnection) -> str:
             )
         )
     )
+
+
+def extract_token(request: HTTPConnection) -> str | None:
+    # Proper Authorization header
+    token = request.headers.get("Authorization", None)
+    if token and ("Bearer " in token):
+        token = token.replace("Bearer ", "")
+
+    if not token:
+        # Legacy header to pass CCAT_API_KEY
+        token = request.headers.get("access_token", None)
+        if token:
+            log.warning(
+                "Deprecation Warning: `access_token` header will not be supported in v2."
+                "Pass your token/key using the `Authorization: Bearer <token>` format."
+            )
+
+    # some clients may send an empty string instead of just not setting the header
+    return token if token != "" else None

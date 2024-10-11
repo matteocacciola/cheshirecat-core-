@@ -1,4 +1,5 @@
 import shutil
+from uuid import UUID
 from urllib.parse import urlencode
 
 
@@ -57,9 +58,9 @@ def create_mock_plugin_zip(flat: bool):
 
 
 # utility to retrieve embedded tools from endpoint
-def get_procedural_memory_contents(client):
-    params = {"text": "random"}
-    response = client.get("/memory/recall/", params=params)
+def get_procedural_memory_contents(client, params=None):
+    final_params = (params or {}) | {"text": "random"}
+    response = client.get("/memory/recall/", params=final_params)
     json = response.json()
     return json["vectors"]["collections"]["procedural"]
 
@@ -83,8 +84,21 @@ def get_collections_names_and_point_count(client):
     return collections_n_points
 
 
-def create_new_user(client):
+def create_new_user(client, route: str):
     new_user = {"username": "Alice", "password": "wandering_in_wonderland"}
-    response = client.post("/users", json=new_user)
+    response = client.post(route, json=new_user)
     assert response.status_code == 200
     return response.json()
+
+
+def check_user_fields(u):
+    assert set(u.keys()) == {"id", "username", "permissions"}
+    assert isinstance(u["username"], str)
+    assert isinstance(u["permissions"], dict)
+    try:
+        # Attempt to create a UUID object from the string to validate it
+        uuid_obj = UUID(u["id"], version=4)
+        assert str(uuid_obj) == u["id"]
+    except ValueError:
+        # If a ValueError is raised, the UUID string is invalid
+        assert False, "Not a UUID"

@@ -1,10 +1,8 @@
 import mimetypes
 import requests
-import io
 import json
 from typing import Dict
 from copy import deepcopy
-from pydantic import BaseModel, Field, ConfigDict
 from fastapi import (
     Form,
     Depends,
@@ -17,6 +15,8 @@ from fastapi import (
 from cat.auth.connection import HTTPAuth, ContextualCats
 from cat.auth.permissions import AuthPermission, AuthResource
 from cat.log import log
+from cat.routes.models.upload import UploadURLConfig
+from cat.utils import format_upload_file
 
 # TODOV2:
 # - add proper request and response pydantic models
@@ -25,11 +25,6 @@ from cat.log import log
 
 
 router = APIRouter()
-
-
-def format_upload_file(upload_file: UploadFile) -> UploadFile:
-    file_content = upload_file.file.read()
-    return UploadFile(filename=upload_file.filename, file=io.BytesIO(file_content))
 
 
 # receive files via http endpoint
@@ -126,25 +121,6 @@ async def upload_file(
         "info": "File is being ingested asynchronously",
     }
 
-# This model can be used only for the upload_url endpoint,
-# because in upload_file we need to pass the file and config as form data
-class UploadURLConfig(BaseModel):
-    url: str = Field(
-        description="URL of the website to which you want to save the content"
-    )
-    chunk_size: int | None = Field(
-        default=None,
-        description="Maximum length of each chunk after the document is split (in tokens)"
-    )
-    chunk_overlap: int | None = Field(
-        default=None,
-        description="Chunk overlap (in tokens)"
-    )
-    metadata: Dict = Field(
-        default={},
-        description="Metadata to be stored with each chunk (e.g. author, category, etc.)"
-    )
-    model_config = ConfigDict(extra="forbid")
 
 @router.post("/web")
 async def upload_url(

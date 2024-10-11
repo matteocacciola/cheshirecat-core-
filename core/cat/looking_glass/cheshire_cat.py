@@ -8,22 +8,9 @@ from langchain_core.messages import SystemMessage
 from langchain_core.runnables import RunnableLambda
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.output_parsers.string import StrOutputParser
-from langchain_community.llms import Cohere
-from langchain_openai import ChatOpenAI, OpenAI
-from langchain_google_genai import ChatGoogleGenerativeAI
 
-from cat.exceptions import LoadMemoryException
 import cat.factory.auth_handler as auth_handlers
 from cat.db import crud, models
-from cat.factory.embedder import (
-    EmbedderSettings,
-    EmbedderDumbConfig,
-    EmbedderOpenAIConfig,
-    EmbedderCohereConfig,
-    EmbedderGeminiChatConfig,
-    get_embedder_from_name,
-    get_allowed_embedder_models,
-)
 from cat.factory.llm import LLMDefaultConfig
 from cat.factory.llm import get_llm_from_name
 from cat.log import log
@@ -80,9 +67,8 @@ class CheshireCat:
         # allows plugins to do something before cat components are loaded
         self.mad_hatter.execute_hook("before_cat_bootstrap", cat=self)
 
-        # load LLM and embedder
+        # load LLM
         self.llm = self.load_language_model()
-        self.embedder = self.load_language_embedder()
 
         # Load memories (vector collections and working_memory)
         self.load_memory()
@@ -98,7 +84,8 @@ class CheshireCat:
         # allows plugins to do something after the cat bootstrap is complete
         self.mad_hatter.execute_hook("after_cat_bootstrap", cat=self)
 
-        self.__create_basic_users_if_not_exist()
+        if not crud.get_users(self.id):
+            crud.create_basic_users(self.id)
 
     def __eq__(self, other: "CheshireCat") -> bool:
         """Check if two cats are equal."""
@@ -196,75 +183,6 @@ class CheshireCat:
                 llm = LLMDefaultConfig.get_llm_from_config({})
 
         return llm
-
-    def load_language_embedder(self) -> EmbedderSettings:
-        """Hook into the  embedder selection.
-
-        Allows to modify how the Cat selects the embedder at bootstrap time.
-
-        Bootstrapping is the process of loading the plugins, the natural language objects (e.g. the LLM), the memories,
-        the *Main Agent*, the *Rabbit Hole* and the *White Rabbit*.
-
-        Returns
-        -------
-        embedder : Embeddings
-            Selected embedder model.
-        """
-        # Embedding LLM
-
-        selected_embedder = crud.get_setting_by_name(self.id, "embedder_selected")
-
-        if selected_embedder is not None:
-            # get Embedder factory class
-            selected_embedder_class = selected_embedder["value"]["name"]
-            factory_class = get_embedder_from_name(selected_embedder_class, self.mad_hatter)
-
-            # obtain configuration and instantiate Embedder
-            selected_embedder_config = crud.get_setting_by_name(self.id, selected_embedder_class)
-            try:
-                embedder = factory_class.get_embedder_from_config(selected_embedder_config["value"])
-            except AttributeError:
-                import traceback
-
-                traceback.print_exc()
-                embedder = EmbedderDumbConfig.get_embedder_from_config({})
-            return embedder
-
-        llm_type = type(self.llm)
-
-        # OpenAI embedder
-        if llm_type in [OpenAI, ChatOpenAI]:
-            return EmbedderOpenAIConfig.get_embedder_from_config(
-                {
-                    "openai_api_key": self.llm.openai_api_key,
-                }
-            )
-
-        # For Azure avoid automatic embedder selection
-
-        # Cohere
-        if llm_type in [Cohere]:
-            return EmbedderCohereConfig.get_embedder_from_config(
-                {
-                    "cohere_api_key": self.llm.cohere_api_key,
-                    "model": "embed-multilingual-v2.0",
-                    # Now the best model for embeddings is embed-multilingual-v2.0
-                }
-            )
-
-        if llm_type in [ChatGoogleGenerativeAI]:
-            return EmbedderGeminiChatConfig.get_embedder_from_config(
-                {
-                    "model": "models/embedding-001",
-                    "google_api_key": self.llm.google_api_key,
-                }
-            )
-
-        # If no embedder matches vendor, and no external embedder is configured, we use the DumbEmbedder.
-        #   `This embedder is not a model properly trained
-        #    and this makes it not suitable to effectively embed text,
-        #    "but it does not know this and embeds anyway".` - cit. Nicola Corbellini
-        return EmbedderDumbConfig.get_embedder_from_config({})
 
     def load_auth(self):
         # Custom auth_handler # TODOAUTH: change the name to custom_auth
@@ -509,127 +427,16 @@ class CheshireCat:
         # reload the llm of the cat
         self.llm = self.load_language_model()
 
-        # create new collections
-        # (in case embedder is not configured, it will be changed automatically and aligned to vendor)
-        # TODO: should we take this feature away?
-        # Exception handling in case an incorrect key is loaded.
-        try:
-            self.load_memory()
-        except Exception as e:
-            log.error(e)
-            crud.delete_settings_by_category(self.id, "llm")
-            crud.delete_settings_by_category(self.id, "llm_factory")
-
-            raise LoadMemoryException(utils.explicit_error_message(e))
-
         # recreate tools embeddings
         self.mad_hatter.find_plugins()
 
         return status
-
-    def get_selected_embedder_settings(self) -> Dict | None:
-        # get selected Embedder settings, if any
-        # embedder selected configuration is saved under "embedder_selected" name
-        selected = crud.get_setting_by_name(self.id, "embedder_selected")
-        if selected is not None:
-            selected = selected["value"]["name"]
-        else:
-            supported_embedding_models = get_allowed_embedder_models(self.mad_hatter)
-
-            # TODO: take away automatic embedder settings in v2
-            # If DB does not contain a selected embedder, it means an embedder was automatically selected.
-            # Deduce selected embedder:
-            for embedder_config_class in reversed(supported_embedding_models):
-                if isinstance(self.embedder, embedder_config_class._pyclass.default):
-                    selected = embedder_config_class.__name__
-
-        return selected
-
-    def replace_embedder(self, language_embedder_name: str, settings: Dict) -> Dict:
-        """
-        Replace the current embedder with a new one. This method is used to change the embedder of the cat.
-        Args:
-            language_embedder_name: name of the new embedder
-            settings: settings of the new embedder
-
-        Returns:
-            The dictionary resuming the new name and settings of the embedder
-        """
-        # get selected config if any
-        # embedder selected configuration is saved under "embedder_selected" name
-        selected = crud.get_setting_by_name(self.id, "embedder_selected")
-
-        # create the setting and upsert it
-        # embedder type and config are saved in settings table under "embedder_factory" category
-        final_setting = crud.upsert_setting_by_name(
-            self.id,
-            models.Setting(
-                name=language_embedder_name, category="embedder_factory", value=settings
-            ),
-        )
-
-        # general embedder settings are saved in settings table under "embedder" category
-        crud.upsert_setting_by_name(
-            self.id,
-            models.Setting(
-                name="embedder_selected",
-                category="embedder",
-                value={"name": language_embedder_name},
-            ),
-        )
-
-        status = {"name": language_embedder_name, "value": final_setting["value"]}
-
-        # reload the embedder of the cat
-        self.embedder = self.load_language_embedder()
-        # crete new collections (different embedder!)
-        try:
-            self.load_memory()
-        except Exception as e:
-            log.error(e)
-
-            crud.delete_settings_by_category(self.id, "embedder")
-
-            # embedder type and config are saved in settings table under "embedder_factory" category
-            crud.delete_settings_by_category(self.id, "embedder_factory")
-
-            # if a selected config is present, restore it
-            if selected is not None:
-                current_settings = crud.get_setting_by_name(self.id, selected["value"]["name"])
-
-                language_embedder_name = selected["value"]["name"]
-                crud.upsert_setting_by_name(
-                    self.id,
-                    models.Setting(
-                        name=language_embedder_name,
-                        category="embedder_factory",
-                        value=current_settings["value"],
-                    ),
-                )
-
-                # embedder selected configuration is saved under "embedder_selected" name
-                crud.upsert_setting_by_name(
-                    self.id,
-                    models.Setting(
-                        name="embedder_selected",
-                        category="embedder",
-                        value={"name": language_embedder_name},
-                    ),
-                )
-                # reload the embedder of the cat
-                self.embedder = self.load_language_embedder()
-
-            raise LoadMemoryException(utils.explicit_error_message(e))
-
-        # recreate tools embeddings
-        self.mad_hatter.find_plugins()
-
-        return status
-
-    def __create_basic_users_if_not_exist(self):
-        if not crud.get_users(self.id):
-            crud.create_basic_users(self.id)
 
     @property
     def strays(self):
         return self.__strays
+
+    @property
+    def embedder(self):
+        from cat.looking_glass.cheshire_cat_manager import CheshireCatManager
+        return CheshireCatManager().embedder
