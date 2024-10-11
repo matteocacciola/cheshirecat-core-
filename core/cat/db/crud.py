@@ -55,8 +55,11 @@ def get_settings_by_category(category: str, **kwargs) -> List[Dict]:
 def create_setting(payload: Setting, **kwargs) -> Dict:
     chatbot_id: str = kwargs.get("chatbot_id")
 
+    settings: List[Dict] = __get(chatbot_id) or []
+    settings.append(payload.model_dump())
+
     # create and retrieve the record we just created
-    return __set(chatbot_id, [payload.model_dump()]) or {}
+    return __set(chatbot_id, settings)
 
 
 def get_setting_by_name(name: str, **kwargs) -> Dict | None:
@@ -194,6 +197,17 @@ def get_user(user_id: str, **kwargs) -> Dict | None:
     return users_db[user_id]
 
 
+def get_user_by_username(username: str, **kwargs) -> Dict | None:
+    chatbot_id: str = kwargs.get("chatbot_id")
+
+    users_db = get_users(chatbot_id=chatbot_id)
+    for user in users_db.values():
+        if user["username"] == username:
+            return user
+
+    return None
+
+
 def update_user(user_id: str, updated_info: Dict, **kwargs) -> Dict:
     chatbot_id: str = kwargs.get("chatbot_id")
     users_db = get_users(chatbot_id=chatbot_id)
@@ -208,7 +222,7 @@ def delete_user(user_id: str, **kwargs) -> Dict | None:
     users_db = get_users(chatbot_id=chatbot_id)
 
     if user_id not in users_db:
-        raise None
+        return None
 
     user = users_db.pop(user_id)
     update_users(users_db, **kwargs)
@@ -225,3 +239,7 @@ def update_users(users: Dict[str, Dict], **kwargs) -> Dict | None:
 def flush_db():
     get_db().flushdb()
     return True
+
+
+def get_all(**kwargs):
+    return __get(kwargs.get("chatbot_id"))

@@ -3,6 +3,7 @@ import pytest
 import time
 import jwt
 
+from cat.db import crud
 from cat.env import get_env
 from cat.auth.permissions import AuthPermission, AuthResource
 from cat.auth.auth_utils import is_jwt
@@ -24,6 +25,8 @@ def test_is_jwt(client, cheshire_cat):
 
 
 def test_refuse_issue_jwt(client, cheshire_cat):
+    chatbot_id = cheshire_cat.id
+
     creds = {"username": "admin", "password": "wrong"}
     res = client.post("/auth/token", json=creds, headers={"chatbot_id": chatbot_id})
 
@@ -147,8 +150,10 @@ def test_jwt_expiration(secure_client, cheshire_cat):
 # test ws and http endpoints can get user_id from JWT
 # NOTE: here we are using the secure_client fixture (see conftest.py)
 def test_jwt_imposes_user_id(secure_client, cheshire_cat):
+    chatbot_id = cheshire_cat.id
+
     # not allowed
-    response = secure_client.get("/")
+    response = secure_client.get("/",  headers={"chatbot_id": chatbot_id})
     assert response.status_code == 403
     assert response.json()["detail"]["error"] == "Invalid Credentials"
 
@@ -157,7 +162,6 @@ def test_jwt_imposes_user_id(secure_client, cheshire_cat):
         "username": "admin", # TODOAUTH: use another user?
         "password": "admin",
     }
-    chatbot_id = cheshire_cat.id
     res = secure_client.post("/auth/token", json=creds, headers={"chatbot_id": chatbot_id})
     assert res.status_code == 200
     token = res.json()["access_token"]
@@ -168,11 +172,9 @@ def test_jwt_imposes_user_id(secure_client, cheshire_cat):
     }
 
     # send user specific message via http
-    headers = {
-        "Authorization": f"Bearer {token}",
-        "chatbot_id": chatbot_id,
-    }
-    response = secure_client.post("/message", headers=headers, json=message)
+    headers = {"Authorization": f"Bearer {token}"}
+    params = {"chatbot_id": chatbot_id}
+    response = secure_client.post("/message", headers=headers, json=message, params=params)
     assert response.status_code == 200
 
     # send user specific request via ws
@@ -186,7 +188,8 @@ def test_jwt_imposes_user_id(secure_client, cheshire_cat):
     assert response.status_code == 200
     episodic_memories = json["vectors"]["collections"]["episodic"]
     assert len(episodic_memories) == 2
+    user_db = crud.get_user_by_username(creds["username"], chatbot_id=chatbot_id)
     for em in episodic_memories:
-        assert em["metadata"]["source"] == "admin"
+        assert em["metadata"]["source"] == user_db["id"]
         assert em["page_content"] == "hey"
     

@@ -17,9 +17,18 @@ def test_get_env(client):
     assert get_env("FAKE_ENV") == "meow1"
     assert get_env("CCAT_FAKE_ENV") == "meow2"
 
+    redis_host = os.environ["CCAT_REDIS_HOST"]
+    os.environ["CCAT_REDIS_HOST"] = "localhost"
+
+    redis_db = os.environ["CCAT_REDIS_DB"]
+    os.environ["CCAT_REDIS_DB"] = "0"
+
     # default env variables
     for k, v in get_supported_env_variables().items():
         assert get_env(k) == v
         # TODO: take away in v2
         # missing prefix (legacy)
         assert get_env(k.replace("CCAT_", "")) == v
+
+    os.environ["CCAT_REDIS_HOST"] = redis_host
+    os.environ["CCAT_REDIS_DB"] = redis_db

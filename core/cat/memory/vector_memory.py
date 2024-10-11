@@ -70,7 +70,7 @@ class VectorMemory:
                 host=qdrant_host,
                 port=qdrant_port,
                 https=qdrant_https,
-                api_key=qdrant_api_key,
+                api_key=qdrant_api_key or None,
             )
 
         # Qdrant local vector DB client

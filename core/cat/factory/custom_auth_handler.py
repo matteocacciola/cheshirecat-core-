@@ -75,7 +75,10 @@ class CoreAuthHandler(BaseAuthHandler):
             return None
 
         user = users[payload["sub"]]
-        if auth_resource not in user["permissions"].keys() or auth_permission not in user["permissions"][auth_resource]:
+        ar = str(auth_resource)
+        ap = str(auth_permission)
+
+        if ar not in user["permissions"].keys() or ap not in user["permissions"][ar]:
             # do not pass
             return None
 

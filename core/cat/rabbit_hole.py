@@ -247,7 +247,7 @@ class RabbitHole:
 
         return self.string_to_docs(
             stray=stray,
-            file_bytes=file_bytes.decode("utf-8"),
+            file_bytes=file_bytes,
             source=source,
             content_type=content_type,
             chunk_size=chunk_size,
@@ -257,7 +257,7 @@ class RabbitHole:
     def string_to_docs(
         self,
         stray,
-        file_bytes: str,
+        file_bytes: bytes,
         source: str = None,
         content_type: str = "text/plain",
         chunk_size: int | None = None,
@@ -272,8 +272,8 @@ class RabbitHole:
         ----------
         stray : StrayCat
             StrayCat instance.
-        file_bytes : str
-            The string to be converted.
+        file_bytes : bytes
+            The bytes to be converted.
         source: str
             Source filename.
         content_type:

@@ -43,7 +43,7 @@ def get_llms_settings(
 
 
 # get LLM settings and its schema
-@router.get("/settings/{languageModelName}")
+@router.get("/settings/{language_model_name}")
 def get_llm_settings(
     language_model_name: str,
     cats: ContextualCats = Depends(HTTPAuth(AuthResource.LLM, AuthPermission.READ)),

@@ -40,22 +40,6 @@ class CheshireCatManager:
     def __any(self, chatbot_id: str) -> bool:
         return any(cheshire_cat.id == chatbot_id for cheshire_cat in self.__cheshire_cats)
 
-    def add_cheshire_cat(self, chatbot_id: str) -> CheshireCat:
-        """
-        Adds a new Cheshire Cat to the list of active chatbots.
-
-        Args:
-            chatbot_id: The id of the chatbot to add
-
-        Returns:
-            None
-        """
-
-        ccat = CheshireCat(chatbot_id)
-        self.__cheshire_cats.add(ccat)
-
-        return ccat
-
     def remove_cheshire_cat(self, chatbot_id: str) -> None:
         """
         Removes a Cheshire Cat from the list of active chatbots.
@@ -96,7 +80,10 @@ class CheshireCatManager:
         if current_cat:  # chatbot already exists
             return current_cat
 
-        return self.add_cheshire_cat(chatbot_id)
+        new_cat = CheshireCat(chatbot_id)
+        self.__cheshire_cats.add(new_cat)
+
+        return new_cat
 
     def shutdown(self) -> None:
         """

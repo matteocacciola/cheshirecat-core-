@@ -2,7 +2,7 @@ from typing import Dict
 import bcrypt
 import jwt
 from jwt.exceptions import InvalidTokenError
-from fastapi import Request
+from fastapi.requests import HTTPConnection
 
 from cat.db import crud
 
@@ -24,8 +24,8 @@ def hash_password(password: str) -> str:
         # Generate a salt
         salt = bcrypt.gensalt()
         # Hash the password
-        hashed = bcrypt.hashpw(password.encode('utf-8'), salt)
-        return hashed.decode('utf-8')
+        hashed = bcrypt.hashpw(password.encode("utf-8"), salt)
+        return hashed.decode("utf-8")
     except Exception:
         # if you try something strange, you'll stay out
         return bcrypt.gensalt().decode("utf-8")
@@ -34,7 +34,7 @@ def hash_password(password: str) -> str:
 def check_password(password: str, hashed: str) -> bool:
     try:
         # Check if the password matches the hashed password
-        return bcrypt.checkpw(password.encode('utf-8'), hashed.encode('utf-8'))
+        return bcrypt.checkpw(password.encode("utf-8"), hashed.encode("utf-8"))
     except Exception:
         return False
 
@@ -60,13 +60,13 @@ def get_user_by_credentials(username: str, password: str, chatbot_id: str = "cha
 
     users = crud.get_users(chatbot_id=chatbot_id)
     for user in users.values():
-        if user["username"] == username and user["password"] == hash_password(password):
+        if user["username"] == username and check_password(password, user["password"]):
             return user
 
     return None
 
 
-def extract_chatbot_id_from_request(request: Request) -> str:
+def extract_chatbot_id_from_request(request: HTTPConnection) -> str:
     return request.headers.get(
         "chatbot_id",
         request.path_params.get(
@@ -74,6 +74,19 @@ def extract_chatbot_id_from_request(request: Request) -> str:
             request.query_params.get(
                 "chatbot_id",
                 "chatbot"
+            )
+        )
+    )
+
+
+def extract_user_id_from_request(request: HTTPConnection) -> str:
+    return request.headers.get(
+        "user_id",
+        request.path_params.get(
+            "user_id",
+            request.query_params.get(
+                "user_id",
+                "user"
             )
         )
     )

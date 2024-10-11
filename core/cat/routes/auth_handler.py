@@ -8,9 +8,6 @@ from cat.factory.auth_handler import get_auth_handlers_schemas
 
 router = APIRouter()
 
-AUTH_HANDLER_SELECTED_NAME = "auth_handler_selected"
-AUTH_HANDLER_CATEGORY = "auth_handler_factory"
-
 
 @router.get("/settings")
 def get_auth_handler_settings(
@@ -21,11 +18,11 @@ def get_auth_handler_settings(
     chatbot_id = cats.cheshire_cat.id
 
     # get selected AuthHandler
-    selected = crud.get_setting_by_name(name=AUTH_HANDLER_SELECTED_NAME, chatbot_id=chatbot_id)
+    selected = crud.get_setting_by_name(name="auth_handler_selected", chatbot_id=chatbot_id)
     if selected is not None:
         selected = selected["value"]["name"]
 
-    saved_settings = crud.get_settings_by_category(category=AUTH_HANDLER_CATEGORY, chatbot_id=chatbot_id)
+    saved_settings = crud.get_settings_by_category(category="auth_handler_factory", chatbot_id=chatbot_id)
     saved_settings = {s["name"]: s for s in saved_settings}
 
     settings = [{
@@ -90,16 +87,16 @@ def upsert_authenticator_setting(
 
     crud.upsert_setting_by_name(
         models.Setting(
-            name=auth_handler_name, value=payload, category=AUTH_HANDLER_CATEGORY
+            name=auth_handler_name, value=payload, category="auth_handler_factory"
         ),
         chatbot_id=chatbot_id,
     )
 
     crud.upsert_setting_by_name(
         models.Setting(
-            name=AUTH_HANDLER_SELECTED_NAME,
+            name="auth_handler_selected",
             value={"name": auth_handler_name},
-            category=AUTH_HANDLER_CATEGORY,
+            category="auth_handler_factory",
         ),
         chatbot_id=chatbot_id,
     )

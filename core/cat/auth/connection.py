@@ -8,6 +8,7 @@ from fastapi import Request, WebSocket, HTTPException, WebSocketException
 from fastapi.requests import HTTPConnection
 from pydantic import BaseModel, ConfigDict
 
+from cat.auth.auth_utils import extract_chatbot_id_from_request, extract_user_id_from_request
 from cat.auth.permissions import AuthPermission, AuthResource, AuthUserInfo
 from cat.looking_glass.cheshire_cat import CheshireCat
 from cat.looking_glass.cheshire_cat_manager import CheshireCatManager
@@ -84,8 +85,8 @@ class HTTPAuth(ConnectionAuth):
         """
 
         # when using CCAT_API_KEY, chatbot_id and user_id are passed in headers
-        chatbot_id = connection.headers.get("chatbot_id", "chatbot")
-        user_id = connection.headers.get("user_id", "user")
+        chatbot_id = extract_chatbot_id_from_request(connection)
+        user_id = extract_user_id_from_request(connection)
 
         # Proper Authorization header
         token = connection.headers.get("Authorization", None)
@@ -128,13 +129,13 @@ class WebSocketAuth(ConnectionAuth):
         Extract chatbot_id and user_id from WebSocket path params
         Extract token from WebSocket query string
         """
-        chatbot_id = connection.path_params.get("chatbot_id", "chatbot")
-        user_id = connection.path_params.get("user_id", "user")
+        chatbot_id = extract_chatbot_id_from_request(connection)
+        user_id = extract_user_id_from_request(connection)
 
         # TODO AUTH: is there a more secure way to pass the token over websocket?
         #   Headers do not work from the browser
         token = connection.query_params.get("token", None)
-        
+
         return Credentials(chatbot_id=chatbot_id, user_id=user_id, credential=token)
 
     async def get_user_stray(self, ccat: CheshireCat, user: AuthUserInfo, connection: WebSocket) -> StrayCat:

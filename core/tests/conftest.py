@@ -71,6 +71,10 @@ def client(monkeypatch) -> Generator[TestClient, Any, None]:
     Create a new FastAPI TestClient.
     """
 
+    current_redis_host = os.environ["CCAT_REDIS_DB"]
+    os.environ["CCAT_REDIS_DB"] = os.environ["CCAT_REDIS_DB_TEST"]
+    os.environ["CCAT_QDRANT_HOST"] = ""
+
     # clean up tmp files and folders
     clean_up_mocks()
     # monkeypatch classes
@@ -78,9 +82,10 @@ def client(monkeypatch) -> Generator[TestClient, Any, None]:
     # delete all singletons!!!
     utils.singleton.instances = {}
 
-    os.environ["CCAT_REDIS_DB"] = os.environ["CCAT_REDIS_DB_TEST"]
     with TestClient(cheshire_cat_api) as client:
         yield client
+
+    os.environ["CCAT_REDIS_DB"] = current_redis_host
 
 
 @pytest.fixture(scope="function")

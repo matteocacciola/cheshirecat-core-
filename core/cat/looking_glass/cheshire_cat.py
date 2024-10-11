@@ -564,7 +564,7 @@ class CheshireCat:
             # If DB does not contain a selected embedder, it means an embedder was automatically selected.
             # Deduce selected embedder:
             for embedder_config_class in reversed(supported_embedding_models):
-                if isinstance(self.embedder, embedder_config_class.pyclass.default):
+                if isinstance(self.embedder, embedder_config_class._pyclass.default):
                     selected = embedder_config_class.__name__
 
         return selected

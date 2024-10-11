@@ -34,9 +34,9 @@ async def recall_memories_from_text(
         memory_dict["vector"] = vector
         return memory_dict
 
-    def get_memories(c: str) -> List:
+    def get_memories(c: MemoryCollection) -> List:
         # only episodic collection has users
-        return ccat.memory.vectors.collections[c].recall_memories_from_embedding(
+        return ccat.memory.vectors.collections[str(c)].recall_memories_from_embedding(
             query_embedding,
             k=k,
             metadata={"source": cats.stray_cat.user_id} if c == MemoryCollection.EPISODIC else None
@@ -51,7 +51,7 @@ async def recall_memories_from_text(
 
     # Loop over collections and retrieve nearby memories
     recalled = {str(c): [
-        build_memory_dict(metadata, score, vector, id) for metadata, score, vector, id in get_memories(str(c))
+        build_memory_dict(metadata, score, vector, id) for metadata, score, vector, id in get_memories(c)
     ] for c in MemoryCollection}
 
     return {
