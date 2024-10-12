@@ -129,11 +129,8 @@ JSON:
             if self.confirm():
                 self._state = CatFormState.CLOSED
                 return self.submit(self._model)
-            else:
-                if self.check_exit_intent():
-                    self._state = CatFormState.CLOSED
-                else:
-                    self._state = CatFormState.INCOMPLETE
+
+            self._state = CatFormState.CLOSED if self.check_exit_intent() else CatFormState.INCOMPLETE
 
         if self.check_exit_intent():
             self._state = CatFormState.CLOSED
@@ -145,11 +142,11 @@ JSON:
 
         # If state is COMPLETE, ask confirm (or execute action directly)
         if self._state == CatFormState.COMPLETE:
-            if self.ask_confirm:
-                self._state = CatFormState.WAIT_CONFIRM
-            else:
+            if not self.ask_confirm:
                 self._state = CatFormState.CLOSED
                 return self.submit(self._model)
+
+            self._state = CatFormState.WAIT_CONFIRM
 
         # if state is still INCOMPLETE, recap and ask for new info
         return self.message()
@@ -289,7 +286,6 @@ Updated JSON:
 
             # If model is valid change state to COMPLETE
             self._state = CatFormState.COMPLETE
-
         except ValidationError as e:
             # Collect ask_for and errors messages
             for error_message in e.errors():

@@ -9,7 +9,7 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 
 from cat.env import get_env, fix_legacy_env_variables
-from cat.looking_glass.cheshire_cat_manager import CheshireCatManager
+from cat.looking_glass.bill_the_lizard import BillTheLizard
 from cat.log import log
 from cat.routes import (
     admins,
@@ -44,7 +44,7 @@ async def lifespan(app: FastAPI):
     # - Starlette allows this: https://www.starlette.io/applications/#storing-state-on-the-app-instance
 
     # load the Cheshire Cat Manager
-    app.state.ccat_manager = CheshireCatManager()
+    app.state.ccat_manager = BillTheLizard()
 
     # set a reference to asyncio event loop
     app.state.event_loop = asyncio.get_running_loop()

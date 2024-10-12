@@ -361,10 +361,7 @@ class CheshireCat:
         # retrieve plugins from official repo
         registry_plugins = await registry_search_plugins(query)
         # index registry plugins by url
-        registry_plugins_index = {}
-        for p in registry_plugins:
-            plugin_url = p["url"]
-            registry_plugins_index[plugin_url] = p
+        registry_plugins_index = {p["url"]: p for p in registry_plugins}
 
         # get active plugins
         active_plugins = self.mad_hatter.load_active_plugins_from_db()
@@ -373,26 +370,19 @@ class CheshireCat:
         installed_plugins = []
         for p in self.mad_hatter.plugins.values():
             # get manifest
-            manifest = deepcopy(
-                p.manifest
-            )  # we make a copy to avoid modifying the plugin obj
-            manifest["active"] = (
-                    p.id in active_plugins
-            )  # pass along if plugin is active or not
+            manifest = deepcopy(p.manifest)  # we make a copy to avoid modifying the plugin obj
+            manifest["active"] = (p.id in active_plugins)  # pass along if plugin is active or not
             manifest["upgrade"] = None
-            manifest["hooks"] = [
-                {"name": hook.name, "priority": hook.priority} for hook in p.hooks
-            ]
+            manifest["hooks"] = [{"name": hook.name, "priority": hook.priority} for hook in p.hooks]
             manifest["tools"] = [{"name": tool.name} for tool in p.tools]
 
             # filter by query
             plugin_text = [str(field) for field in manifest.values()]
             plugin_text = " ".join(plugin_text).lower()
-            if (query is None) or (query.lower() in plugin_text):
+            if query is None or query.lower() in plugin_text:
                 for r in registry_plugins:
-                    if r["plugin_url"] == p.manifest["plugin_url"]:
-                        if r["version"] != p.manifest["version"]:
-                            manifest["upgrade"] = r["version"]
+                    if r["plugin_url"] == p.manifest["plugin_url"] and r["version"] != p.manifest["version"]:
+                        manifest["upgrade"] = r["version"]
                 installed_plugins.append(manifest)
 
             # do not show already installed plugins among registry plugins
@@ -438,5 +428,5 @@ class CheshireCat:
 
     @property
     def embedder(self):
-        from cat.looking_glass.cheshire_cat_manager import CheshireCatManager
-        return CheshireCatManager().embedder
+        from cat.looking_glass.bill_the_lizard import BillTheLizard
+        return BillTheLizard().embedder

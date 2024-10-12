@@ -158,10 +158,7 @@ class VectorMemoryCollection:
                 out.extend(self._build_condition(f"{key}.{_key}", value))
         elif isinstance(value, List):
             for _value in value:
-                if isinstance(_value, Dict):
-                    out.extend(self._build_condition(f"{key}[]", _value))
-                else:
-                    out.extend(self._build_condition(f"{key}", _value))
+                out.extend(self._build_condition(f"{key}[]" if isinstance(_value, Dict) else f"{key}", _value))
         else:
             out.append(
                 FieldCondition(
@@ -182,10 +179,9 @@ class VectorMemoryCollection:
             the list of points
         """
 
-        filter = self._qdrant_combine_filter_with_tenant(Filter(must=[HasIdCondition(has_id=points)]))
         results = self.client.scroll(
             collection_name=self.collection_name,
-            scroll_filter=filter,
+            scroll_filter=self._qdrant_combine_filter_with_tenant(Filter(must=[HasIdCondition(has_id=points)])),
             limit=len(points),
             with_payload=True,
             with_vectors=True,
@@ -246,9 +242,7 @@ class VectorMemoryCollection:
             the response of the upsert operation
         """
 
-        for p in payloads:
-            p["group_id"] = self.__chatbot_id
-
+        payloads = [p | {"group_id": self.__chatbot_id} for p in payloads]
         points = Batch(ids=ids, payloads=payloads, vectors=vectors)
 
         res = self.client.upsert(

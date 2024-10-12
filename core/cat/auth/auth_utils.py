@@ -66,18 +66,17 @@ def extract_user_id_from_request(request: HTTPConnection) -> str:
 
 def extract_token(request: HTTPConnection) -> str | None:
     # Proper Authorization header
-    token = request.headers.get("Authorization", None)
-    if token and ("Bearer " in token):
-        token = token.replace("Bearer ", "")
+    token = request.headers.get("Authorization", "").replace("Bearer ", "")
+    if token:
+        return token
 
-    if not token:
-        # Legacy header to pass CCAT_API_KEY
-        token = request.headers.get("access_token", None)
-        if token:
-            log.warning(
-                "Deprecation Warning: `access_token` header will not be supported in v2."
-                "Pass your token/key using the `Authorization: Bearer <token>` format."
-            )
+    # Legacy header to pass CCAT_API_KEY
+    token = request.headers.get("access_token", None)
+    if token:
+        log.warning(
+            "Deprecation Warning: `access_token` header will not be supported in v2."
+            "Pass your token/key using the `Authorization: Bearer <token>` format."
+        )
 
     # some clients may send an empty string instead of just not setting the header
-    return token if token != "" else None
+    return token

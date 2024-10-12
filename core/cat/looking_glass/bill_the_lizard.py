@@ -21,7 +21,7 @@ from cat.utils import singleton
 
 
 @singleton
-class CheshireCatManager:
+class BillTheLizard:
     """
     Singleton class that manages the Cheshire Cats and their strays.
 
@@ -248,12 +248,12 @@ class CheshireCatManager:
         return self.__key
 
 
-def job_on_idle_strays(cat_manager: CheshireCatManager, loop) -> bool:
+def job_on_idle_strays(lizard: BillTheLizard, loop) -> bool:
     """
-    Remove the objects StrayCat, if idle, from the CheshireCat objects contained into the CheshireCatManager.
+    Remove the objects StrayCat, if idle, from the CheshireCat objects contained into the BillTheLizard.
     """
 
-    ccats = cat_manager.cheshire_cats.values()
+    ccats = lizard.cheshire_cats.values()
 
     for ccat in ccats:
         for stray in ccat.strays:
@@ -261,6 +261,6 @@ def job_on_idle_strays(cat_manager: CheshireCatManager, loop) -> bool:
                 asyncio.run_coroutine_threadsafe(ccat.remove_stray(stray), loop=loop).result()
 
         if not ccat.has_strays():
-            cat_manager.remove_cheshire_cat(ccat.id)
+            lizard.remove_cheshire_cat(ccat.id)
 
     return True

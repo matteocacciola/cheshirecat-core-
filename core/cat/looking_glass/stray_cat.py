@@ -19,8 +19,8 @@ from cat.auth.permissions import AuthUserInfo
 from cat.convo.messages import CatMessage, UserMessage, MessageWhy, Role, EmbedderModelInteraction
 from cat.env import get_env
 from cat.log import log
+from cat.looking_glass.bill_the_lizard import BillTheLizard
 from cat.looking_glass.callbacks import NewTokenHandler, ModelInteractionHandler
-from cat.looking_glass.cheshire_cat_manager import CheshireCatManager
 from cat.looking_glass.white_rabbit import WhiteRabbit
 from cat.mad_hatter.mad_hatter import MadHatter
 from cat.memory.models import MemoryCollection
@@ -590,7 +590,7 @@ Allowed classes are:
 
     @property
     def cheshire_cat(self):
-        ccat = CheshireCatManager().get_cheshire_cat(self.chatbot_id)
+        ccat = BillTheLizard().get_cheshire_cat(self.chatbot_id)
         if not ccat:
             raise ValueError(f"Cheshire Cat not found for the StrayCat {self.user_id}.")
 
@@ -602,7 +602,7 @@ Allowed classes are:
 
     @property
     def embedder(self):
-        return CheshireCatManager().embedder
+        return BillTheLizard().embedder
 
     @property
     def memory(self):
@@ -618,11 +618,11 @@ Allowed classes are:
 
     @property
     def main_agent(self) -> MainAgent:
-        return CheshireCatManager().main_agent
+        return BillTheLizard().main_agent
 
     @property
     def white_rabbit(self) -> WhiteRabbit:
-        return CheshireCatManager().white_rabbit
+        return BillTheLizard().white_rabbit
 
     @property
     def loop(self):

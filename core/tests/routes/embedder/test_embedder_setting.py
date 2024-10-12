@@ -6,8 +6,8 @@ from cat.factory.embedder import get_embedders_schemas
 from tests.utils import get_procedural_memory_contents
 
 
-def test_get_all_embedder_settings(client, cheshire_cat_manager):
-    embedder_schemas = get_embedders_schemas(cheshire_cat_manager.mad_hatter)
+def test_get_all_embedder_settings(client, lizard):
+    embedder_schemas = get_embedders_schemas(lizard.mad_hatter)
     response = client.get("/embedder/settings")
     json = response.json()
 
@@ -25,7 +25,7 @@ def test_get_all_embedder_settings(client, cheshire_cat_manager):
     assert json["selected_configuration"] == "EmbedderDumbConfig"
 
 
-def test_get_embedder_settings_non_existent(client, cheshire_cat_manager):
+def test_get_embedder_settings_non_existent(client):
     non_existent_embedder_name = "EmbedderNonExistentConfig"
     response = client.get(f"/embedder/settings/{non_existent_embedder_name}")
     json = response.json()
@@ -34,7 +34,7 @@ def test_get_embedder_settings_non_existent(client, cheshire_cat_manager):
     assert f"{non_existent_embedder_name} not supported" in json["detail"]["error"]
 
 
-def test_get_embedder_settings(client, cheshire_cat_manager):
+def test_get_embedder_settings(client):
     embedder_name = "EmbedderDumbConfig"
     response = client.get(f"/embedder/settings/{embedder_name}")
     json = response.json()
@@ -46,7 +46,7 @@ def test_get_embedder_settings(client, cheshire_cat_manager):
     assert json["schema"]["type"] == "object"
 
 
-def test_upsert_embedder_settings(client, cheshire_cat_manager):
+def test_upsert_embedder_settings(client):
     # set a different embedder from default one (same class different size # TODO: have another fake/test embedder class)
     new_embedder = "EmbedderFakeConfig"
     embedder_config = {"size": 64}
@@ -75,7 +75,7 @@ def test_upsert_embedder_settings(client, cheshire_cat_manager):
     assert json["schema"]["languageEmbedderName"] == new_embedder
 
 
-def test_upsert_embedder_settings_updates_collections(client, cheshire_cat_manager):
+def test_upsert_embedder_settings_updates_collections(client):
     # set a different embedder from default one (same class different size)
     embedder_config = {"size": 64}
     response = client.put("/embedder/settings/EmbedderFakeConfig", json=embedder_config)

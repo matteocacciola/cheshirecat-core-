@@ -159,49 +159,47 @@ class ProceduresAgent(BaseAgent):
             AgentOutput instance
         """
 
+        if not llm_action.action:
+            return AgentOutput(output="")
+
         # execute chosen tool / form
         # loop over allowed tools and forms
-        if llm_action.action:
-            chosen_procedure = allowed_procedures.get(llm_action.action, None)
-            try:
-                if Plugin.is_cat_tool(chosen_procedure):
-                    # execute tool
-                    tool_output = await chosen_procedure._arun(llm_action.action_input, stray=stray)
-                    return AgentOutput(
-                        output=tool_output,
-                        return_direct=chosen_procedure.return_direct,
-                        intermediate_steps=[
-                            ((llm_action.action, llm_action.action_input), tool_output)
-                        ]
-                    )
-                if Plugin.is_cat_form(chosen_procedure):
-                    # create form
-                    form_instance = chosen_procedure(stray)
-                    # store active form in working memory
-                    stray.working_memory.active_form = form_instance
-                    # execute form
-                    return await self.form_agent.execute(stray)
-            except Exception as e:
-                log.error(f"Error executing {chosen_procedure.procedure_type} `{chosen_procedure.name}`")
-                log.error(e)
-                traceback.print_exc()
+        chosen_procedure = allowed_procedures.get(llm_action.action, None)
+        try:
+            if Plugin.is_cat_tool(chosen_procedure):
+                # execute tool
+                tool_output = await chosen_procedure._arun(llm_action.action_input, stray=stray)
+                return AgentOutput(
+                    output=tool_output,
+                    return_direct=chosen_procedure.return_direct,
+                    intermediate_steps=[
+                        ((llm_action.action, llm_action.action_input), tool_output)
+                    ]
+                )
+            if Plugin.is_cat_form(chosen_procedure):
+                # create form
+                form_instance = chosen_procedure(stray)
+                # store active form in working memory
+                stray.working_memory.active_form = form_instance
+                # execute form
+                return await self.form_agent.execute(stray)
+        except Exception as e:
+            log.error(f"Error executing {chosen_procedure.procedure_type} `{chosen_procedure.name}`")
+            log.error(e)
+            traceback.print_exc()
 
-        return AgentOutput(output="")
+            return AgentOutput(output="")
 
     def generate_examples(self, allowed_procedures: Dict[str, CatTool | CatForm]) -> str:
-        list_examples = ""
-        for proc in allowed_procedures.values():
-            if proc.start_examples:
-                if not list_examples:
-                    list_examples += "## Here some examples:\n"
-                example_json = f"""
+        def get_example(proc):
+            example_json = f"""
 {{
     "action": "{proc.name}",
     "action_input": "...input here..."
 }}"""
-                list_examples += f"\nQuestion: {random.choice(proc.start_examples)}"
-                list_examples += f"\n```json\n{example_json}\n```"
-                list_examples += """
+            result = f"\nQuestion: {random.choice(proc.start_examples)}"
+            result += f"\n```json\n{example_json}\n```"
+            result += """
 Question: I have no questions
 ```json
 {
@@ -209,4 +207,8 @@ Question: I have no questions
     "action_input": null
 }
 ```"""
-        return list_examples
+            return result
+
+        list_examples = [get_example(proc) for proc in allowed_procedures.values() if proc.start_examples]
+
+        return "## Here some examples:\n" + "".join(list_examples) if list_examples else ""

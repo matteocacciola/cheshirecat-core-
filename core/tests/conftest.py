@@ -10,7 +10,7 @@ from fastapi.testclient import TestClient
 
 from cat.auth.permissions import AuthUserInfo
 from cat.db import crud
-from cat.looking_glass.cheshire_cat_manager import CheshireCatManager
+from cat.looking_glass.bill_the_lizard import BillTheLizard
 from cat.looking_glass.stray_cat import StrayCat
 from cat.mad_hatter.plugin import Plugin
 from cat.main import cheshire_cat_api
@@ -89,8 +89,8 @@ def client(monkeypatch) -> Generator[TestClient, Any, None]:
 
 
 @pytest.fixture(scope="function")
-def cheshire_cat_manager():
-    return CheshireCatManager()
+def lizard():
+    return BillTheLizard()
 
 
 # This fixture sets the CCAT_API_KEY and CCAT_API_KEY_WS environment variables,
@@ -134,10 +134,10 @@ def just_installed_plugin(client):
 
 
 @pytest.fixture
-def cheshire_cat(client, cheshire_cat_manager):
-    cheshire_cat = cheshire_cat_manager.get_or_create_cheshire_cat("test")
+def cheshire_cat(client, lizard):
+    cheshire_cat = lizard.get_or_create_cheshire_cat("test")
     yield cheshire_cat
-    cheshire_cat_manager.remove_cheshire_cat("test")
+    lizard.remove_cheshire_cat("test")
 
 
 # this function will be run before each test function
@@ -164,8 +164,8 @@ def mad_hatter_no_plugins(client, cheshire_cat):  # client here injects the monk
 
 # this function will be run before each test function
 @pytest.fixture
-def mad_hatter_cheshirecat_manager(client, cheshire_cat_manager):  # client here injects the monkeypatched version of the cat manager
-    mad_hatter = cheshire_cat_manager.mad_hatter
+def mad_hatter_cheshirecat_manager(client, lizard):  # client here injects the monkeypatched version of the cat manager
+    mad_hatter = lizard.mad_hatter
 
     # each test is given the mad_hatter instance
     yield mad_hatter
@@ -173,8 +173,8 @@ def mad_hatter_cheshirecat_manager(client, cheshire_cat_manager):  # client here
 
 # fixtures to test the main agent
 @pytest.fixture
-def main_agent(client, cheshire_cat_manager):
-    yield cheshire_cat_manager.main_agent  # each test receives as argument the main agent instance
+def main_agent(client, lizard):
+    yield lizard.main_agent  # each test receives as argument the main agent instance
 
 
 # fixture to have available an instance of StrayCat

@@ -85,8 +85,9 @@ class RabbitHole:
         cat_embedder = str(self.embedder.__class__.__name__)
 
         if upload_embedder != cat_embedder:
-            message = f"Embedder mismatch: file embedder {upload_embedder} is different from {cat_embedder}"
-            raise Exception(message)
+            raise Exception(
+                f"Embedder mismatch: file embedder {upload_embedder} is different from {cat_embedder}"
+            )
 
         # Get Declarative memories in file
         declarative_memories = memories["collections"][str(MemoryCollection.DECLARATIVE)]
@@ -106,10 +107,9 @@ class RabbitHole:
         len_mismatch = [len(v) == embedder_size for v in vectors]
 
         if not any(len_mismatch):
-            message = (
+            raise Exception(
                 f"Embedding size mismatch: vectors length should be {embedder_size}"
             )
-            raise Exception(message)
 
         # Upsert memories in batch mode
         self.memory.vectors.declarative.add_points(ids, payloads, vectors)
@@ -161,10 +161,7 @@ class RabbitHole:
         metadata = metadata or {}
 
         # store in memory
-        if isinstance(file, str):
-            filename = file
-        else:
-            filename = file.filename
+        filename = file if isinstance(file, str) else file.filename
 
         self.store_documents(stray=stray, docs=docs, source=filename, metadata=metadata)
 

@@ -69,20 +69,15 @@ def verbal_timedelta(td: timedelta) -> str:
 
     if td.days != 0:
         abs_days = abs(td.days)
-        if abs_days > 7:
-            abs_delta = "{} weeks".format(td.days // 7)
-        else:
-            abs_delta = "{} days".format(td.days)
+        abs_delta = "{} weeks".format(td.days // 7) if abs_days > 7 else "{} days".format(td.days)
     else:
         abs_minutes = abs(td.seconds) // 60
-        if abs_minutes > 60:
-            abs_delta = "{} hours".format(abs_minutes // 60)
-        else:
-            abs_delta = "{} minutes".format(abs_minutes)
+        abs_delta = "{} hours".format(abs_minutes // 60) if abs_minutes > 60 else "{} minutes".format(abs_minutes)
+
     if td < timedelta(0):
         return "{} ago".format(abs_delta)
-    else:
-        return "{} ago".format(abs_delta)
+
+    return "{} ago".format(abs_delta)
 
 
 def get_base_url():

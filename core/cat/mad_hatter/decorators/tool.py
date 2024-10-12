@@ -52,7 +52,6 @@ class CatTool(BaseTool):
     
     # we run tools always async, even if they are not defined so in a plugin
     async def _arun(self, input_by_llm, stray):
-
         # await if the tool is async
         if inspect.iscoroutinefunction(self.func):
             return await self.func(input_by_llm, cat=stray)

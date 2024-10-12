@@ -85,14 +85,14 @@ class CatLogEngine:
                 diagnose=True,
                 filter=self.show_log_level,
             )
-        else:
-            return logger.add(
-                sys.stdout,
-                colorize=True,
-                format=log_format,
-                filter=self.show_log_level,
-                level=self.LOG_LEVEL,
-            )
+
+        return logger.add(
+            sys.stdout,
+            colorize=True,
+            format=log_format,
+            filter=self.show_log_level,
+            level=self.LOG_LEVEL,
+        )
 
     def get_caller_info(self, skip=3):
         """Get the name of a caller in the format module.class.method.

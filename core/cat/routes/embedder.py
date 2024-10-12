@@ -3,10 +3,10 @@ from fastapi import APIRouter, Body, HTTPException, Depends
 
 from cat.auth.connection import ConnectionSuperAdminAuth
 from cat.auth.permissions import AuthPermission, AuthResource
+from cat.db import crud
 from cat.exceptions import LoadMemoryException
 from cat.factory.embedder import get_embedders_schemas
-from cat.db import crud
-from cat.looking_glass.cheshire_cat_manager import CheshireCatManager
+from cat.looking_glass.bill_the_lizard import BillTheLizard
 
 router = APIRouter()
 
@@ -14,7 +14,7 @@ router = APIRouter()
 # get configured Embedders and configuration schemas
 @router.get("/settings")
 def get_embedders_settings(
-    ccat_manager: CheshireCatManager = Depends(ConnectionSuperAdminAuth(AuthResource.EMBEDDER, AuthPermission.LIST)),
+    ccat_manager: BillTheLizard = Depends(ConnectionSuperAdminAuth(AuthResource.EMBEDDER, AuthPermission.LIST)),
 ) -> Dict:
     """Get the list of the Embedders"""
 
@@ -38,7 +38,7 @@ def get_embedders_settings(
 @router.get("/settings/{language_embedder_name}")
 def get_embedder_settings(
     language_embedder_name: str,
-    ccat_manager: CheshireCatManager = Depends(ConnectionSuperAdminAuth(AuthResource.EMBEDDER, AuthPermission.READ)),
+    ccat_manager: BillTheLizard = Depends(ConnectionSuperAdminAuth(AuthResource.EMBEDDER, AuthPermission.READ)),
 ) -> Dict:
     """Get settings and schema of the specified Embedder"""
 
@@ -65,7 +65,7 @@ def get_embedder_settings(
 def upsert_embedder_setting(
     language_embedder_name: str,
     payload: Dict = Body({"openai_api_key": "your-key-here"}),
-    ccat_manager: CheshireCatManager = Depends(ConnectionSuperAdminAuth(AuthResource.EMBEDDER, AuthPermission.EDIT)),
+    ccat_manager: BillTheLizard = Depends(ConnectionSuperAdminAuth(AuthResource.EMBEDDER, AuthPermission.EDIT)),
 ) -> Dict:
     """Upsert the Embedder setting"""
 

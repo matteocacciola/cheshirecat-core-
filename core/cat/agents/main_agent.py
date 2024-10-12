@@ -141,16 +141,12 @@ class MainAgent(BaseAgent):
         memory_texts = [m[0].page_content.replace("\n", ". ") for m in memory_docs]
 
         # add time information (e.g. "2 days ago")
-        memory_timestamps = []
-        for m in memory_docs:
-            # Get Time information in the Document metadata
-            timestamp = m[0].metadata["when"]
-
-            # Get Current Time - Time when memory was stored
-            delta = timedelta(seconds=(time.time() - timestamp))
-
-            # Convert and Save timestamps to Verbal (e.g. "2 days ago")
-            memory_timestamps.append(f" ({verbal_timedelta(delta)})")
+        # Get Time information in the Document metadata
+        # Get Current Time - Time when memory was stored
+        # Convert and Save timestamps to Verbal (e.g. "2 days ago")
+        memory_timestamps = [
+            f" ({verbal_timedelta(timedelta(seconds=(time.time() - m[0].metadata['when'])))})" for m in memory_docs
+        ]
 
         # Join Document text content with related temporal information
         memory_texts = [a + b for a, b in zip(memory_texts, memory_timestamps)]
@@ -190,26 +186,20 @@ class MainAgent(BaseAgent):
         memory_texts = [m[0].page_content.replace("\n", ". ") for m in memory_docs]
 
         # add source information (e.g. "extracted from file.txt")
-        memory_sources = []
-        for m in memory_docs:
-            # Get and save the source of the memory
-            source = m[0].metadata["source"]
-            memory_sources.append(f" (extracted from {source})")
-
+        # Get and save the source of the memory
+        memory_sources = [f" (extracted from {m[0].metadata['source']})" for m in memory_docs]
         # Join Document text content with related source information
         memory_texts = [a + b for a, b in zip(memory_texts, memory_sources)]
+
+        # if no data is retrieved from memory don't write anything in the prompt
+        if len(memory_texts) == 0:
+            return ""
 
         # Format the memories for the output
         memories_separator = "\n  - "
 
-        memory_content = (
+        return (
             "## Context of documents containing relevant information: "
             + memories_separator
             + memories_separator.join(memory_texts)
         )
-
-        # if no data is retrieved from memory don't write anithing in the prompt
-        if len(memory_texts) == 0:
-            memory_content = ""
-
-        return memory_content

@@ -110,9 +110,6 @@ class CoreAuthHandler(BaseAuthHandler):
         http_api_key = get_env("CCAT_API_KEY")
         ws_api_key = get_env("CCAT_API_KEY_WS")
 
-        # TODOAUTH: should we consider the user_id or just give
-        #    admin permissions to all users with the right api keys?
-
         # chatting over websocket
         if auth_resource == AuthResource.CONVERSATION and api_key == ws_api_key:
             return AuthUserInfo(
@@ -147,7 +144,6 @@ class CoreAuthHandler(BaseAuthHandler):
 
         # brutal search over users, which are stored in a simple dictionary.
         # waiting to have graph in core to store them properly
-        # TODOAUTH: get rid of this shameful loop
         user = get_user_by_credentials(key_id, username, password)
         if not user:
             return None

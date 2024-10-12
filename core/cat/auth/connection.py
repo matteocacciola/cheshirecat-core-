@@ -10,8 +10,8 @@ from pydantic import BaseModel, ConfigDict
 
 from cat.auth.auth_utils import extract_agent_id_from_request, extract_user_id_from_request, extract_token
 from cat.auth.permissions import AuthPermission, AuthResource, AuthUserInfo
+from cat.looking_glass.bill_the_lizard import BillTheLizard
 from cat.looking_glass.cheshire_cat import CheshireCat
-from cat.looking_glass.cheshire_cat_manager import CheshireCatManager
 from cat.looking_glass.stray_cat import StrayCat
 from cat.log import log
 
@@ -37,12 +37,12 @@ class ConnectionSuperAdminAuth:
         self.resource = resource
         self.permission = permission
 
-    async def __call__(self, request: Request) -> CheshireCatManager:
+    async def __call__(self, request: Request) -> BillTheLizard:
         # extract credentials (user_id, token_or_key) from connection
         user_id = extract_user_id_from_request(request)
         token = extract_token(request)
 
-        ccat_manager: CheshireCatManager = request.app.state.ccat_manager
+        ccat_manager: BillTheLizard = request.app.state.ccat_manager
 
         user: AuthUserInfo = await ccat_manager.core_auth_handler.authorize_user_from_credential(
             token,
@@ -69,7 +69,7 @@ class ConnectionAuth(ABC):
         # extract credentials (user_id, token_or_key) from connection
         credentials = await self.extract_credentials(connection)
 
-        ccat_manager: CheshireCatManager = connection.app.state.ccat_manager
+        ccat_manager: BillTheLizard = connection.app.state.ccat_manager
         ccat = ccat_manager.get_or_create_cheshire_cat(credentials.agent_id)
 
         auth_handlers = [

@@ -6,7 +6,7 @@ from cat.db import crud
 from cat.auth.permissions import AuthPermission, AuthResource
 from cat.auth.auth_utils import hash_password
 from cat.auth.connection import ConnectionSuperAdminAuth
-from cat.looking_glass.cheshire_cat_manager import CheshireCatManager
+from cat.looking_glass.bill_the_lizard import BillTheLizard
 from cat.routes.models.users import UserResponse, UserCreate, UserUpdate
 
 router = APIRouter()
@@ -15,7 +15,7 @@ router = APIRouter()
 @router.post("/", response_model=UserResponse)
 def create_admin(
     new_user: UserCreate,
-    ccat_manager: CheshireCatManager = Depends(ConnectionSuperAdminAuth(AuthResource.ADMIN, AuthPermission.LIST)),
+    ccat_manager: BillTheLizard = Depends(ConnectionSuperAdminAuth(AuthResource.ADMIN, AuthPermission.LIST)),
 ):
     created_user = crud.create_user(ccat_manager.config_key, new_user.model_dump())
     if not created_user:
@@ -28,7 +28,7 @@ def create_admin(
 def read_admins(
     skip: int = 0,
     limit: int = 100,
-    ccat_manager: CheshireCatManager = Depends(ConnectionSuperAdminAuth(AuthResource.ADMIN, AuthPermission.LIST)),
+    ccat_manager: BillTheLizard = Depends(ConnectionSuperAdminAuth(AuthResource.ADMIN, AuthPermission.LIST)),
 ):
     users_db = crud.get_users(ccat_manager.config_key)
 
@@ -39,7 +39,7 @@ def read_admins(
 @router.get("/{user_id}", response_model=UserResponse)
 def read_admin(
     user_id: str,
-    ccat_manager: CheshireCatManager = Depends(ConnectionSuperAdminAuth(AuthResource.ADMIN, AuthPermission.READ)),
+    ccat_manager: BillTheLizard = Depends(ConnectionSuperAdminAuth(AuthResource.ADMIN, AuthPermission.READ)),
 ):
     users_db = crud.get_users(ccat_manager.config_key)
 
@@ -52,7 +52,7 @@ def read_admin(
 def update_admin(
     user_id: str,
     user: UserUpdate,
-    ccat_manager: CheshireCatManager = Depends(ConnectionSuperAdminAuth(AuthResource.ADMIN, AuthPermission.EDIT)),
+    ccat_manager: BillTheLizard = Depends(ConnectionSuperAdminAuth(AuthResource.ADMIN, AuthPermission.EDIT)),
 ):
     stored_user = crud.get_user(ccat_manager.config_key, user_id)
     if not stored_user:
@@ -69,7 +69,7 @@ def update_admin(
 @router.delete("/{user_id}", response_model=UserResponse)
 def delete_admin(
     user_id: str,
-    ccat_manager: CheshireCatManager = Depends(ConnectionSuperAdminAuth(AuthResource.ADMIN, AuthPermission.DELETE)),
+    ccat_manager: BillTheLizard = Depends(ConnectionSuperAdminAuth(AuthResource.ADMIN, AuthPermission.DELETE)),
 ):
     deleted_user = crud.delete_user(ccat_manager.config_key, user_id)
     if not deleted_user:
