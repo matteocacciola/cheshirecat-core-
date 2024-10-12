@@ -37,14 +37,14 @@ fix_legacy_env_variables()
 async def lifespan(app: FastAPI):
     #       ^._.^
     #
-    # loads Cat Manager and plugins
-    # Every endpoint can access the cat manager instance via request.app.state.ccat_manager
+    # loads Manager and plugins
+    # Every endpoint can access the manager instance via request.app.state.lizard
     # - Not using middleware because I can't make it work with both http and websocket;
     # - Not using "Depends" because it only supports callables (not instances)
     # - Starlette allows this: https://www.starlette.io/applications/#storing-state-on-the-app-instance
 
-    # load the Cheshire Cat Manager
-    app.state.ccat_manager = BillTheLizard()
+    # load the Manager
+    app.state.lizard = BillTheLizard()
 
     # set a reference to asyncio event loop
     app.state.event_loop = asyncio.get_running_loop()
@@ -54,8 +54,8 @@ async def lifespan(app: FastAPI):
 
     yield
 
-    # shutdown Cheshire Cat Manager
-    await app.state.ccat_manager.shutdown()
+    # shutdown Manager
+    await app.state.lizard.shutdown()
 
 
 def custom_generate_unique_id(route: APIRoute):

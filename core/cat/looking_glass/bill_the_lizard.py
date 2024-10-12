@@ -28,7 +28,7 @@ class BillTheLizard:
     The Cheshire Cats are the chatbots that are currently active and have users to attend.
     The strays are the users that are waiting for a chatbot to attend them.
 
-    The Cheshire Cat Manager is responsible for:
+    The Bill The Lizard Manager is responsible for:
     - Creating and deleting Cheshire Cats
     - Adding and removing strays from Cheshire Cats
     - Getting the Cheshire Cat of a stray
@@ -225,7 +225,7 @@ class BillTheLizard:
 
     async def shutdown(self) -> None:
         """
-        Shuts down the Cheshire Cat Manager. It closes all the strays' connections and stops the scheduling system.
+        Shuts down the Bill The Lizard Manager. It closes all the strays' connections and stops the scheduling system.
 
         Returns:
             None

@@ -140,9 +140,8 @@ def cheshire_cat(client, lizard):
     lizard.remove_cheshire_cat("test")
 
 
-# this function will be run before each test function
 @pytest.fixture
-def mad_hatter(client, cheshire_cat):  # client here injects the monkeypatched version of the cat manager
+def mad_hatter(client, cheshire_cat):  # client here injects the monkeypatched version of the manager
     # each test is given the mad_hatter instance
     mad_hatter = cheshire_cat.mad_hatter
 
@@ -153,18 +152,16 @@ def mad_hatter(client, cheshire_cat):  # client here injects the monkeypatched v
     yield mad_hatter
 
 
-# this function will be run before each test function
 @pytest.fixture
-def mad_hatter_no_plugins(client, cheshire_cat):  # client here injects the monkeypatched version of the cat manager
+def mad_hatter_no_plugins(client, cheshire_cat):  # client here injects the monkeypatched version of the manager
     mad_hatter = cheshire_cat.mad_hatter
 
     # each test is given the mad_hatter instance
     yield mad_hatter
 
 
-# this function will be run before each test function
 @pytest.fixture
-def mad_hatter_cheshirecat_manager(client, lizard):  # client here injects the monkeypatched version of the cat manager
+def mad_hatter_lizard(client, lizard):  # client here injects the monkeypatched version of the manager
     mad_hatter = lizard.mad_hatter
 
     # each test is given the mad_hatter instance

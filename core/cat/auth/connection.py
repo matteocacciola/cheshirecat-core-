@@ -42,17 +42,17 @@ class ConnectionSuperAdminAuth:
         user_id = extract_user_id_from_request(request)
         token = extract_token(request)
 
-        ccat_manager: BillTheLizard = request.app.state.ccat_manager
+        lizard: BillTheLizard = request.app.state.lizard
 
-        user: AuthUserInfo = await ccat_manager.core_auth_handler.authorize_user_from_credential(
+        user: AuthUserInfo = await lizard.core_auth_handler.authorize_user_from_credential(
             token,
             self.resource,
             self.permission,
-            ccat_manager.config_key,
+            lizard.config_key,
             user_id=user_id,
         )
         if user:
-            return ccat_manager
+            return lizard
 
         raise HTTPException(status_code=403, detail={"error": "Invalid Credentials"})
 
@@ -69,12 +69,12 @@ class ConnectionAuth(ABC):
         # extract credentials (user_id, token_or_key) from connection
         credentials = await self.extract_credentials(connection)
 
-        ccat_manager: BillTheLizard = connection.app.state.ccat_manager
-        ccat = ccat_manager.get_or_create_cheshire_cat(credentials.agent_id)
+        lizard: BillTheLizard = connection.app.state.lizard
+        ccat = lizard.get_or_create_cheshire_cat(credentials.agent_id)
 
         auth_handlers = [
             # try to get user from local id
-            ccat_manager.core_auth_handler,
+            lizard.core_auth_handler,
             # try to get user from auth_handler
             ccat.custom_auth_handler,
         ]

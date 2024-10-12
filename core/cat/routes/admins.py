@@ -15,9 +15,9 @@ router = APIRouter()
 @router.post("/", response_model=UserResponse)
 def create_admin(
     new_user: UserCreate,
-    ccat_manager: BillTheLizard = Depends(ConnectionSuperAdminAuth(AuthResource.ADMIN, AuthPermission.LIST)),
+    lizard: BillTheLizard = Depends(ConnectionSuperAdminAuth(AuthResource.ADMIN, AuthPermission.LIST)),
 ):
-    created_user = crud.create_user(ccat_manager.config_key, new_user.model_dump())
+    created_user = crud.create_user(lizard.config_key, new_user.model_dump())
     if not created_user:
         raise HTTPException(status_code=403, detail={"error": "Cannot duplicate admin"})
 
@@ -28,9 +28,9 @@ def create_admin(
 def read_admins(
     skip: int = 0,
     limit: int = 100,
-    ccat_manager: BillTheLizard = Depends(ConnectionSuperAdminAuth(AuthResource.ADMIN, AuthPermission.LIST)),
+    lizard: BillTheLizard = Depends(ConnectionSuperAdminAuth(AuthResource.ADMIN, AuthPermission.LIST)),
 ):
-    users_db = crud.get_users(ccat_manager.config_key)
+    users_db = crud.get_users(lizard.config_key)
 
     users = list(users_db.values())[skip: skip + limit]
     return users
@@ -39,9 +39,9 @@ def read_admins(
 @router.get("/{user_id}", response_model=UserResponse)
 def read_admin(
     user_id: str,
-    ccat_manager: BillTheLizard = Depends(ConnectionSuperAdminAuth(AuthResource.ADMIN, AuthPermission.READ)),
+    lizard: BillTheLizard = Depends(ConnectionSuperAdminAuth(AuthResource.ADMIN, AuthPermission.READ)),
 ):
-    users_db = crud.get_users(ccat_manager.config_key)
+    users_db = crud.get_users(lizard.config_key)
 
     if user_id not in users_db:
         raise HTTPException(status_code=404, detail={"error": "User not found"})
@@ -52,9 +52,9 @@ def read_admin(
 def update_admin(
     user_id: str,
     user: UserUpdate,
-    ccat_manager: BillTheLizard = Depends(ConnectionSuperAdminAuth(AuthResource.ADMIN, AuthPermission.EDIT)),
+    lizard: BillTheLizard = Depends(ConnectionSuperAdminAuth(AuthResource.ADMIN, AuthPermission.EDIT)),
 ):
-    stored_user = crud.get_user(ccat_manager.config_key, user_id)
+    stored_user = crud.get_user(lizard.config_key, user_id)
     if not stored_user:
         raise HTTPException(status_code=404, detail={"error": "User not found"})
     
@@ -62,16 +62,16 @@ def update_admin(
         user.password = hash_password(user.password)
     updated_info = stored_user | user.model_dump(exclude_unset=True)
 
-    crud.update_user(ccat_manager.config_key, user_id, updated_info)
+    crud.update_user(lizard.config_key, user_id, updated_info)
     return updated_info
 
 
 @router.delete("/{user_id}", response_model=UserResponse)
 def delete_admin(
     user_id: str,
-    ccat_manager: BillTheLizard = Depends(ConnectionSuperAdminAuth(AuthResource.ADMIN, AuthPermission.DELETE)),
+    lizard: BillTheLizard = Depends(ConnectionSuperAdminAuth(AuthResource.ADMIN, AuthPermission.DELETE)),
 ):
-    deleted_user = crud.delete_user(ccat_manager.config_key, user_id)
+    deleted_user = crud.delete_user(lizard.config_key, user_id)
     if not deleted_user:
         raise HTTPException(status_code=404, detail={"error": "User not found"})
 

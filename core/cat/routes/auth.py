@@ -22,7 +22,7 @@ async def core_login_token(request: Request):
     form_data = await request.form()
 
     # use username and password to authenticate user from local identity provider and get token
-    auth_handler = request.app.state.ccat_manager.core_auth_handler
+    auth_handler = request.app.state.lizard.core_auth_handler
     access_token = await auth_handler.issue_jwt(form_data["username"], form_data["password"], key_id=agent_id)
 
     if access_token:
@@ -86,7 +86,7 @@ async def auth_token(request: Request, credentials: UserCredentials):
     agent_id = extract_agent_id_from_request(request)
 
     # use username and password to authenticate user from local identity provider and get token
-    access_token = await request.app.state.ccat_manager.core_auth_handler.issue_jwt(
+    access_token = await request.app.state.lizard.core_auth_handler.issue_jwt(
         credentials.username, credentials.password, key_id=agent_id
     )
 
