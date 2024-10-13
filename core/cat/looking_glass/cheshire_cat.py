@@ -15,6 +15,7 @@ from langchain_core.output_parsers.string import StrOutputParser
 
 import cat.factory.auth_handler as auth_handlers
 from cat.db import crud, models
+from cat.factory.embedder import EmbedderSettings
 from cat.factory.llm import LLMDefaultConfig
 from cat.factory.llm import get_llm_from_name
 from cat.log import log
@@ -428,9 +429,14 @@ class CheshireCat:
         return self.__strays
 
     @property
-    def embedder(self):
+    def embedder(self) -> EmbedderSettings:
         from cat.bill_the_lizard import BillTheLizard
         return BillTheLizard().embedder
+
+    @property
+    def rabbit_hole(self) -> "RabbitHole":
+        from cat.bill_the_lizard import BillTheLizard
+        return BillTheLizard().rabbit_hole
 
     # each time we access the file handlers, plugins can intervene
     @property

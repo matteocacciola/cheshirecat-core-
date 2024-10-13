@@ -19,11 +19,13 @@ from cat.agents.main_agent import MainAgent
 from cat.auth.permissions import AuthUserInfo
 from cat.convo.messages import CatMessage, UserMessage, MessageWhy, Role, EmbedderModelInteraction
 from cat.env import get_env
+from cat.factory.embedder import EmbedderSettings
 from cat.log import log
 from cat.looking_glass.callbacks import NewTokenHandler, ModelInteractionHandler
 from cat.looking_glass.white_rabbit import WhiteRabbit
 from cat.mad_hatter.mad_hatter import MadHatter
 from cat.mad_hatter.utils import execute_hook
+from cat.memory.long_term_memory import LongTermMemory
 from cat.memory.models import MemoryCollection
 from cat.memory.working_memory import WorkingMemory
 from cat.rabbit_hole import RabbitHole
@@ -604,11 +606,11 @@ Allowed classes are:
         return self.cheshire_cat.llm
 
     @property
-    def embedder(self):
+    def embedder(self) -> EmbedderSettings:
         return BillTheLizard().embedder
 
     @property
-    def memory(self):
+    def memory(self) -> LongTermMemory:
         return self.cheshire_cat.memory
 
     @property
