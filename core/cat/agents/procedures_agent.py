@@ -15,6 +15,7 @@ from cat.mad_hatter.plugin import Plugin
 from cat.log import log
 from cat.looking_glass.callbacks import ModelInteractionHandler
 from cat import utils
+from cat.mad_hatter.utils import execute_hook
 
 
 class ProceduresAgent(BaseAgent):
@@ -67,8 +68,8 @@ class ProceduresAgent(BaseAgent):
         mad_hatter = stray.cheshire_cat.mad_hatter
 
         # get procedures prompt from plugins
-        procedures_prompt_template = mad_hatter.execute_hook(
-            "agent_prompt_instructions", prompts.TOOL_PROMPT, cat=stray
+        procedures_prompt_template = execute_hook(
+            mad_hatter, "agent_prompt_instructions", prompts.TOOL_PROMPT, cat=stray
         )
 
         # Gather recalled procedures
@@ -77,8 +78,8 @@ class ProceduresAgent(BaseAgent):
             p[0].metadata["type"] in ["tool", "form"] and p[0].metadata["trigger_type"] in ["description",
                                                                                             "start_example"]
         }
-        recalled_procedures_names = mad_hatter.execute_hook(
-            "agent_allowed_tools", recalled_procedures_names, cat=stray
+        recalled_procedures_names = execute_hook(
+            mad_hatter, "agent_allowed_tools", recalled_procedures_names, cat=stray
         )
 
         # Prepare allowed procedures (tools instances and form classes)

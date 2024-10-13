@@ -1,19 +1,13 @@
 from langchain.base_language import BaseLanguageModel
 from langchain_core.embeddings import Embeddings
 from cat.mad_hatter.mad_hatter import MadHatter
-from cat.rabbit_hole import RabbitHole
 from cat.memory.long_term_memory import LongTermMemory
 from cat.factory.custom_embedder import DumbEmbedder
 from cat.factory.custom_llm import LLMDefault
 
 
-def get_class_from_decorated_singleton(singleton):
-    return singleton().__class__
-
-
 def test_main_modules_loaded(cheshire_cat):
     assert isinstance(cheshire_cat.mad_hatter, MadHatter)
-    assert isinstance(cheshire_cat.rabbit_hole, RabbitHole)
     assert isinstance(cheshire_cat.memory, LongTermMemory)
     assert isinstance(cheshire_cat.llm, BaseLanguageModel)
     assert isinstance(cheshire_cat.embedder, Embeddings)

@@ -10,6 +10,7 @@ from fastapi import (
     UploadFile,
     BackgroundTasks,
     HTTPException,
+    Request,
 )
 
 from cat.auth.connection import HTTPAuth, ContextualCats
@@ -30,6 +31,7 @@ router = APIRouter()
 # receive files via http endpoint
 @router.post("/")
 async def upload_file(
+    request: Request,
     file: UploadFile,
     background_tasks: BackgroundTasks,
     chunk_size: int | None = Form(
@@ -84,10 +86,12 @@ async def upload_file(
     ```
     """
 
-    rabbit_hole = cats.cheshire_cat.rabbit_hole
+    ccat = cats.cheshire_cat
 
     # Check the file format is supported
-    admitted_types = rabbit_hole.file_handlers.keys()
+
+    file_handlers = ccat.file_handlers
+    admitted_types = file_handlers.keys()
 
     # Get file mime type
     content_type = mimetypes.guess_type(file.filename)[0]
@@ -106,8 +110,10 @@ async def upload_file(
     background_tasks.add_task(
         # we deepcopy the file because FastAPI does not keep the file in memory after the response returns to the client
         # https://github.com/tiangolo/fastapi/discussions/10936
-        rabbit_hole.ingest_file,
+        request.app.state.lizard.rabbit_hole.ingest_file,
         cats.stray_cat,
+        file_handlers,
+        ccat.text_splitter,
         deepcopy(format_upload_file(file)),
         chunk_size=chunk_size,
         chunk_overlap=chunk_overlap,
@@ -124,12 +130,15 @@ async def upload_file(
 
 @router.post("/web")
 async def upload_url(
+    request: Request,
     background_tasks: BackgroundTasks,
     upload_config: UploadURLConfig,
     cats: ContextualCats = Depends(HTTPAuth(AuthResource.UPLOAD, AuthPermission.WRITE)),
 ):
     """Upload an url. Website content will be extracted and segmented into chunks.
     Chunks will be then vectorized and stored into documents memory."""
+
+    ccat = cats.cheshire_cat
 
     # check that URL is valid
     try:
@@ -141,8 +150,10 @@ async def upload_url(
         if response.status_code == 200:
             # upload file to long term memory, in the background
             background_tasks.add_task(
-                cats.cheshire_cat.rabbit_hole.ingest_file,
+                request.app.state.lizard.rabbit_hole.ingest_file,
                 cats.stray_cat,
+                ccat.file_handlers,
+                ccat.text_splitter,
                 upload_config.url,
                 **upload_config.model_dump(exclude={"url"})
             )
@@ -161,13 +172,12 @@ async def upload_url(
 
 @router.post("/memory")
 async def upload_memory(
+    request: Request,
     file: UploadFile,
     background_tasks: BackgroundTasks,
     cats: ContextualCats = Depends(HTTPAuth(AuthResource.MEMORY, AuthPermission.WRITE)),
 ) -> Dict:
     """Upload a memory json file to the cat memory"""
-
-    cat = cats.cheshire_cat
 
     # Get file mime type
     content_type = mimetypes.guess_type(file.filename)[0]
@@ -182,7 +192,8 @@ async def upload_memory(
 
     # Ingest memories in background and notify client
     background_tasks.add_task(
-        cat.rabbit_hole.ingest_memory,
+        request.app.state.lizard.rabbit_hole.ingest_memory,
+        cats.cheshire_cat,
         deepcopy(file)
     )
 
@@ -200,4 +211,4 @@ async def get_allowed_mimetypes(
 ) -> Dict:
     """Retrieve the allowed mimetypes that can be ingested by the Rabbit Hole"""
 
-    return {"allowed": list(cats.cheshire_cat.rabbit_hole.file_handlers.keys())}
+    return {"allowed": list(cats.cheshire_cat.file_handlers.keys())}

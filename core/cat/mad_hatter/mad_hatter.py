@@ -28,8 +28,8 @@ class MadHatter:
     # - orders plugged in hooks by name and priority
     # - exposes functionality to the cat
 
-    def __init__(self, key_id: str):
-        self.__key_id = key_id
+    def __init__(self, config_key: str):
+        self.__config_key = config_key
 
         self.plugins: Dict[str, Plugin] = {}  # plugins dictionary
 
@@ -161,7 +161,7 @@ class MadHatter:
         return plugin_id in self.plugins.keys()
 
     def load_active_plugins_from_db(self):
-        active_plugins = crud.get_setting_by_name(self.__key_id, "active_plugins")
+        active_plugins = crud.get_setting_by_name(self.__config_key, "active_plugins")
 
         if active_plugins is None:
             active_plugins = []
@@ -218,7 +218,7 @@ class MadHatter:
 
         # update DB with list of active plugins, delete duplicate plugins
         active_plugins = list(set(self.active_plugins))
-        crud.upsert_setting_by_name(self.__key_id, Setting(name="active_plugins", value=active_plugins))
+        crud.upsert_setting_by_name(self.__config_key, Setting(name="active_plugins", value=active_plugins))
 
         # update cache and embeddings
         self.sync_hooks_tools_and_forms()

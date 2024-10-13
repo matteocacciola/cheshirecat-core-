@@ -9,8 +9,8 @@ from qdrant_client import QdrantClient
 from fastapi.testclient import TestClient
 
 from cat.auth.permissions import AuthUserInfo
+from cat.bill_the_lizard import BillTheLizard
 from cat.db import crud
-from cat.looking_glass.bill_the_lizard import BillTheLizard
 from cat.looking_glass.stray_cat import StrayCat
 from cat.mad_hatter.plugin import Plugin
 from cat.main import cheshire_cat_api
@@ -90,7 +90,7 @@ def client(monkeypatch) -> Generator[TestClient, Any, None]:
 
 @pytest.fixture(scope="function")
 def lizard():
-    return BillTheLizard()
+    yield BillTheLizard()
 
 
 # This fixture sets the CCAT_API_KEY and CCAT_API_KEY_WS environment variables,

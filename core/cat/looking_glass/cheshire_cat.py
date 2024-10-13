@@ -1,6 +1,10 @@
 import time
 from copy import deepcopy
 from typing import List, Dict
+from langchain_community.document_loaders.parsers.pdf import PDFMinerParser
+from langchain_community.document_loaders.parsers.html.bs4 import BS4HTMLParser
+from langchain_community.document_loaders.parsers.txt import TextParser
+from langchain.text_splitter import RecursiveCharacterTextSplitter
 from pydantic import BaseModel
 from typing_extensions import Protocol
 from langchain.base_language import BaseLanguageModel
@@ -16,8 +20,8 @@ from cat.factory.llm import get_llm_from_name
 from cat.log import log
 from cat.mad_hatter.mad_hatter import MadHatter
 from cat.mad_hatter.registry import registry_search_plugins
+from cat.mad_hatter.utils import execute_hook
 from cat.memory.long_term_memory import LongTermMemory
-from cat.rabbit_hole import RabbitHole
 from cat import utils
 
 
@@ -65,7 +69,7 @@ class CheshireCat:
         self.load_auth()
 
         # allows plugins to do something before cat components are loaded
-        self.mad_hatter.execute_hook("before_cat_bootstrap", cat=self)
+        execute_hook(self.mad_hatter, "before_cat_bootstrap", cat=self)
 
         # load LLM
         self.llm = self.load_language_model()
@@ -78,11 +82,8 @@ class CheshireCat:
         self.mad_hatter.on_finish_plugins_sync_callback = self.embed_procedures
         self.embed_procedures()  # first time launched manually
 
-        # Rabbit Hole Instance
-        self.rabbit_hole = RabbitHole(self)
-
         # allows plugins to do something after the cat bootstrap is complete
-        self.mad_hatter.execute_hook("after_cat_bootstrap", cat=self)
+        execute_hook(self.mad_hatter, "after_cat_bootstrap", cat=self)
 
         if not crud.get_users(self.id):
             crud.create_basic_users(self.id)
@@ -428,5 +429,42 @@ class CheshireCat:
 
     @property
     def embedder(self):
-        from cat.looking_glass.bill_the_lizard import BillTheLizard
+        from cat.bill_the_lizard import BillTheLizard
         return BillTheLizard().embedder
+
+    # each time we access the file handlers, plugins can intervene
+    @property
+    def file_handlers(self) -> Dict:
+        # default file handlers
+        file_handlers = {
+            "application/pdf": PDFMinerParser(),
+            "text/plain": TextParser(),
+            "text/markdown": TextParser(),
+            "text/html": BS4HTMLParser(),
+        }
+
+        # no access to stray
+        file_handlers = execute_hook(
+            self.mad_hatter, "rabbithole_instantiates_parsers", file_handlers, cat=self
+        )
+
+        return file_handlers
+
+    # each time we access the text splitter, plugins can intervene
+    @property
+    def text_splitter(self):
+        # default text splitter
+        text_splitter = RecursiveCharacterTextSplitter.from_tiktoken_encoder(
+            chunk_size=256,
+            chunk_overlap=64,
+            separators=["\\n\\n", "\n\n", ".\\n", ".\n", "\\n", "\n", " ", ""],
+            encoding_name="cl100k_base",
+            keep_separator=True,
+            strip_whitespace=True,
+        )
+
+        # no access to stray
+        text_splitter = execute_hook(
+            self.mad_hatter, "rabbithole_instantiates_splitter", text_splitter, cat=self
+        )
+        return text_splitter

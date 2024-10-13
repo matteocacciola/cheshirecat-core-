@@ -8,8 +8,8 @@ from fastapi.responses import JSONResponse
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 
+from cat.bill_the_lizard import BillTheLizard
 from cat.env import get_env, fix_legacy_env_variables
-from cat.looking_glass.bill_the_lizard import BillTheLizard
 from cat.log import log
 from cat.routes import (
     admins,

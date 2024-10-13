@@ -2,11 +2,11 @@ from typing import List
 
 from fastapi import Depends, APIRouter, HTTPException
 
-from cat.db import crud
 from cat.auth.permissions import AuthPermission, AuthResource
 from cat.auth.auth_utils import hash_password
 from cat.auth.connection import ConnectionSuperAdminAuth
-from cat.looking_glass.bill_the_lizard import BillTheLizard
+from cat.bill_the_lizard import BillTheLizard
+from cat.db import crud
 from cat.routes.models.users import UserResponse, UserCreate, UserUpdate
 
 router = APIRouter()

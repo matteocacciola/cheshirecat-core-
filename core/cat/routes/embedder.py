@@ -3,10 +3,10 @@ from fastapi import APIRouter, Body, HTTPException, Depends
 
 from cat.auth.connection import ConnectionSuperAdminAuth
 from cat.auth.permissions import AuthPermission, AuthResource
+from cat.bill_the_lizard import BillTheLizard
 from cat.db import crud
 from cat.exceptions import LoadMemoryException
 from cat.factory.embedder import get_embedders_schemas
-from cat.looking_glass.bill_the_lizard import BillTheLizard
 
 router = APIRouter()
 

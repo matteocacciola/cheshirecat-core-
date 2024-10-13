@@ -17,6 +17,7 @@ from cat.log import log
 from cat.looking_glass.cheshire_cat import CheshireCat
 from cat.looking_glass.white_rabbit import WhiteRabbit
 from cat.mad_hatter.mad_hatter import MadHatter
+from cat.rabbit_hole import RabbitHole
 from cat.utils import singleton
 
 
@@ -49,6 +50,9 @@ class BillTheLizard:
 
         # load LLM and embedder
         self.embedder = self.load_language_embedder()
+
+        # Rabbit Hole Instance
+        self.rabbit_hole = RabbitHole()
 
         self.core_auth_handler = CoreAuthHandler()
 

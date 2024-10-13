@@ -3,6 +3,10 @@ from uuid import UUID
 from urllib.parse import urlencode
 
 
+def get_class_from_decorated_singleton(singleton):
+    return singleton().__class__
+
+
 # utility function to communicate with the cat via websocket
 def send_websocket_message(msg, client, user_id="user", query_params=None):
     url = f"/ws/{user_id}"

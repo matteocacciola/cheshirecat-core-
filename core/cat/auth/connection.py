@@ -8,9 +8,9 @@ from fastapi import Request, WebSocket, HTTPException, WebSocketException
 from fastapi.requests import HTTPConnection
 from pydantic import BaseModel, ConfigDict
 
+from cat.bill_the_lizard import BillTheLizard
 from cat.auth.auth_utils import extract_agent_id_from_request, extract_user_id_from_request, extract_token
 from cat.auth.permissions import AuthPermission, AuthResource, AuthUserInfo
-from cat.looking_glass.bill_the_lizard import BillTheLizard
 from cat.looking_glass.cheshire_cat import CheshireCat
 from cat.looking_glass.stray_cat import StrayCat
 from cat.log import log

@@ -13,16 +13,17 @@ from langchain_core.output_parsers.string import StrOutputParser
 from fastapi import WebSocket
 
 from cat import utils
+from cat.bill_the_lizard import BillTheLizard
 from cat.agents.base_agent import AgentOutput
 from cat.agents.main_agent import MainAgent
 from cat.auth.permissions import AuthUserInfo
 from cat.convo.messages import CatMessage, UserMessage, MessageWhy, Role, EmbedderModelInteraction
 from cat.env import get_env
 from cat.log import log
-from cat.looking_glass.bill_the_lizard import BillTheLizard
 from cat.looking_glass.callbacks import NewTokenHandler, ModelInteractionHandler
 from cat.looking_glass.white_rabbit import WhiteRabbit
 from cat.mad_hatter.mad_hatter import MadHatter
+from cat.mad_hatter.utils import execute_hook
 from cat.memory.models import MemoryCollection
 from cat.memory.working_memory import WorkingMemory
 from cat.rabbit_hole import RabbitHole
@@ -194,8 +195,8 @@ class StrayCat:
 
         # We may want to search in memory
         mad_hatter = cheshire_cat.mad_hatter
-        recall_query = mad_hatter.execute_hook(
-            "cat_recall_query", recall_query, cat=self
+        recall_query = execute_hook(
+            mad_hatter, "cat_recall_query", recall_query, cat=self
         )
         log.info(f"Recall query: '{recall_query}'")
 
@@ -213,7 +214,7 @@ class StrayCat:
         )
 
         # hook to do something before recall begins
-        mad_hatter.execute_hook("before_cat_recalls_memories", cat=self)
+        execute_hook(mad_hatter, "before_cat_recalls_memories", cat=self)
 
         # Setting default recall configs for each memory
         # TODO: can these data structures become instances of a RecallSettings class?
@@ -240,18 +241,20 @@ class StrayCat:
 
         # hooks to change recall configs for each memory
         recall_configs = [
-            mad_hatter.execute_hook(
+            execute_hook(
+                mad_hatter,
                 "before_cat_recalls_episodic_memories",
                 default_episodic_recall_config,
                 cat=self,
             ),
-            mad_hatter.execute_hook(
+            execute_hook(
+                mad_hatter,
                 "before_cat_recalls_declarative_memories",
                 default_declarative_recall_config,
                 cat=self,
             ),
-            mad_hatter.execute_hook(
-                "before_cat_recalls_procedural_memories",
+            execute_hook(
+                mad_hatter, "before_cat_recalls_procedural_memories",
                 default_procedural_recall_config,
                 cat=self,
             ),
@@ -271,7 +274,7 @@ class StrayCat:
             )  # self.working_memory.procedural_memories = ...
 
         # hook to modify/enrich retrieved memories
-        mad_hatter.execute_hook("after_cat_recalls_memories", cat=self)
+        execute_hook(mad_hatter, "after_cat_recalls_memories", cat=self)
 
     def llm_response(self, prompt: str, stream: bool = False) -> str:
         """Generate a response using the LLM model.
@@ -360,8 +363,8 @@ class StrayCat:
 
         # hook to modify/enrich user input
         mad_hatter = self.cheshire_cat.mad_hatter
-        self.working_memory.user_message_json = mad_hatter.execute_hook(
-            "before_cat_reads_message", self.working_memory.user_message_json, cat=self
+        self.working_memory.user_message_json = execute_hook(
+            mad_hatter, "before_cat_reads_message", self.working_memory.user_message_json, cat=self
         )
 
         # text of latest Human message
@@ -419,8 +422,8 @@ class StrayCat:
             page_content=user_message_text,
             metadata={"source": self.user_id, "when": time.time()},
         )
-        doc = mad_hatter.execute_hook(
-            "before_cat_stores_episodic_memory", doc, cat=self
+        doc = execute_hook(
+            mad_hatter, "before_cat_stores_episodic_memory", doc, cat=self
         )
         # store user message in episodic memory
         # TODO: vectorize and store also conversation chunks
@@ -444,8 +447,8 @@ class StrayCat:
         )
 
         # run message through plugins
-        final_output = mad_hatter.execute_hook(
-            "before_cat_sends_message", final_output, cat=self
+        final_output = execute_hook(
+            mad_hatter, "before_cat_sends_message", final_output, cat=self
         )
 
         # update conversation history (AI turn)
@@ -610,7 +613,7 @@ Allowed classes are:
 
     @property
     def rabbit_hole(self) -> RabbitHole:
-        return self.cheshire_cat.rabbit_hole
+        return BillTheLizard().rabbit_hole
 
     @property
     def mad_hatter(self) -> MadHatter:

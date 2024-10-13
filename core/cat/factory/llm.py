@@ -13,6 +13,7 @@ from pydantic import BaseModel, ConfigDict
 
 from cat.factory.custom_llm import LLMDefault, LLMCustom, CustomOpenAI, CustomOllama
 from cat.mad_hatter.mad_hatter import MadHatter
+from cat.mad_hatter.utils import execute_hook
 
 
 # Base class to manage LLM configuration.
@@ -301,8 +302,8 @@ def get_allowed_language_models(mad_hatter: MadHatter) -> List[Type[LLMSettings]
         LLMDefaultConfig,
     ]
 
-    list_llms = mad_hatter.execute_hook(
-        "factory_allowed_llms", list_llms_default, cat=None
+    list_llms = execute_hook(
+        mad_hatter, "factory_allowed_llms", list_llms_default, cat=None
     )
     return list_llms
 
