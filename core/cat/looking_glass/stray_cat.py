@@ -558,7 +558,7 @@ Allowed classes are:
 
         """
 
-        history = self.working_memory.history[-latest_n:]
+        history = self.working_memory.get_conversation_history()[-latest_n:]
 
         history_string = ""
         for turn in history:
@@ -567,7 +567,7 @@ Allowed classes are:
         return history_string
 
     def langchainfy_chat_history(self, latest_n: int = 5) -> List[BaseMessage]:
-        chat_history = self.working_memory.history[-latest_n:]
+        chat_history = self.working_memory.get_conversation_history()[-latest_n:]
 
         langchain_chat_history = []
         for message in chat_history:

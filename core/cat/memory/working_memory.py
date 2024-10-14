@@ -24,7 +24,7 @@ class WorkingMemory(BaseModelDict):
     """
 
     # stores conversation history
-    history: List = []
+    __history: List = []
     user_message_json: UserMessage | None = None
     active_form: CatForm | None = None
 
@@ -38,6 +38,39 @@ class WorkingMemory(BaseModelDict):
 
     # track models usage
     model_interactions: List[ModelInteraction] = []
+
+    def get_conversation_history(self) -> List:
+        """Get the conversation history.
+
+        Returns
+        -------
+        List
+            The conversation history.
+        """
+
+        return self.__history
+
+    def set_conversation_history(self, history: List) -> "WorkingMemory":
+        """
+        Set the conversation history.
+        Args:
+            history:
+
+        Returns:
+            The current instance of the WorkingMemory class.
+        """
+        self.__history = history
+        return self
+
+    def reset_conversation_history(self) -> "WorkingMemory":
+        """
+        Reset the conversation history.
+
+        Returns:
+            The current instance of the WorkingMemory class.
+        """
+        self.__history = []
+        return self
 
     def update_conversation_history(self, who, message, why: MessageWhy | None = None):
         """Update the conversation history.
@@ -60,7 +93,7 @@ class WorkingMemory(BaseModelDict):
         # append latest message in conversation
         # TODO: Message should be of type CatMessage or UserMessage. For backward compatibility we put a new key
         # we are sure that who is not change in the current call
-        self.history.append(
+        self.__history.append(
             {
                 "who": who,
                 "message": message,

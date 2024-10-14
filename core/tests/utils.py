@@ -8,8 +8,12 @@ def get_class_from_decorated_singleton(singleton):
 
 
 # utility function to communicate with the cat via websocket
-def send_websocket_message(msg, client, user_id="user", query_params=None):
+def send_websocket_message(msg, client, user_id="user", agent_id=None, query_params=None):
     url = f"/ws/{user_id}"
+
+    if agent_id:
+        url += f"/{agent_id}"
+
     if query_params:
         url += "?" + urlencode(query_params)
 

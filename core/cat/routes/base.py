@@ -21,7 +21,7 @@ async def home() -> Dict:
 
 @router.post("/message", response_model=CatMessage)
 async def message_with_cat(
-    payload: Dict = Body({"text": "hello!"}),
+    payload: Dict = Body(...),
     cats: ContextualCats = Depends(HTTPAuth(AuthResource.CONVERSATION, AuthPermission.WRITE)),
 ) -> Dict:
     stray = cats.stray_cat

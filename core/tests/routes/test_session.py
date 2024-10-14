@@ -9,7 +9,7 @@ def test_session_creation_from_websocket(client, cheshire_cat):
 
     # send websocket message
     mex = {"text": "Where do I go?"}
-    res = send_websocket_message(mex, client, user_id=user_id, query_params={"agent_id": cheshire_cat.id})
+    res = send_websocket_message(mex, client, user_id=user_id, agent_id=cheshire_cat.id)
 
     # check response
     assert "You did not configure" in res["content"]
@@ -20,7 +20,7 @@ def test_session_creation_from_websocket(client, cheshire_cat):
     stray_cat = cheshire_cat.get_stray(user_id)
     assert isinstance(stray_cat, StrayCat)
     assert stray_cat.user_id == user_id
-    convo = stray_cat.working_memory.history
+    convo = stray_cat.working_memory.get_conversation_history()
     assert len(convo) == 2
     assert convo[0]["who"] == "Human"
     assert convo[0]["message"] == mex["text"]
@@ -49,7 +49,7 @@ def test_session_creation_from_http(client, cheshire_cat):
     stray_cat = cheshire_cat.get_stray(user_id)
     assert isinstance(stray_cat, StrayCat)
     assert stray_cat.user_id == user_id
-    convo = stray_cat.working_memory.history
+    convo = stray_cat.working_memory.get_conversation_history()
     assert len(convo) == 0  # no ws message sent from Alice
 
 

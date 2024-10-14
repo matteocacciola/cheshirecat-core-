@@ -182,8 +182,8 @@ def test_jwt_imposes_user_id(secure_client, cheshire_cat):
     assert response.status_code == 200
 
     # send user specific request via ws
-    query_params = {"token": token, "agent_id": chatbot_id}
-    res = send_websocket_message(message, secure_client, query_params=query_params)
+    query_params = {"token": token}
+    res = send_websocket_message(message, secure_client, agent_id=chatbot_id, query_params=query_params)
 
     # we now recall episodic memories from the user, there should be two of them, both by admin
     params = {"text": "hey", "agent_id": chatbot_id}
