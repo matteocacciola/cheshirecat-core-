@@ -1,4 +1,4 @@
-from cat.auth.permissions import get_base_permissions, get_full_permissions
+from cat.auth.permissions import get_full_admin_permissions
 from cat.env import get_env
 
 from tests.utils import create_new_user, check_user_fields
@@ -12,7 +12,7 @@ def test_create_admin(client):
     check_user_fields(data)
 
     assert data["username"] == "Alice"
-    assert data["permissions"] == get_base_permissions()
+    assert data["permissions"] == get_full_admin_permissions()
 
 
 def test_cannot_create_duplicate_admin(client):
@@ -31,7 +31,7 @@ def test_get_admins(client):
     assert response.status_code == 200
     data = response.json()
     assert isinstance(data, list)
-    assert len(data) == 2
+    assert len(data) == 1
 
     # create admin
     create_new_user(client, "/admins")
@@ -41,16 +41,13 @@ def test_get_admins(client):
     assert response.status_code == 200
     data = response.json()
     assert isinstance(data, list)
-    assert len(data) == 3
+    assert len(data) == 2
 
     # check admins integrity and values
     for idx, d in enumerate(data):
         check_user_fields(d)
-        assert d["username"] in ["admin", "user", "Alice"]
-        if d["username"] == "admin":
-            assert d["permissions"] == get_full_permissions()
-        else:
-            assert d["permissions"] == get_base_permissions()
+        assert d["username"] in ["admin", "Alice"]
+        assert d["permissions"] == get_full_admin_permissions()
 
 
 def test_get_admin(client):
@@ -70,7 +67,7 @@ def test_get_admin(client):
     # check admin integrity and values
     check_user_fields(data)
     assert data["username"] == "Alice"
-    assert data["permissions"] == get_base_permissions()
+    assert data["permissions"] == get_full_admin_permissions()
 
 
 def test_update_admin(client):
@@ -95,7 +92,7 @@ def test_update_admin(client):
     # nothing changed so far
     check_user_fields(data)
     assert data["username"] == "Alice"
-    assert data["permissions"] == get_base_permissions()
+    assert data["permissions"] == get_full_admin_permissions()
 
     # update password
     updated_admin = {"password": "12345"}
@@ -104,7 +101,7 @@ def test_update_admin(client):
     data = response.json()
     check_user_fields(data)
     assert data["username"] == "Alice"
-    assert data["permissions"] == get_base_permissions()
+    assert data["permissions"] == get_full_admin_permissions()
     assert "password" not in data # api will not send passwords around
 
     # change username
@@ -114,7 +111,7 @@ def test_update_admin(client):
     data = response.json()
     check_user_fields(data)
     assert data["username"] == "Alice2"
-    assert data["permissions"] == get_base_permissions()
+    assert data["permissions"] == get_full_admin_permissions()
 
     # change permissions
     updated_admin = {"permissions": {"MEMORY": ["READ"]}}
@@ -138,16 +135,14 @@ def test_update_admin(client):
     response = client.get("/admins")
     assert response.status_code == 200
     data = response.json()
-    assert len(data) == 3
+    assert len(data) == 2
     for d in data:
         check_user_fields(d)
-        assert d["username"] in ["admin", "user", "Alice3"]
+        assert d["username"] in ["admin", "Alice3"]
         if d["username"] == "Alice3":
-            assert d["permissions"] == {"UPLOAD":["WRITE"]}
-        elif d["username"] == "admin":
-            assert d["permissions"] == get_full_permissions()
+            assert d["permissions"] == {"UPLOAD": ["WRITE"]}
         else:
-            assert d["permissions"] == get_base_permissions()
+            assert d["permissions"] == get_full_admin_permissions()
 
 
 def test_delete_admin(client):
@@ -175,9 +170,8 @@ def test_delete_admin(client):
     assert response.status_code == 200
     data = response.json()
     assert isinstance(data, list)
-    assert len(data) == 2
+    assert len(data) == 1
     assert data[0]["username"] == "admin"
-    assert data[1]["username"] == "user"
 
 
 # note: using secure client (api key set both for http and ws)
@@ -204,6 +198,5 @@ def test_no_access_if_api_keys_active(secure_client):
     headers = {"Authorization": f"Bearer {get_env('CCAT_API_KEY')}"}
     response = secure_client.get("/admins", headers=headers)
     assert response.status_code == 200
-    assert len(response.json()) == 2
+    assert len(response.json()) == 1
     assert response.json()[0]["username"] == "admin"
-    assert response.json()[1]["username"] == "user"

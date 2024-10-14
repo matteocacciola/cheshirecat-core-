@@ -1,21 +1,42 @@
-from typing import List
-
+from pydantic import BaseModel, Field, ConfigDict
+from typing import List, Dict
 from fastapi import Depends, APIRouter, HTTPException
 
-from cat.auth.permissions import AuthPermission, AuthResource
+from cat.auth.permissions import AdminAuthResource, AuthPermission, get_full_admin_permissions
 from cat.auth.auth_utils import hash_password
 from cat.auth.connection import ConnectionSuperAdminAuth
 from cat.bill_the_lizard import BillTheLizard
 from cat.db import crud
-from cat.routes.models.users import UserResponse, UserCreate, UserUpdate
 
 router = APIRouter()
 
 
-@router.post("/", response_model=UserResponse)
+class AdminBase(BaseModel):
+    username: str = Field(min_length=2)
+    permissions: Dict[str, List[str]] = get_full_admin_permissions()
+
+
+class AdminCreate(AdminBase):
+    password: str = Field(min_length=5)
+    # no additional fields allowed
+    model_config = ConfigDict(extra="forbid")
+
+
+class AdminUpdate(AdminBase):
+    username: str = Field(default=None, min_length=2)
+    password: str = Field(default=None, min_length=4)
+    permissions: Dict[str, List[str]] = None
+    model_config = ConfigDict(extra="forbid")
+
+
+class AdminResponse(AdminBase):
+    id: str
+
+
+@router.post("/", response_model=AdminResponse)
 def create_admin(
-    new_user: UserCreate,
-    lizard: BillTheLizard = Depends(ConnectionSuperAdminAuth(AuthResource.ADMIN, AuthPermission.LIST)),
+    new_user: AdminCreate,
+    lizard: BillTheLizard = Depends(ConnectionSuperAdminAuth(AdminAuthResource.ADMIN, AuthPermission.LIST)),
 ):
     created_user = crud.create_user(lizard.config_key, new_user.model_dump())
     if not created_user:
@@ -24,11 +45,11 @@ def create_admin(
     return created_user
 
 
-@router.get("/", response_model=List[UserResponse])
+@router.get("/", response_model=List[AdminResponse])
 def read_admins(
     skip: int = 0,
     limit: int = 100,
-    lizard: BillTheLizard = Depends(ConnectionSuperAdminAuth(AuthResource.ADMIN, AuthPermission.LIST)),
+    lizard: BillTheLizard = Depends(ConnectionSuperAdminAuth(AdminAuthResource.ADMIN, AuthPermission.LIST)),
 ):
     users_db = crud.get_users(lizard.config_key)
 
@@ -36,10 +57,10 @@ def read_admins(
     return users
 
 
-@router.get("/{user_id}", response_model=UserResponse)
+@router.get("/{user_id}", response_model=AdminResponse)
 def read_admin(
     user_id: str,
-    lizard: BillTheLizard = Depends(ConnectionSuperAdminAuth(AuthResource.ADMIN, AuthPermission.READ)),
+    lizard: BillTheLizard = Depends(ConnectionSuperAdminAuth(AdminAuthResource.ADMIN, AuthPermission.READ)),
 ):
     users_db = crud.get_users(lizard.config_key)
 
@@ -48,11 +69,11 @@ def read_admin(
     return users_db[user_id]
 
 
-@router.put("/{user_id}", response_model=UserResponse)
+@router.put("/{user_id}", response_model=AdminResponse)
 def update_admin(
     user_id: str,
-    user: UserUpdate,
-    lizard: BillTheLizard = Depends(ConnectionSuperAdminAuth(AuthResource.ADMIN, AuthPermission.EDIT)),
+    user: AdminUpdate,
+    lizard: BillTheLizard = Depends(ConnectionSuperAdminAuth(AdminAuthResource.ADMIN, AuthPermission.EDIT)),
 ):
     stored_user = crud.get_user(lizard.config_key, user_id)
     if not stored_user:
@@ -66,10 +87,10 @@ def update_admin(
     return updated_info
 
 
-@router.delete("/{user_id}", response_model=UserResponse)
+@router.delete("/{user_id}", response_model=AdminResponse)
 def delete_admin(
     user_id: str,
-    lizard: BillTheLizard = Depends(ConnectionSuperAdminAuth(AuthResource.ADMIN, AuthPermission.DELETE)),
+    lizard: BillTheLizard = Depends(ConnectionSuperAdminAuth(AdminAuthResource.ADMIN, AuthPermission.DELETE)),
 ):
     deleted_user = crud.delete_user(lizard.config_key, user_id)
     if not deleted_user:

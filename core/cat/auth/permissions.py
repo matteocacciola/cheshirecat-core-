@@ -10,13 +10,27 @@ class AuthResource(Enum):
     CONVERSATION = "CONVERSATION"
     SETTINGS = "SETTINGS"
     LLM = "LLM"
-    EMBEDDER = "EMBEDDER"
     AUTH_HANDLER = "AUTH_HANDLER"
     USERS = "USERS"
     UPLOAD = "UPLOAD"
     PLUGINS = "PLUGINS"
     STATIC = "STATIC"
+
+
+class AdminAuthResource(Enum):
     ADMIN = "ADMIN"
+    EMBEDDER = "EMBEDDER"
+    CRUD = "CRUD"
+    STATUS = "STATUS"
+    MEMORY = "MEMORY"
+    CONVERSATION = "CONVERSATION"
+    SETTINGS = "SETTINGS"
+    LLM = "LLM"
+    AUTH_HANDLER = "AUTH_HANDLER"
+    USERS = "USERS"
+    UPLOAD = "UPLOAD"
+    PLUGINS = "PLUGINS"
+    STATIC = "STATIC"
 
 
 class AuthPermission(Enum):
@@ -32,6 +46,13 @@ def get_full_permissions() -> Dict[str, List[str]]:
     Returns all available resources and permissions.
     """
     return {str(res): [str(p) for p in AuthPermission] for res in AuthResource}
+
+
+def get_full_admin_permissions() -> Dict[str, List[str]]:
+    """
+    Returns all available resources and permissions for an admin user.
+    """
+    return {str(res): [str(p) for p in AuthPermission] for res in AdminAuthResource}
 
 
 def get_base_permissions() -> Dict[str, List[str]]:
@@ -57,7 +78,7 @@ class AuthUserInfo(BaseModelDict):
     name: str
 
     # permissions
-    permissions: Dict[str, List[str]] = get_base_permissions()
+    permissions: Dict[str, List[str]]
 
     # only put in here what you are comfortable to pass plugins:
     # - profile data

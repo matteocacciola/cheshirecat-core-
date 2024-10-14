@@ -14,6 +14,7 @@ from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.output_parsers.string import StrOutputParser
 
 import cat.factory.auth_handler as auth_handlers
+from cat.auth.permissions import get_base_permissions, get_full_permissions
 from cat.db import crud, models
 from cat.factory.embedder import EmbedderSettings
 from cat.factory.llm import LLMDefaultConfig
@@ -86,7 +87,7 @@ class CheshireCat:
         self.mad_hatter.execute_hook("after_cat_bootstrap", cat=self)
 
         if not crud.get_users(self.id):
-            crud.create_basic_users(self.id)
+            crud.create_basic_users(self.id, get_full_permissions(), get_base_permissions())
 
     def __eq__(self, other: "CheshireCat") -> bool:
         """Check if two cats are equal."""

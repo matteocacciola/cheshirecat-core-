@@ -3,6 +3,7 @@ import requests
 import json
 from typing import Dict
 from copy import deepcopy
+from pydantic import BaseModel, Field, ConfigDict
 from fastapi import (
     Form,
     Depends,
@@ -16,7 +17,6 @@ from fastapi import (
 from cat.auth.connection import HTTPAuth, ContextualCats
 from cat.auth.permissions import AuthPermission, AuthResource
 from cat.log import log
-from cat.routes.models.upload import UploadURLConfig
 from cat.utils import format_upload_file
 
 # TODOV2:
@@ -26,6 +26,25 @@ from cat.utils import format_upload_file
 
 
 router = APIRouter()
+
+
+class UploadURLConfig(BaseModel):
+    url: str = Field(
+        description="URL of the website to which you want to save the content"
+    )
+    chunk_size: int | None = Field(
+        default=None,
+        description="Maximum length of each chunk after the document is split (in tokens)"
+    )
+    chunk_overlap: int | None = Field(
+        default=None,
+        description="Chunk overlap (in tokens)"
+    )
+    metadata: Dict = Field(
+        default={},
+        description="Metadata to be stored with each chunk (e.g. author, category, etc.)"
+    )
+    model_config = ConfigDict(extra="forbid")
 
 
 # receive files via http endpoint

@@ -1,15 +1,25 @@
 import asyncio
 from typing import Dict, List
 from urllib.parse import urlencode
+from pydantic import BaseModel
 from fastapi import APIRouter, Request, HTTPException, status, Query
 from fastapi.responses import RedirectResponse
 
 from cat.auth.auth_utils import extract_agent_id_from_request
 from cat.auth.permissions import get_full_permissions
-from cat.routes.models.auth import JWTResponse, UserCredentials
 from cat.routes.static.templates import get_jinja_templates
 
 router = APIRouter()
+
+
+class UserCredentials(BaseModel):
+    username: str
+    password: str
+
+
+class JWTResponse(BaseModel):
+    access_token: str
+    token_type: str = "bearer"
 
 
 # set cookies and redirect to origin page after login

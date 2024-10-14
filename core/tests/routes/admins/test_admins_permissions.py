@@ -8,8 +8,6 @@ from cat.env import get_env
 
 
 @pytest.mark.parametrize("credentials", [
-    # default users: `admin` has USERS permissions, `user` has not
-    {"username": "user", "password": "user"},
     {"username": "admin", "password": "admin"},
 ])
 @pytest.mark.parametrize("endpoint", [
@@ -81,10 +79,7 @@ def test_admins_permissions(secure_client, credentials, endpoint):
         json=endpoint["payload"],
         headers={"Authorization": f"Bearer {jwt}"} # using credentials
     )
-    # `admin` can now use endpoints, `user` cannot
-    if credentials["username"] == "admin":
-        assert res.status_code == 200
-    else:
-        assert res.status_code == 403
+
+    assert res.status_code == 200
 
 # TODOAUTH: more tests here on critical endpoints

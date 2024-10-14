@@ -10,7 +10,7 @@ from qdrant_client import QdrantClient
 from fastapi.testclient import TestClient
 
 from cat.auth import auth_utils
-from cat.auth.permissions import AuthUserInfo
+from cat.auth.permissions import AuthUserInfo, get_base_permissions
 from cat.bill_the_lizard import BillTheLizard
 from cat.db.database import Database
 from cat.env import get_env
@@ -201,7 +201,7 @@ def main_agent(client, lizard):
 # fixture to have available an instance of StrayCat
 @pytest.fixture
 def stray(client, cheshire_cat):
-    user = AuthUserInfo(id="user_alice", name="Alice")
+    user = AuthUserInfo(id="user_alice", name="Alice", permissions=get_base_permissions())
     stray_cat = StrayCat(user_data=user, main_loop=asyncio.new_event_loop(), chatbot_id=cheshire_cat.id)
     stray_cat.working_memory.user_message_json = {"user_id": user.id, "text": "meow"}
 
@@ -213,7 +213,7 @@ def stray(client, cheshire_cat):
 @pytest.fixture
 def stray_no_memory(client, cheshire_cat) -> StrayCat:
     yield StrayCat(
-        user_data=AuthUserInfo(id="user_alice", name="Alice"),
+        user_data=AuthUserInfo(id="user_alice", name="Alice", permissions=get_base_permissions()),
         main_loop=asyncio.new_event_loop(),
         chatbot_id=cheshire_cat.id
     )

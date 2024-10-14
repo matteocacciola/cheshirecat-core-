@@ -3,6 +3,7 @@ from typing import Dict
 
 from cat import utils
 from cat.agents.main_agent import MainAgent
+from cat.auth.permissions import get_full_admin_permissions
 from cat.db import crud, models
 from cat.env import get_env
 from cat.exceptions import LoadMemoryException
@@ -60,7 +61,7 @@ class BillTheLizard:
         self.main_agent = MainAgent()
 
         if not crud.get_users(self.__key):
-            crud.create_basic_users(self.__key)
+            crud.create_basic_users(self.__key, get_full_admin_permissions())
 
     def load_language_embedder(self) -> EmbedderSettings:
         """Hook into the embedder selection.

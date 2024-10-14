@@ -2,7 +2,6 @@ import json
 from typing import Dict, List
 from uuid import uuid4
 
-from cat.auth.permissions import get_full_permissions, get_base_permissions
 from cat.auth.auth_utils import hash_password, check_password
 from cat.db.database import get_db
 from cat.db.models import Setting
@@ -128,28 +127,31 @@ def upsert_setting_by_name(key_id: str, payload: Setting) -> Dict:
 
 
 # We store users in a setting and when there will be a graph db in the cat, we will store them there.
-# P.S.: I'm not proud of this.
 # create admin user and an ordinary user
-def create_basic_users(key_id: str) -> None:
+def create_basic_users(key_id: str, full_permissions: Dict, base_permissions: Dict | None = None) -> None:
     admin_id = str(uuid4())
     user_id = str(uuid4())
 
-    update_users(key_id, {
+    basic_users = {
         admin_id: {
             "id": admin_id,
             "username": "admin",
             "password": hash_password("admin"),
             # admin has all permissions
-            "permissions": get_full_permissions()
-        },
-        user_id: {
+            "permissions": full_permissions
+        }
+    }
+
+    if base_permissions:
+        basic_users[user_id] = {
             "id": user_id,
             "username": "user",
             "password": hash_password("user"),
             # user has minor permissions
-            "permissions": get_base_permissions()
+            "permissions": base_permissions
         }
-    })
+
+    update_users(key_id, basic_users)
 
 
 def get_users(key_id: str) -> Dict[str, Dict]:
