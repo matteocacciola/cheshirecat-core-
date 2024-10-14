@@ -14,7 +14,6 @@ from langchain.document_loaders.blob_loaders.schema import Blob
 
 from cat.log import log
 from cat.looking_glass.cheshire_cat import CheshireCat
-from cat.mad_hatter.utils import execute_hook
 from cat.memory.models import MemoryCollection
 from cat.utils import singleton
 
@@ -346,8 +345,8 @@ class RabbitHole:
         memory = ccat.memory
 
         # hook the docs before they are stored in the vector memory
-        docs = execute_hook(
-            mad_hatter, "before_rabbithole_stores_documents", docs, cat=stray
+        docs = mad_hatter.execute_hook(
+            "before_rabbithole_stores_documents", docs, cat=stray
         )
 
         metadata = metadata or {}
@@ -372,8 +371,8 @@ class RabbitHole:
             for k,v in metadata.items():
                 doc.metadata[k] = v
 
-            doc = execute_hook(
-                mad_hatter, "before_rabbithole_insert_memory", doc, cat=stray
+            doc = mad_hatter.execute_hook(
+                "before_rabbithole_insert_memory", doc, cat=stray
             )
             inserting_info = f"{d + 1}/{len(docs)}):    {doc.page_content}"
             if doc.page_content != "":
@@ -393,8 +392,8 @@ class RabbitHole:
             time.sleep(0.05)
 
         # hook the points after they are stored in the vector memory
-        execute_hook(
-            mad_hatter, "after_rabbithole_stored_documents", source, stored_points, cat=stray
+        mad_hatter.execute_hook(
+            "after_rabbithole_stored_documents", source, stored_points, cat=stray
         )
 
         # notify client
@@ -448,8 +447,8 @@ class RabbitHole:
         mad_hatter = stray.cheshire_cat.mad_hatter
 
         # do something on the text before it is split
-        text = execute_hook(
-            mad_hatter, "before_rabbithole_splits_text", text, cat=stray
+        text = mad_hatter.execute_hook(
+            "before_rabbithole_splits_text", text, cat=stray
         )
 
         # hooks decide the test splitter (see @property .text_splitter)
@@ -467,8 +466,8 @@ class RabbitHole:
         docs = list(filter(lambda d: len(d.page_content) > 10, docs))
 
         # do something on the text after it is split
-        docs = execute_hook(
-            mad_hatter, "after_rabbithole_splitted_text", docs, cat=stray
+        docs = mad_hatter.execute_hook(
+            "after_rabbithole_splitted_text", docs, cat=stray
         )
 
         return docs

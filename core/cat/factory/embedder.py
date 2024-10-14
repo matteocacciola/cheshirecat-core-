@@ -8,7 +8,6 @@ from fastembed import TextEmbedding
 
 from cat.factory.custom_embedder import DumbEmbedder, CustomOpenAIEmbeddings
 from cat.mad_hatter.mad_hatter import MadHatter
-from cat.mad_hatter.utils import execute_hook
 from cat.utils import Enum
 
 
@@ -183,8 +182,8 @@ def get_allowed_embedder_models(mad_hatter: MadHatter) -> List[Type[EmbedderSett
         EmbedderFakeConfig,
     ]
 
-    list_embedder = execute_hook(
-        mad_hatter, "factory_allowed_embedders", list_embedder_default, cat=None
+    list_embedder = mad_hatter.execute_hook(
+        "factory_allowed_embedders", list_embedder_default, cat=None
     )
     return list_embedder
 

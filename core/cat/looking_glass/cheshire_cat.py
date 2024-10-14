@@ -21,7 +21,6 @@ from cat.factory.llm import get_llm_from_name
 from cat.log import log
 from cat.mad_hatter.mad_hatter import MadHatter
 from cat.mad_hatter.registry import registry_search_plugins
-from cat.mad_hatter.utils import execute_hook
 from cat.memory.long_term_memory import LongTermMemory
 from cat import utils
 
@@ -70,7 +69,7 @@ class CheshireCat:
         self.load_auth()
 
         # allows plugins to do something before cat components are loaded
-        execute_hook(self.mad_hatter, "before_cat_bootstrap", cat=self)
+        self.mad_hatter.execute_hook("before_cat_bootstrap", cat=self)
 
         # load LLM
         self.llm = self.load_language_model()
@@ -84,7 +83,7 @@ class CheshireCat:
         self.embed_procedures()  # first time launched manually
 
         # allows plugins to do something after the cat bootstrap is complete
-        execute_hook(self.mad_hatter, "after_cat_bootstrap", cat=self)
+        self.mad_hatter.execute_hook("after_cat_bootstrap", cat=self)
 
         if not crud.get_users(self.id):
             crud.create_basic_users(self.id)
@@ -450,8 +449,8 @@ class CheshireCat:
         }
 
         # no access to stray
-        file_handlers = execute_hook(
-            self.mad_hatter, "rabbithole_instantiates_parsers", file_handlers, cat=self
+        file_handlers = self.mad_hatter.execute_hook(
+            "rabbithole_instantiates_parsers", file_handlers, cat=self
         )
 
         return file_handlers
@@ -470,7 +469,7 @@ class CheshireCat:
         )
 
         # no access to stray
-        text_splitter = execute_hook(
-            self.mad_hatter, "rabbithole_instantiates_splitter", text_splitter, cat=self
+        text_splitter = self.mad_hatter.execute_hook(
+            "rabbithole_instantiates_splitter", text_splitter, cat=self
         )
         return text_splitter

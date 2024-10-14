@@ -224,7 +224,7 @@ class MadHatter:
         self.sync_hooks_tools_and_forms()
 
     # execute requested hook
-    def execute_hook(self, hook_name, *args, cat):
+    def execute_hook(self, hook_name: str, *args, cat):
         # check if hook is supported
         if hook_name not in self.hooks.keys():
             raise Exception(f"Hook {hook_name} not present in any plugin")

@@ -7,7 +7,6 @@ from cat.factory.custom_auth_handler import (
     CoreOnlyAuthHandler,
 )
 from cat.mad_hatter.mad_hatter import MadHatter
-from cat.mad_hatter.utils import execute_hook
 
 
 class AuthHandlerConfig(BaseModel):
@@ -61,8 +60,8 @@ def get_allowed_auth_handler_strategies(mad_hatter: MadHatter) -> list[Type[Auth
         # ApiKeyAuthConfig,
     ]
 
-    list_auth_handler = execute_hook(
-        mad_hatter, "factory_allowed_auth_handlers", list_auth_handler_default, cat=None
+    list_auth_handler = mad_hatter.execute_hook(
+        "factory_allowed_auth_handlers", list_auth_handler_default, cat=None
     )
 
     return list_auth_handler
