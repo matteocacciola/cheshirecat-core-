@@ -80,6 +80,33 @@ def clean_up_mocks():
     redis_client.flushdb()
 
 
+def should_skip_encapsulation(request):
+    return request.node.get_closest_marker("skip_encapsulation") is not None
+
+
+@pytest.fixture(autouse=True)
+def encapsulate_each_test(request, monkeypatch):
+    if should_skip_encapsulation(request):
+        # Skip initialization for tests marked with @pytest.mark.skip_initialization
+        yield
+
+        return
+
+    # monkeypatch classes
+    mock_classes(monkeypatch)
+
+    # clean up tmp files, folders and redis database
+    clean_up_mocks()
+
+    # delete all singletons!!!
+    utils.singleton.instances = {}
+
+    yield
+
+    # clean up tmp files, folders and redis database
+    clean_up_mocks()
+
+
 # Main fixture for the FastAPI app
 @pytest.fixture(scope="function")
 def client(monkeypatch) -> Generator[TestClient, Any, None]:
@@ -232,3 +259,7 @@ def apply_warning_filters():
 def plugin(client, cheshire_cat):
     p = Plugin(mock_plugin_path)
     yield p
+
+
+# Define the custom marker
+pytest.mark.skip_encapsulation = pytest.mark.skip_encapsulation

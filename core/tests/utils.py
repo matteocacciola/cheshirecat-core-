@@ -1,6 +1,7 @@
 import shutil
 from uuid import UUID
 from urllib.parse import urlencode
+from concurrent.futures import ThreadPoolExecutor
 
 
 def get_class_from_decorated_singleton(singleton):
@@ -110,3 +111,19 @@ def check_user_fields(u):
     except ValueError:
         # If a ValueError is raised, the UUID string is invalid
         assert False, "Not a UUID"
+
+
+def run_job_in_thread(job, obj, loop):
+    """
+    Helper function to run job_on_idle_strays in a separate thread.
+    """
+    with ThreadPoolExecutor() as executor:
+        future = executor.submit(job, obj, loop)
+        return future.result()
+
+
+async def async_run_job(job, obj, loop):
+    """
+    Asynchronously run job_on_idle_strays in a separate thread.
+    """
+    return await loop.run_in_executor(None, run_job_in_thread, job, obj, loop)

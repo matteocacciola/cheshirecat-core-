@@ -1,5 +1,5 @@
 import asyncio
-from typing import Dict
+from typing import Dict, List
 
 from cat import utils
 from cat.agents.main_agent import MainAgent
@@ -235,6 +235,7 @@ class BillTheLizard:
         Returns:
             None
         """
+
         for ccat in self.__cheshire_cats.values():
             await ccat.shutdown()
         self.__cheshire_cats = {}
@@ -243,6 +244,10 @@ class BillTheLizard:
 
         self.white_rabbit = None
         self.core_auth_handler = None
+        self.mad_hatter = None
+        self.rabbit_hole = None
+        self.main_agent = None
+        self.embedder = None
 
     @property
     def cheshire_cats(self):
@@ -252,19 +257,28 @@ class BillTheLizard:
     def config_key(self):
         return self.__key
 
+    @property
+    def has_cheshire_cats(self):
+        return bool(self.__cheshire_cats)
+
+    @property
+    def job_ids(self) -> List:
+        return [self.__check_idle_strays_job_id]
+
 
 def job_on_idle_strays(lizard: BillTheLizard, loop) -> bool:
     """
     Remove the objects StrayCat, if idle, from the CheshireCat objects contained into the BillTheLizard.
     """
 
-    ccats = lizard.cheshire_cats.values()
+    ccats = list(lizard.cheshire_cats.values())  # Create a list from the values
 
     for ccat in ccats:
-        for stray in ccat.strays:
+        for stray in list(ccat.strays):  # Create a copy of strays to iterate over
             if stray.is_idle:
-                asyncio.run_coroutine_threadsafe(ccat.remove_stray(stray), loop=loop).result()
+                asyncio.run_coroutine_threadsafe(ccat.remove_stray(stray.user_id), loop=loop).result()
 
+        # Check if the CheshireCat has still strays; if not, remove it
         if not ccat.has_strays():
             lizard.remove_cheshire_cat(ccat.id)
 

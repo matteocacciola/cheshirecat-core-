@@ -121,6 +121,7 @@ def test_save_settings(plugin):
 # Check if plugin requirements have been installed
 # ATTENTION: not using `plugin` fixture here, we instantiate and cleanup manually
 #           to use the unmocked Plugin class
+@pytest.mark.skip_encapsulation
 def test_install_plugin_dependencies():
     # manual cleanup
     clean_up_mocks()

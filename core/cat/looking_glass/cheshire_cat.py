@@ -98,7 +98,7 @@ class CheshireCat:
     def __hash__(self):
         return hash(self.id)
 
-    def __next_stray(self, user_id: str):
+    def __next_stray(self, user_id: str) -> "StrayCat":
         """
         Get the next stray from the Cat.
         Args:
@@ -129,12 +129,15 @@ class CheshireCat:
         if not stray:
             return
 
-        await stray.ws.close()
+        if stray.ws:
+            await stray.ws.close()
+
         self.__strays.remove(stray)
+        crud.delete_user(self.id, stray.user_id)
 
         del stray
 
-    def get_stray(self, user_id: str):
+    def get_stray(self, user_id: str) -> "StrayCat":
         """Get a stray from the Cat."""
 
         return self.__next_stray(user_id)
