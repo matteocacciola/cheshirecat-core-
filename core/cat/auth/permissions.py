@@ -18,19 +18,8 @@ class AuthResource(Enum):
 
 
 class AdminAuthResource(Enum):
-    ADMIN = "ADMIN"
+    ADMINS = "ADMINS"
     EMBEDDER = "EMBEDDER"
-    CRUD = "CRUD"
-    STATUS = "STATUS"
-    MEMORY = "MEMORY"
-    CONVERSATION = "CONVERSATION"
-    SETTINGS = "SETTINGS"
-    LLM = "LLM"
-    AUTH_HANDLER = "AUTH_HANDLER"
-    USERS = "USERS"
-    UPLOAD = "UPLOAD"
-    PLUGINS = "PLUGINS"
-    STATIC = "STATIC"
 
 
 class AuthPermission(Enum):

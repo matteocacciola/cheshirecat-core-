@@ -36,7 +36,7 @@ class AdminResponse(AdminBase):
 @router.post("/", response_model=AdminResponse)
 def create_admin(
     new_user: AdminCreate,
-    lizard: BillTheLizard = Depends(ConnectionSuperAdminAuth(AdminAuthResource.ADMIN, AuthPermission.LIST)),
+    lizard: BillTheLizard = Depends(ConnectionSuperAdminAuth(AdminAuthResource.ADMINS, AuthPermission.LIST)),
 ):
     created_user = crud.create_user(lizard.config_key, new_user.model_dump())
     if not created_user:
@@ -49,7 +49,7 @@ def create_admin(
 def read_admins(
     skip: int = 0,
     limit: int = 100,
-    lizard: BillTheLizard = Depends(ConnectionSuperAdminAuth(AdminAuthResource.ADMIN, AuthPermission.LIST)),
+    lizard: BillTheLizard = Depends(ConnectionSuperAdminAuth(AdminAuthResource.ADMINS, AuthPermission.LIST)),
 ):
     users_db = crud.get_users(lizard.config_key)
 
@@ -60,7 +60,7 @@ def read_admins(
 @router.get("/{user_id}", response_model=AdminResponse)
 def read_admin(
     user_id: str,
-    lizard: BillTheLizard = Depends(ConnectionSuperAdminAuth(AdminAuthResource.ADMIN, AuthPermission.READ)),
+    lizard: BillTheLizard = Depends(ConnectionSuperAdminAuth(AdminAuthResource.ADMINS, AuthPermission.READ)),
 ):
     users_db = crud.get_users(lizard.config_key)
 
@@ -73,7 +73,7 @@ def read_admin(
 def update_admin(
     user_id: str,
     user: AdminUpdate,
-    lizard: BillTheLizard = Depends(ConnectionSuperAdminAuth(AdminAuthResource.ADMIN, AuthPermission.EDIT)),
+    lizard: BillTheLizard = Depends(ConnectionSuperAdminAuth(AdminAuthResource.ADMINS, AuthPermission.EDIT)),
 ):
     stored_user = crud.get_user(lizard.config_key, user_id)
     if not stored_user:
@@ -90,7 +90,7 @@ def update_admin(
 @router.delete("/{user_id}", response_model=AdminResponse)
 def delete_admin(
     user_id: str,
-    lizard: BillTheLizard = Depends(ConnectionSuperAdminAuth(AdminAuthResource.ADMIN, AuthPermission.DELETE)),
+    lizard: BillTheLizard = Depends(ConnectionSuperAdminAuth(AdminAuthResource.ADMINS, AuthPermission.DELETE)),
 ):
     deleted_user = crud.delete_user(lizard.config_key, user_id)
     if not deleted_user:
