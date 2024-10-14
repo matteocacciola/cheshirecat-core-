@@ -2,15 +2,18 @@ import asyncio
 import pytest
 import os
 import shutil
+import redis
 from typing import Any, Generator
 import warnings
 from pydantic import PydanticDeprecatedSince20
 from qdrant_client import QdrantClient
 from fastapi.testclient import TestClient
 
+from cat.auth import auth_utils
 from cat.auth.permissions import AuthUserInfo
 from cat.bill_the_lizard import BillTheLizard
-from cat.db import crud
+from cat.db.database import Database
+from cat.env import get_env
 from cat.looking_glass.stray_cat import StrayCat
 from cat.mad_hatter.plugin import Plugin
 from cat.main import cheshire_cat_api
@@ -20,6 +23,8 @@ import cat.utils as utils
 from tests.utils import create_mock_plugin_zip
 
 mock_plugin_path = "tests/mocks/mock_plugin/"
+redis_client = redis.Redis(host=get_env("CCAT_REDIS_HOST"), db="1", encoding="utf-8", decode_responses=True)
+agent_id = "chatbot_test"
 
 
 # substitute classes' methods where necessary for testing purposes
@@ -32,6 +37,12 @@ def mock_classes(monkeypatch):
         VectorMemory, "connect_to_vector_memory", mock_connect_to_vector_memory
     )
 
+    # Use a different redis client
+    def mock_get_redis_client(self, *args, **kwargs):
+        return redis_client
+
+    monkeypatch.setattr(Database().__class__, "get_redis_client", mock_get_redis_client)
+
     # Use mock utils plugin folder
     def get_test_plugin_folder():
         return "tests/mocks/mock_plugin_folder/"
@@ -43,6 +54,11 @@ def mock_classes(monkeypatch):
         pass
 
     monkeypatch.setattr(Plugin, "_install_requirements", mock_install_requirements)
+
+    def get_extract_agent_id_from_request(request):
+        return agent_id
+
+    auth_utils.extract_agent_id_from_request = get_extract_agent_id_from_request
 
 
 # get rid of tmp files and folders used for testing
@@ -61,7 +77,7 @@ def clean_up_mocks():
             else:
                 os.remove(tbr)
 
-    crud.flush_db()
+    redis_client.flushdb()
 
 
 # Main fixture for the FastAPI app
@@ -71,21 +87,17 @@ def client(monkeypatch) -> Generator[TestClient, Any, None]:
     Create a new FastAPI TestClient.
     """
 
-    current_redis_host = os.environ["CCAT_REDIS_DB"]
-    os.environ["CCAT_REDIS_DB"] = os.environ["CCAT_REDIS_DB_TEST"]
-    os.environ["CCAT_QDRANT_HOST"] = ""
-
-    # clean up tmp files and folders
-    clean_up_mocks()
     # monkeypatch classes
     mock_classes(monkeypatch)
+
+    # clean up tmp files, folders and redis database
+    clean_up_mocks()
+
     # delete all singletons!!!
     utils.singleton.instances = {}
 
     with TestClient(cheshire_cat_api) as client:
         yield client
-
-    os.environ["CCAT_REDIS_DB"] = current_redis_host
 
 
 @pytest.fixture(scope="function")
@@ -97,12 +109,24 @@ def lizard():
 # making mandatory for clients to possess api keys or JWT
 @pytest.fixture(scope="function")
 def secure_client(client):
+    current_api_key = os.getenv("CCAT_API_KEY")
+    current_api_ws = os.getenv("CCAT_API_KEY_WS")
+
     # set ENV variables
     os.environ["CCAT_API_KEY"] = "meow_http"
     os.environ["CCAT_API_KEY_WS"] = "meow_ws"
+
     yield client
-    del os.environ["CCAT_API_KEY"]
-    del os.environ["CCAT_API_KEY_WS"]
+
+    # clean up
+    if current_api_key:
+        os.environ["CCAT_API_KEY"] = current_api_key
+    else:
+        del os.environ["CCAT_API_KEY"]
+    if current_api_ws:
+        os.environ["CCAT_API_KEY_WS"] = current_api_ws
+    else:
+        del os.environ["CCAT_API_KEY_WS"]
 
 
 # This fixture is useful to write tests in which
@@ -135,9 +159,9 @@ def just_installed_plugin(client):
 
 @pytest.fixture
 def cheshire_cat(client, lizard):
-    cheshire_cat = lizard.get_or_create_cheshire_cat("test")
+    cheshire_cat = lizard.get_or_create_cheshire_cat(agent_id)
     yield cheshire_cat
-    lizard.remove_cheshire_cat("test")
+    lizard.remove_cheshire_cat(agent_id)
 
 
 @pytest.fixture

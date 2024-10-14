@@ -111,6 +111,7 @@ async def test_issue_jwt_for_new_user(client, cheshire_cat):
 # NOTE: here we are using the secure_client fixture (see conftest.py)
 def test_jwt_expiration(secure_client, cheshire_cat):
     # set ultrashort JWT expiration time
+    current_jwt_expire_minutes = os.getenv("CCAT_JWT_EXPIRE_MINUTES")
     os.environ["CCAT_JWT_EXPIRE_MINUTES"] = "0.05"  # 3 seconds
 
     chatbot_id = cheshire_cat.id
@@ -144,7 +145,10 @@ def test_jwt_expiration(secure_client, cheshire_cat):
     assert response.json()["detail"]["error"] == "Invalid Credentials"
 
     # restore default env
-    del os.environ["CCAT_JWT_EXPIRE_MINUTES"]
+    if current_jwt_expire_minutes:
+        os.environ["CCAT_JWT_EXPIRE_MINUTES"] = current_jwt_expire_minutes
+    else:
+        del os.environ["CCAT_JWT_EXPIRE_MINUTES"]
 
 
 # test ws and http endpoints can get user_id from JWT

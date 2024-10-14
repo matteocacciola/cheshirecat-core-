@@ -9,6 +9,7 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 
 from cat.bill_the_lizard import BillTheLizard
+from cat.db.database import get_db
 from cat.env import get_env, fix_legacy_env_variables
 from cat.log import log
 from cat.routes import (
@@ -56,6 +57,8 @@ async def lifespan(app: FastAPI):
 
     # shutdown Manager
     await app.state.lizard.shutdown()
+
+    get_db().close()
 
 
 def custom_generate_unique_id(route: APIRoute):

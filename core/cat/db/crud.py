@@ -218,11 +218,6 @@ def update_users(key_id, users: Dict[str, Dict]) -> Dict | None:
     return upsert_setting_by_name(key_id, updated_users)
 
 
-def flush_db():
-    get_db().flushdb()
-    return True
-
-
 def get_all(key_id: str):
     return __get(key_id)
 

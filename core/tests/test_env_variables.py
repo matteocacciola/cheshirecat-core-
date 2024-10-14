@@ -20,9 +20,6 @@ def test_get_env(client):
     redis_host = os.environ["CCAT_REDIS_HOST"]
     os.environ["CCAT_REDIS_HOST"] = "localhost"
 
-    redis_db = os.environ["CCAT_REDIS_DB"]
-    os.environ["CCAT_REDIS_DB"] = "0"
-
     # default env variables
     for k, v in get_supported_env_variables().items():
         assert get_env(k) == v
@@ -30,5 +27,7 @@ def test_get_env(client):
         # missing prefix (legacy)
         assert get_env(k.replace("CCAT_", "")) == v
 
-    os.environ["CCAT_REDIS_HOST"] = redis_host
-    os.environ["CCAT_REDIS_DB"] = redis_db
+    if redis_host:
+        os.environ["CCAT_REDIS_HOST"] = redis_host
+    else:
+        del os.environ["CCAT_REDIS_HOST"]

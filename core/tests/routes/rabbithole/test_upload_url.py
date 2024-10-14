@@ -31,7 +31,6 @@ def test_rabbithole_upload_url(client):
 
 
 def test_rabbithole_upload_url_with_metadata(client):
-    
     metadata = {
         "domain": "example.com",
         "scraped_with": "scrapy",

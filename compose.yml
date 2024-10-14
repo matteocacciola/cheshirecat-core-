@@ -1,4 +1,5 @@
 services:
+
   cheshire-cat-core:
     build:
       context: ./core
@@ -14,15 +15,7 @@ services:
     environment:
       # Timezone
       - TZ=${CCAT_TIMEZONE:-UTC}
-      - CCAT_REDIS_HOST=cheshire-redis
-      - CCAT_REDIS_PORT=6379
-      - CCAT_REDIS_DB=${CCAT_REDIS_DB:-0}
-      - CCAT_REDIS_DB_TEST=${CCAT_REDIS_DB_TEST:-1}
-      - CCAT_REDIS_PASSWORD=${CCAT_REDIS_PASSWORD:-}
-      - CCAT_QDRANT_HOST=cheshire-cat-vector-memory
-      - CCAT_QDRANT_PORT=6333
-      - CCAT_QDRANT_API_KEY=${CCAT_QDRANT_API_KEY:-}
-      - CCAT_STRAYCAT_TIMEOUT=${CCAT_STRAYCAT_TIMEOUT:-59}
+      - CCAT_REDIS_HOST=host.docker.internal # only for development purposes (take away in production); it allows to use your Redis server from host
     volumes:
       - ./core:/app
     command:
@@ -30,49 +23,3 @@ services:
       - "-m"
       - "cat.main"
     restart: unless-stopped
-    depends_on:
-      cheshire-redis:
-        condition: service_healthy
-      cheshire-healthcheck:
-        condition: service_healthy
-
-  cheshire-redis:
-    image: redis:7.4.1
-    container_name: cheshire_cat_redis
-    # Use conditional command based on whether password is set
-    command: >
-      sh -c '[ ! -z "$$CCAT_REDIS_PASSWORD" ] && 
-      redis-server --requirepass "$$CCAT_REDIS_PASSWORD" ||
-      redis-server'
-    environment:
-      - CCAT_REDIS_PASSWORD=${CCAT_REDIS_PASSWORD:-}
-    ports:
-      - "6379:6379"
-    restart: unless-stopped
-    healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
-      interval: 5s
-      timeout: 5s
-      retries: 5
-
-  cheshire-cat-vector-memory:
-    image: qdrant/qdrant:latest
-    container_name: cheshire_cat_vector_memory
-    ports:
-      - "6333:6333"
-    volumes:
-      - ./long_term_memory/vector:/qdrant/storage
-    restart: unless-stopped
-
-  cheshire-healthcheck:
-    image: curlimages/curl:latest
-    container_name: cheshire_healthcheck
-    entrypoint: ["/bin/sh", "-c", "--", "while true; do sleep 30; done;"]
-    depends_on:
-      - cheshire-cat-vector-memory
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://cheshire-cat-vector-memory:6333/readyz"]
-      interval: 10s
-      timeout: 2s
-      retries: 5
-    restart: always
