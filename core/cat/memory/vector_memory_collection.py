@@ -34,7 +34,7 @@ from cat.env import get_env
 class VectorMemoryCollection:
     def __init__(
         self,
-        chatbot_id: str,
+        agent_id: str,
         client: QdrantClient,
         collection_name: str,
         embedder_name: str,
@@ -42,7 +42,7 @@ class VectorMemoryCollection:
     ):
         self.snapshot_info = None
 
-        self.__chatbot_id = chatbot_id
+        self.__agent_id = agent_id
 
         # Set attributes (metadata on the embedder are useful because it may change at runtime)
         self.client = client
@@ -57,7 +57,7 @@ class VectorMemoryCollection:
         self.check_embedding_size()
 
         # log collection info
-        log.debug(f"Chatbot {self.__chatbot_id}, Collection {self.collection_name}:")
+        log.debug(f"Agent {self.__agent_id}, Collection {self.collection_name}:")
         log.debug(self.client.get_collection(self.collection_name))
 
     def check_embedding_size(self):
@@ -139,7 +139,7 @@ class VectorMemoryCollection:
         )
 
     def _qdrant_build_tenant_filter(self) -> Filter:
-        return Filter(must=[FieldCondition(key="group_id", match=MatchValue(value=self.__chatbot_id))])
+        return Filter(must=[FieldCondition(key="group_id", match=MatchValue(value=self.__agent_id))])
 
     def _qdrant_combine_filter_with_tenant(self, other_filter: Filter | None = None):
         combined_filter = self._qdrant_build_tenant_filter()
@@ -216,7 +216,7 @@ class VectorMemoryCollection:
             payload={
                 "page_content": content,
                 "metadata": metadata,
-                "group_id": self.__chatbot_id,
+                "group_id": self.__agent_id,
             },
             vector=vector,
         )
@@ -242,7 +242,7 @@ class VectorMemoryCollection:
             the response of the upsert operation
         """
 
-        payloads = [p | {"group_id": self.__chatbot_id} for p in payloads]
+        payloads = [p | {"group_id": self.__agent_id} for p in payloads]
         points = Batch(ids=ids, payloads=payloads, vectors=vectors)
 
         res = self.client.upsert(

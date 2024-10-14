@@ -45,7 +45,7 @@ def extract_agent_id_from_request(request: HTTPConnection) -> str:
             "agent_id",
             request.query_params.get(
                 "agent_id",
-                "chatbot"
+                "agent"
             )
         )
     )

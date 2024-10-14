@@ -24,7 +24,7 @@ from tests.utils import create_mock_plugin_zip
 
 mock_plugin_path = "tests/mocks/mock_plugin/"
 redis_client = redis.Redis(host=get_env("CCAT_REDIS_HOST"), db="1", encoding="utf-8", decode_responses=True)
-agent_id = "chatbot_test"
+agent_id = "agent_test"
 
 
 # substitute classes' methods where necessary for testing purposes
@@ -202,7 +202,7 @@ def main_agent(client, lizard):
 @pytest.fixture
 def stray(client, cheshire_cat):
     user = AuthUserInfo(id="user_alice", name="Alice", permissions=get_base_permissions())
-    stray_cat = StrayCat(user_data=user, main_loop=asyncio.new_event_loop(), chatbot_id=cheshire_cat.id)
+    stray_cat = StrayCat(user_data=user, main_loop=asyncio.new_event_loop(), agent_id=cheshire_cat.id)
     stray_cat.working_memory.user_message_json = {"user_id": user.id, "text": "meow"}
 
     cheshire_cat.add_stray(stray_cat)
@@ -215,7 +215,7 @@ def stray_no_memory(client, cheshire_cat) -> StrayCat:
     yield StrayCat(
         user_data=AuthUserInfo(id="user_alice", name="Alice", permissions=get_base_permissions()),
         main_loop=asyncio.new_event_loop(),
-        chatbot_id=cheshire_cat.id
+        agent_id=cheshire_cat.id
     )
 
 

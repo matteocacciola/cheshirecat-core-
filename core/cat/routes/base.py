@@ -28,4 +28,4 @@ async def message_with_cat(
 
     """Get a response from the Cat"""
     answer = await stray({"user_id": stray.user_id, **payload})
-    return answer
+    return {**answer, **{"user_id": stray.user_id, "agent_id": cats.cheshire_cat.id}}

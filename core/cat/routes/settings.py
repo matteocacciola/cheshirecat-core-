@@ -62,10 +62,10 @@ def update_setting(
 ):
     """Update a specific setting in the database if it exists"""
 
-    chatbot_id = cats.cheshire_cat.id
+    agent_id = cats.cheshire_cat.id
 
     # does the setting exist?
-    setting = crud.get_setting_by_id(chatbot_id, setting_id)
+    setting = crud.get_setting_by_id(agent_id, setting_id)
     if not setting:
         raise HTTPException(
             status_code=404,
@@ -79,7 +79,7 @@ def update_setting(
     payload.setting_id = setting_id  # force this to be the setting_id
 
     # save to DB
-    updated_setting = crud.update_setting_by_id(chatbot_id, payload)
+    updated_setting = crud.update_setting_by_id(agent_id, payload)
 
     return {"setting": updated_setting}
 
@@ -91,10 +91,10 @@ def delete_setting(
 ):
     """Delete a specific setting in the database"""
 
-    chatbot_id = cats.cheshire_cat.id
+    agent_id = cats.cheshire_cat.id
 
     # does the setting exist?
-    setting = crud.get_setting_by_id(chatbot_id, setting_id)
+    setting = crud.get_setting_by_id(agent_id, setting_id)
     if not setting:
         raise HTTPException(
             status_code=404,
@@ -104,6 +104,6 @@ def delete_setting(
         )
 
     # delete
-    crud.delete_setting_by_id(chatbot_id, setting_id)
+    crud.delete_setting_by_id(agent_id, setting_id)
 
     return {"deleted": setting_id}

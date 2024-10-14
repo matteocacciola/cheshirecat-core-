@@ -27,8 +27,8 @@ class BillTheLizard:
     """
     Singleton class that manages the Cheshire Cats and their strays.
 
-    The Cheshire Cats are the chatbots that are currently active and have users to attend.
-    The strays are the users that are waiting for a chatbot to attend them.
+    The Cheshire Cats are the agents that are currently active and have users to attend.
+    The strays are the users that are waiting for an agent to attend them.
 
     The Bill The Lizard Manager is responsible for:
     - Creating and deleting Cheshire Cats
@@ -179,52 +179,52 @@ class BillTheLizard:
 
         return selected
 
-    def remove_cheshire_cat(self, chatbot_id: str) -> None:
+    def remove_cheshire_cat(self, agent_id: str) -> None:
         """
-        Removes a Cheshire Cat from the list of active chatbots.
+        Removes a Cheshire Cat from the list of active agents.
 
         Args:
-            chatbot_id: The id of the chatbot to remove
+            agent_id: The id of the agent to remove
 
         Returns:
             None
         """
         
-        if chatbot_id in self.__cheshire_cats.keys():
-            del self.__cheshire_cats[chatbot_id]
+        if agent_id in self.__cheshire_cats.keys():
+            del self.__cheshire_cats[agent_id]
 
-    def get_cheshire_cat(self, chatbot_id: str) -> CheshireCat | None:
+    def get_cheshire_cat(self, agent_id: str) -> CheshireCat | None:
         """
         Gets the Cheshire Cat with the given id.
 
         Args:
-            chatbot_id: The id of the chatbot to get
+            agent_id: The id of the agent to get
 
         Returns:
             The Cheshire Cat with the given id, or None if it doesn't exist
         """
 
-        if chatbot_id in self.__cheshire_cats.keys():
-            return self.__cheshire_cats[chatbot_id]
+        if agent_id in self.__cheshire_cats.keys():
+            return self.__cheshire_cats[agent_id]
 
         return None
 
-    def get_or_create_cheshire_cat(self, chatbot_id: str) -> CheshireCat:
+    def get_or_create_cheshire_cat(self, agent_id: str) -> CheshireCat:
         """
         Gets the Cheshire Cat with the given id, or creates a new one if it doesn't exist.
 
         Args:
-            chatbot_id: The id of the chatbot to get or create
+            agent_id: The id of the agent to get or create
 
         Returns:
             The Cheshire Cat with the given id or a new one if it doesn't exist yet
         """
-        current_cat = self.get_cheshire_cat(chatbot_id)
-        if current_cat:  # chatbot already exists
+        current_cat = self.get_cheshire_cat(agent_id)
+        if current_cat:  # agent already exists
             return current_cat
 
-        new_cat = CheshireCat(chatbot_id)
-        self.__cheshire_cats[chatbot_id] = new_cat
+        new_cat = CheshireCat(agent_id)
+        self.__cheshire_cats[agent_id] = new_cat
 
         return new_cat
 

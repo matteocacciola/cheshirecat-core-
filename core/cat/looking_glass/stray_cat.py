@@ -36,8 +36,8 @@ MSG_TYPES = Literal["notification", "chat", "error", "chat_token"]
 class StrayCat:
     """User/session based object containing working memory and a few utility pointers"""
 
-    def __init__(self, chatbot_id: str, main_loop: AbstractEventLoop, user_data: AuthUserInfo, ws: WebSocket = None):
-        self.__chatbot_id = chatbot_id
+    def __init__(self, agent_id: str, main_loop: AbstractEventLoop, user_data: AuthUserInfo, ws: WebSocket = None):
+        self.__agent_id = agent_id
 
         self.__user = user_data
         self.working_memory = WorkingMemory()
@@ -63,6 +63,8 @@ class StrayCat:
         return f"StrayCat(user_id={self.user_id})"
 
     def __send_ws_json(self, data: Any):
+        data = data | {"user_id": self.user_id, "agent_id": self.__agent_id}
+
         # Run the coroutine in the main event loop in the main thread
         # and wait for the result
         asyncio.run_coroutine_threadsafe(self.ws.send_json(data), loop=self.__main_loop).result()
@@ -202,7 +204,7 @@ class StrayCat:
         log.info(f"Recall query: '{recall_query}'")
 
         # Embed recall query
-        recall_query_embedding = self.cheshire_cat.embedder.embed_query(recall_query)
+        recall_query_embedding = cheshire_cat.embedder.embed_query(recall_query)
         self.working_memory.recall_query = recall_query
         
         # keep track of embedder model usage
@@ -361,7 +363,8 @@ class StrayCat:
         self.working_memory.model_interactions = []
 
         # hook to modify/enrich user input
-        mad_hatter = self.cheshire_cat.mad_hatter
+        cheshire_cat = self.cheshire_cat
+        mad_hatter = cheshire_cat.mad_hatter
         self.working_memory.user_message_json = mad_hatter.execute_hook(
             "before_cat_reads_message", self.working_memory.user_message_json, cat=self
         )
@@ -427,8 +430,8 @@ class StrayCat:
         # store user message in episodic memory
         # TODO: vectorize and store also conversation chunks
         #   (not raw dialog, but summarization)
-        user_message_embedding = self.cheshire_cat.embedder.embed_documents([user_message_text])
-        _ = self.cheshire_cat.memory.vectors.episodic.add_point(
+        user_message_embedding = cheshire_cat.embedder.embed_documents([user_message_text])
+        _ = cheshire_cat.memory.vectors.episodic.add_point(
             doc.page_content,
             user_message_embedding[0],
             doc.metadata,
@@ -587,12 +590,12 @@ Allowed classes are:
         return self.__user.id
 
     @property
-    def chatbot_id(self) -> str:
-        return self.__chatbot_id
+    def agent_id(self) -> str:
+        return self.__agent_id
 
     @property
     def cheshire_cat(self):
-        ccat = BillTheLizard().get_cheshire_cat(self.chatbot_id)
+        ccat = BillTheLizard().get_cheshire_cat(self.__agent_id)
         if not ccat:
             raise ValueError(f"Cheshire Cat not found for the StrayCat {self.user_id}.")
 

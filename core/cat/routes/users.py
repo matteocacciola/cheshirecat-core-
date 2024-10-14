@@ -37,8 +37,8 @@ def create_user(
     new_user: UserCreate,
     cats: ContextualCats = Depends(HTTPAuth(AuthResource.USERS, AuthPermission.WRITE)),
 ):
-    chatbot_id = cats.cheshire_cat.id
-    created_user = crud.create_user(chatbot_id, new_user.model_dump())
+    agent_id = cats.cheshire_cat.id
+    created_user = crud.create_user(agent_id, new_user.model_dump())
     if not created_user:
         raise HTTPException(status_code=403, detail={"error": "Cannot duplicate user"})
 
@@ -75,8 +75,8 @@ def update_user(
     user: UserUpdate,
     cats: ContextualCats = Depends(HTTPAuth(AuthResource.USERS, AuthPermission.EDIT)),
 ):
-    chatbot_id = cats.cheshire_cat.id
-    stored_user = crud.get_user(chatbot_id, user_id)
+    agent_id = cats.cheshire_cat.id
+    stored_user = crud.get_user(agent_id, user_id)
     if not stored_user:
         raise HTTPException(status_code=404, detail={"error": "User not found"})
     
@@ -84,7 +84,7 @@ def update_user(
         user.password = hash_password(user.password)
     updated_info = stored_user | user.model_dump(exclude_unset=True)
 
-    crud.update_user(chatbot_id, user_id, updated_info)
+    crud.update_user(agent_id, user_id, updated_info)
     return updated_info
 
 
@@ -93,8 +93,8 @@ def delete_user(
     user_id: str,
     cats: ContextualCats = Depends(HTTPAuth(AuthResource.USERS, AuthPermission.DELETE)),
 ):
-    chatbot_id = cats.cheshire_cat.id
-    deleted_user = crud.delete_user(chatbot_id, user_id)
+    agent_id = cats.cheshire_cat.id
+    deleted_user = crud.delete_user(agent_id, user_id)
     if not deleted_user:
         raise HTTPException(status_code=404, detail={"error": "User not found"})
 

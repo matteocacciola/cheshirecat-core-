@@ -15,11 +15,11 @@ class LongTermMemory:
         Vector Memory collection.
     """
 
-    def __init__(self, chatbot_id: str, vector_memory_config: Dict | None = None):
+    def __init__(self, agent_id: str, vector_memory_config: Dict | None = None):
         vector_memory_config = vector_memory_config or {}
 
         # Vector based memory (will store embeddings and their metadata)
-        self.vectors = VectorMemory(chatbot_id, **vector_memory_config)
+        self.vectors = VectorMemory(agent_id, **vector_memory_config)
 
         # What type of memory is coming next?
         # Surprise surprise, my dear!

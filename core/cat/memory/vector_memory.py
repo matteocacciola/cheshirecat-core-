@@ -15,7 +15,7 @@ class VectorMemory:
 
     def __init__(
         self,
-        chatbot_id: str,
+        agent_id: str,
         embedder_name: str | None = None,
         embedder_size: int | None = None,
     ) -> None:
@@ -30,7 +30,7 @@ class VectorMemory:
         for collection_name in MemoryCollection:
             # Instantiate collection
             collection = VectorMemoryCollection(
-                chatbot_id=chatbot_id,
+                agent_id=agent_id,
                 client=self.vector_db,
                 collection_name=str(collection_name),
                 embedder_name=embedder_name,

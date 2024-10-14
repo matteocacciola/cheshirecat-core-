@@ -46,17 +46,17 @@ class Plugins(BaseModel):
 class CheshireCat:
     """The Cheshire Cat.
 
-    This is the main class that manages everything for a single chatbot.
+    This is the main class that manages everything for a single agent.
     """
 
-    def __init__(self, chatbot_id: str):
+    def __init__(self, agent_id: str):
         """Cat initialization.
 
         At init time the Cat executes the bootstrap.
         """
 
         # bootstrap the Cat! ^._.^
-        self.id = chatbot_id
+        self.id = agent_id
 
         self.memory = None
         self.custom_auth_handler = None
@@ -246,7 +246,7 @@ class CheshireCat:
             "embedder_name": embedder_name,
             "embedder_size": embedder_size,
         }
-        self.memory = LongTermMemory(vector_memory_config=vector_memory_config, chatbot_id=self.id)
+        self.memory = LongTermMemory(vector_memory_config=vector_memory_config, agent_id=self.id)
 
     def embed_procedures(self):
         def get_key_embedded_procedures_hashes(ep):

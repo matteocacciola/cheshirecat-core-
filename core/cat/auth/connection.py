@@ -127,7 +127,7 @@ class HTTPAuth(ConnectionAuth):
             return current_stray
 
         event_loop = connection.app.state.event_loop
-        stray_cat = StrayCat(user_data=user, main_loop=event_loop, chatbot_id=ccat.id)
+        stray_cat = StrayCat(user_data=user, main_loop=event_loop, agent_id=ccat.id)
         ccat.add_stray(stray_cat)
 
         return stray_cat
@@ -139,7 +139,7 @@ class HTTPAuth(ConnectionAuth):
 class WebSocketAuth(ConnectionAuth):
     async def extract_credentials(self, connection: WebSocket) -> Credentials:
         """
-        Extract chatbot_id and user_id from WebSocket path params
+        Extract agent_id and user_id from WebSocket path params
         Extract token from WebSocket query string
         """
         agent_id = extract_agent_id_from_request(connection)
@@ -165,7 +165,7 @@ class WebSocketAuth(ConnectionAuth):
             return stray
 
         # Create a new stray and add it to the current cheshire cat
-        stray = StrayCat(user_data=user, main_loop=asyncio.get_running_loop(), chatbot_id=ccat.id, ws=connection)
+        stray = StrayCat(user_data=user, main_loop=asyncio.get_running_loop(), agent_id=ccat.id, ws=connection)
         ccat.add_stray(stray)
         return stray
 
@@ -185,7 +185,7 @@ class CoreFrontendAuth(HTTPAuth):
         if token is None or token == "":
             self.not_allowed(connection)
 
-        return Credentials(agent_id="chatbot", user_id="user", credential=token)
+        return Credentials(agent_id="agent", user_id="user", credential=token)
     
     def not_allowed(self, connection: Request):
         referer_query = urlencode({"referer": connection.url.path})

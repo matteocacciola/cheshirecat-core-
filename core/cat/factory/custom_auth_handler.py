@@ -102,7 +102,7 @@ class CoreAuthHandler(BaseAuthHandler):
             api_key: the API key to authorize the user
             auth_resource: the resource to authorize the user on
             auth_permission: the permission to authorize the user on
-            key_id: the chatbot ID to authorize the user in
+            key_id: the agent ID to authorize the user in
 
         Returns:
             An AuthUserInfo object if the user is authorized, None otherwise.
@@ -136,7 +136,7 @@ class CoreAuthHandler(BaseAuthHandler):
         Args:
             username: the username of the user to authenticate
             password: the password of the user to authenticate
-            key_id: the chatbot ID to authenticate the user in (default: "chatbot")
+            key_id: the agent ID to authenticate the user in (default: "agent")
 
         Returns:
             A JWT token if the user is authenticated, None otherwise.

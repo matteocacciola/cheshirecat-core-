@@ -15,14 +15,14 @@ def get_auth_handler_settings(
 ) -> Dict:
     """Get the list of the AuthHandlers"""
 
-    chatbot_id = cats.cheshire_cat.id
+    agent_id = cats.cheshire_cat.id
 
     # get selected AuthHandler
-    selected = crud.get_setting_by_name(chatbot_id, "auth_handler_selected")
+    selected = crud.get_setting_by_name(agent_id, "auth_handler_selected")
     if selected is not None:
         selected = selected["value"]["name"]
 
-    saved_settings = crud.get_settings_by_category(chatbot_id, "auth_handler_factory")
+    saved_settings = crud.get_settings_by_category(agent_id, "auth_handler_factory")
     saved_settings = {s["name"]: s for s in saved_settings}
 
     settings = [{
@@ -72,7 +72,7 @@ def upsert_authenticator_setting(
     """Upsert the settings of a specific AuthHandler"""
 
     ccat = cats.cheshire_cat
-    chatbot_id = ccat.id
+    agent_id = ccat.id
 
     auth_handler_schemas = get_auth_handlers_schemas(ccat.mad_hatter)
 
@@ -86,14 +86,14 @@ def upsert_authenticator_setting(
         )
 
     crud.upsert_setting_by_name(
-        chatbot_id,
+        agent_id,
         models.Setting(
             name=auth_handler_name, value=payload, category="auth_handler_factory"
         ),
     )
 
     crud.upsert_setting_by_name(
-        chatbot_id,
+        agent_id,
         models.Setting(
             name="auth_handler_selected",
             value={"name": auth_handler_name},
