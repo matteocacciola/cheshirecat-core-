@@ -18,7 +18,7 @@ def test_is_jwt(client, cheshire_cat):
 
     actual_jwt = jwt.encode(
         {"username": "Alice"},
-        get_env("CCAT_JWT_SECRET"),
+        "some_secret",
         algorithm=get_env("CCAT_JWT_ALGORITHM"),
     )
     assert is_jwt(actual_jwt)
@@ -59,7 +59,7 @@ async def test_issue_jwt(client, lizard, cheshire_cat):
     user_info = await auth_handler.authorize_user_from_jwt(
         received_token, AuthResource.LLM, AuthPermission.WRITE, agent_id
     )
-    assert len(user_info.id) == 36 and len(user_info.id.split("-")) == 5 # uuid4
+    assert len(user_info.id) == 36 and len(user_info.id.split("-")) == 5  # uuid4
     assert user_info.name == "admin"
 
     # manual JWT verification
@@ -70,9 +70,7 @@ async def test_issue_jwt(client, lizard, cheshire_cat):
             algorithms=[get_env("CCAT_JWT_ALGORITHM")],
         )
         assert payload["username"] == "admin"
-        assert (
-            payload["exp"] - time.time() < 60 * 60 * 24
-        )  # expires in less than 24 hours
+        assert (payload["exp"] - time.time() < 60 * 60 * 24)  # expires in less than 24 hours
     except jwt.exceptions.DecodeError:
         assert False
 
@@ -101,9 +99,11 @@ async def test_issue_jwt_for_new_user(client, cheshire_cat):
     res = client.post("/auth/token", json=creds, headers={"agent_id": agent_id})
     assert res.status_code == 200
 
+    res_json = res.json()
+
     # did we obtain a JWT?
-    res.json()["token_type"] == "bearer"
-    received_token = res.json()["access_token"]
+    assert res_json["token_type"] == "bearer"
+    received_token = res_json["access_token"]
     assert is_jwt(received_token)
 
 
@@ -163,7 +163,7 @@ def test_jwt_imposes_user_id(secure_client, cheshire_cat):
 
     # request JWT
     creds = {
-        "username": "admin", # TODOAUTH: use another user?
+        "username": "admin",
         "password": "admin",
     }
     res = secure_client.post("/auth/token", json=creds, headers={"agent_id": agent_id})
@@ -185,7 +185,7 @@ def test_jwt_imposes_user_id(secure_client, cheshire_cat):
 
     # send user specific request via ws
     query_params = {"token": token}
-    res = send_websocket_message(message, secure_client, agent_id=agent_id, query_params=query_params)
+    send_websocket_message(message, secure_client, agent_id=agent_id, query_params=query_params)
 
     # we now recall episodic memories from the user, there should be two of them, both by admin
     params = {"text": "hey", "agent_id": agent_id}
@@ -198,4 +198,66 @@ def test_jwt_imposes_user_id(secure_client, cheshire_cat):
     for em in episodic_memories:
         assert em["metadata"]["source"] == user_db["id"]
         assert em["page_content"] == "hey"
-    
+
+
+# test that a JWT signed knowing the secret, passes
+def test_jwt_self_signature_passes_on_unsecure_client(client, cheshire_cat):
+    agent_id = cheshire_cat.id
+
+    # get list of users (we need the ids)
+    response = client.get("/users", headers={"agent_id": agent_id})
+    users = response.json()
+
+    for user in users:
+        # create a self signed JWT using the default secret
+        token = jwt.encode(
+            {"sub": user["id"], "username": user["username"]},
+            "secret",
+            algorithm=get_env("CCAT_JWT_ALGORITHM"),
+        )
+
+        message = {"text": "hey"}
+
+        headers = {"Authorization": f"Bearer {token}", "agent_id": agent_id}
+        response = client.post("/message", headers=headers, json=message)
+        assert response.status_code == 200
+        assert "You did not configure" in response.json()["content"]
+
+        params = {"token": token}
+        response = send_websocket_message(message, client, query_params=params, agent_id=agent_id)
+        assert "You did not configure" in response["content"]
+
+
+# test that a JWT signed with the wrong secret is not accepted
+def test_jwt_self_signature_fails_on_secure_client(secure_client, cheshire_cat):
+    agent_id = cheshire_cat.id
+
+    # get list of users (we need the ids)
+    response = secure_client.get(
+        "/users",
+        headers={
+            "Authorization": "Bearer meow_http",
+            "agent_id": agent_id,
+        })
+    users = response.json()
+
+    for user in users:
+        # create a self signed JWT using the default secret
+        token = jwt.encode(
+            {"sub": user["id"], "username": user["username"]},
+            "secret",
+            algorithm=get_env("CCAT_JWT_ALGORITHM"),
+        )
+
+        message = {"text": "hey"}
+
+        # not allowed because CCAT_JWT_SECRET for secure_client is `meow_jwt`
+        headers = {"Authorization": f"Bearer {token}", "agent_id": agent_id}
+        response = secure_client.post("/message", headers=headers, json=message)
+        assert response.status_code == 403
+
+        # not allowed because CCAT_JWT_SECRET for secure_client is `meow_jwt`
+        params = {"token": token}
+        with pytest.raises(Exception) as e_info:
+            send_websocket_message(message, secure_client, query_params=params, agent_id=agent_id)
+            assert str(e_info.type.__name__) == "WebSocketDisconnect"

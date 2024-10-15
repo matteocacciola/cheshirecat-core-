@@ -1,5 +1,4 @@
 from cat.auth.permissions import get_base_permissions, get_full_permissions
-from cat.env import get_env
 from tests.utils import create_new_user, check_user_fields
 
 
@@ -202,7 +201,7 @@ def test_no_access_if_api_keys_active(secure_client, cheshire_cat):
     assert response.status_code == 403
 
     # check default list giving the correct CCAT_API_KEY
-    headers = {"Authorization": f"Bearer {get_env('CCAT_API_KEY')}", "agent_id": cheshire_cat.id}
+    headers = {"Authorization": f"Bearer meow_http", "agent_id": cheshire_cat.id}
     response = secure_client.get("/users", headers=headers)
     assert response.status_code == 200
     assert len(response.json()) == 2

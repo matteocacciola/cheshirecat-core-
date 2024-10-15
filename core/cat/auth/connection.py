@@ -38,6 +38,9 @@ class ConnectionSuperAdminAuth:
         self.permission = permission
 
     async def __call__(self, request: Request) -> BillTheLizard:
+        # get protocol from Starlette request
+        protocol = request.scope.get("type")
+
         # extract credentials (user_id, token_or_key) from connection
         user_id = extract_user_id_from_request(request)
         token = extract_token(request)
@@ -45,6 +48,7 @@ class ConnectionSuperAdminAuth:
         lizard: BillTheLizard = request.app.state.lizard
 
         user: AuthUserInfo = await lizard.core_auth_handler.authorize_user_from_credential(
+            protocol,
             token,
             self.resource,
             self.permission,
@@ -66,6 +70,9 @@ class ConnectionAuth(ABC):
         self,
         connection: HTTPConnection # Request | WebSocket,
     ) -> ContextualCats:
+        # get protocol from Starlette request
+        protocol = connection.scope.get("type")
+
         # extract credentials (user_id, token_or_key) from connection
         credentials = await self.extract_credentials(connection)
 
@@ -80,6 +87,7 @@ class ConnectionAuth(ABC):
         ]
         for ah in auth_handlers:
             user: AuthUserInfo = await ah.authorize_user_from_credential(
+                protocol,
                 credentials.credential,
                 self.resource,
                 self.permission,
@@ -158,16 +166,15 @@ class WebSocketAuth(ConnectionAuth):
         return Credentials(agent_id=agent_id, user_id=user_id, credential=token)
 
     async def get_user_stray(self, ccat: CheshireCat, user: AuthUserInfo, connection: WebSocket) -> StrayCat:
-        stray = ccat.get_stray(user.id)
+        stray: StrayCat = ccat.get_stray(user.id)
         if stray:
-            # Close previous ws connection
-            if stray.ws:
-                await stray.ws.close()
-                log.info(
-                    f"New websocket connection for user '{user.id}', the old one has been closed."
-                )
+            await stray.close_connection()
+
             # Set new ws connection
-            stray.ws = connection
+            stray.reset_connection(connection)
+            log.info(
+                f"New websocket connection for user '{user.id}', the old one has been closed."
+            )
             return stray
 
         # Create a new stray and add it to the current cheshire cat

@@ -11,6 +11,7 @@ from langchain_core.runnables import RunnableConfig, RunnableLambda
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.output_parsers.string import StrOutputParser
 from fastapi import WebSocket
+from websockets.exceptions import ConnectionClosedOK
 
 from cat import utils
 from cat.bill_the_lizard import BillTheLizard
@@ -43,7 +44,7 @@ class StrayCat:
         self.working_memory = WorkingMemory()
 
         # attribute to store ws connection
-        self.ws = ws
+        self.__ws = ws
 
         self.__main_loop = main_loop
 
@@ -60,14 +61,14 @@ class StrayCat:
         return hash(self.user_id)
 
     def __repr__(self):
-        return f"StrayCat(user_id={self.user_id})"
+        return f"StrayCat(user_id={self.user_id},agent_id={self.__agent_id})"
 
     def __send_ws_json(self, data: Any):
         data = data | {"user_id": self.user_id, "agent_id": self.__agent_id}
 
         # Run the coroutine in the main event loop in the main thread
         # and wait for the result
-        asyncio.run_coroutine_threadsafe(self.ws.send_json(data), loop=self.__main_loop).result()
+        asyncio.run_coroutine_threadsafe(self.__ws.send_json(data), loop=self.__main_loop).result()
 
     def __build_why(self) -> MessageWhy:
         def build_report(memories):
@@ -99,6 +100,7 @@ class StrayCat:
         """Send a message via websocket.
 
         This method is useful for sending a message via websocket directly without passing through the LLM
+        In case there is no connection the message is skipped and a warning is logged
 
         Parameters
         ----------
@@ -108,7 +110,7 @@ class StrayCat:
             The type of the message. Should be either `notification`, `chat`, `chat_token` or `error`
         """
 
-        if self.ws is None:
+        if self.__ws is None:
             log.warning(f"No websocket connection is open for user {self.user_id}")
             return
 
@@ -127,7 +129,16 @@ class StrayCat:
             self.__send_ws_json({"type": msg_type, "content": content})
 
     def send_chat_message(self, message: str | CatMessage, save=False):
-        if self.ws is None:
+        """Sends a chat message to the user using the active WebSocket connection.
+
+        In case there is no connection the message is skipped and a warning is logged
+
+        Args:
+            message (Union[str, CatMessage]): message to send
+            save (bool, optional): Save the message in the conversation history. Defaults to False.
+        """
+
+        if self.__ws is None:
             log.warning(f"No websocket connection is open for user {self.user_id}")
             return
 
@@ -143,10 +154,26 @@ class StrayCat:
         self.__send_ws_json(message.model_dump())
 
     def send_notification(self, content: str):
+        """Sends a notification message to the user using the active WebSocket connection.
+
+        In case there is no connection the message is skipped and a warning is logged
+
+        Args:
+            content (str): message to send
+        """
+
         self.send_ws_message(content=content, msg_type="notification")
 
     def send_error(self, error: str | Exception):
-        if self.ws is None:
+        """Sends an error message to the user using the active WebSocket connection.
+
+        In case there is no connection the message is skipped and a warning is logged
+
+        Args:
+            error (Union[str, Exception]): message to send
+        """
+
+        if self.__ws is None:
             log.warning(f"No websocket connection is open for user {self.user_id}")
             return
 
@@ -385,10 +412,7 @@ class StrayCat:
             log.error(e)
             traceback.print_exc()
 
-            err_message = (
-                "You probably changed Embedder and old vector memory is not compatible. "
-                "Please delete `core/long_term_memory` folder."
-            )
+            err_message = "An error occurred while recalling relevant memories."
 
             return {
                 "type": "error",
@@ -462,17 +486,27 @@ class StrayCat:
 
         return final_output
 
-    def run(self, user_message_json):
+    def run(self, user_message_json, return_message: bool | None = False):
         try:
             cat_message = self.loop.run_until_complete(self.__call__(user_message_json))
-            # send message back to client
+            if return_message:
+                # return the message for HTTP usage
+                return cat_message
+
+            # send message back to client via WS
             self.send_chat_message(cat_message)
         except Exception as e:
             # Log any unexpected errors
             log.error(e)
             traceback.print_exc()
-            # Send error as websocket message
-            self.send_error(e)
+            if return_message:
+                return {"error": str(e)}
+            try:
+                # Send error as websocket message
+                self.send_error(e)
+            except ConnectionClosedOK as ex:
+                log.warning(ex)
+                self.nullify_connection()
 
     def classify(self, sentence: str, labels: List[str] | Dict[str, List[str]]) -> str | None:
         """Classify a sentence.
@@ -584,6 +618,22 @@ Allowed classes are:
                 )
 
         return langchain_chat_history
+
+    async def close_connection(self):
+        if not self.__ws:
+            return
+        try:
+            await self.__ws.close()
+        except RuntimeError as ex:
+            log.warning(ex)
+            self.nullify_connection()
+
+    def nullify_connection(self):
+        self.__ws = None
+
+    def reset_connection(self, connection):
+        """Reset the connection to the API service."""
+        self.__ws = connection
 
     @property
     def user_id(self) -> str:

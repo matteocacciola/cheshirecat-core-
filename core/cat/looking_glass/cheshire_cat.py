@@ -98,6 +98,9 @@ class CheshireCat:
     def __hash__(self):
         return hash(self.id)
 
+    def __repr__(self):
+        return f"CheshireCat(agent_id={self.id})"
+
     def __next_stray(self, user_id: str) -> "StrayCat":
         """
         Get the next stray from the Cat.
@@ -129,8 +132,7 @@ class CheshireCat:
         if not stray:
             return
 
-        if stray.ws:
-            await stray.ws.close()
+        await stray.close_connection()
 
         self.__strays.remove(stray)
         crud.delete_user(self.id, stray.user_id)
@@ -147,8 +149,7 @@ class CheshireCat:
 
     async def shutdown(self) -> None:
         for stray in self.__strays:
-            if stray.ws:
-                await stray.ws.close()
+            await stray.close_connection()
 
         self.__strays.clear()
 
@@ -265,7 +266,7 @@ class CheshireCat:
             return f"{ap.name}.{trigger_type}.{trigger_content}"
 
         # Retrieve from vectorDB all procedural embeddings
-        embedded_procedures = self.memory.vectors.procedural.get_all_points()
+        embedded_procedures, _ = self.memory.vectors.procedural.get_all_points()
         embedded_procedures_hashes = {get_key_embedded_procedures_hashes(ep): ep.id for ep in embedded_procedures}
 
         # Easy access to active procedures in mad_hatter (source of truth!)

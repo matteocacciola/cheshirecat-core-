@@ -1,7 +1,7 @@
 import mimetypes
 import requests
 import json
-from typing import Dict
+from typing import Dict, List
 from copy import deepcopy
 from pydantic import BaseModel, Field, ConfigDict
 from fastapi import (
@@ -108,7 +108,6 @@ async def upload_file(
     ccat = cats.cheshire_cat
 
     # Check the file format is supported
-
     file_handlers = ccat.file_handlers
     admitted_types = file_handlers.keys()
 
@@ -145,6 +144,125 @@ async def upload_file(
         "content_type": file.content_type,
         "info": "File is being ingested asynchronously",
     }
+
+
+# receive files via http endpoint
+@router.post("/batch")
+async def upload_files(
+    request: Request,
+    files: List[UploadFile],
+    background_tasks: BackgroundTasks,
+    chunk_size: int | None = Form(
+        default=None,
+        description="Maximum length of each chunk after the document is split (in tokens)"
+    ),
+    chunk_overlap: int | None = Form(
+        default=None,
+        description="Chunk overlap (in tokens)"
+    ),
+    metadata: str = Form(
+        default="{}",
+        description="Metadata to be stored where each key is the name of a file being uploaded, and the corresponding value is another dictionary containing metadata specific to that file. "
+                    "Since we are passing this along side form data, metadata must be a JSON string (use `json.dumps(metadata)`)."
+    ),
+    cats: ContextualCats = Depends(HTTPAuth(AuthResource.UPLOAD, AuthPermission.WRITE)),
+) -> Dict:
+    """Batch upload multiple files containing text (.txt, .md, .pdf, etc.). File content will be extracted and segmented into chunks.
+    Chunks will be then vectorized and stored into documents memory.
+
+    Note
+    ----------
+    `chunk_size`, `chunk_overlap` and `metadata` must be passed as form data.
+    This is necessary because the HTTP protocol does not allow file uploads to be sent as JSON.
+
+    Example
+    ----------
+    ```
+    files = []
+    files_to_upload = {"sample.pdf":"application/pdf","sample.txt":"application/txt"}
+
+    for file_name in files_to_upload:
+        content_type = files_to_upload[file_name]
+        file_path = f"tests/mocks/{file_name}"
+        files.append(  ("files", ((file_name, open(file_path, "rb"), content_type))) )
+
+
+    metadata = {
+        "sample.pdf":{
+            "source": "sample.pdf",
+            "title": "Test title",
+            "author": "Test author",
+            "year": 2020
+        },
+        "sample.txt":{
+            "source": "sample.txt",
+            "title": "Test title",
+            "author": "Test author",
+            "year": 2021
+        }
+    }
+
+    # upload file endpoint only accepts form-encoded data
+    payload = {
+        "chunk_size": 128,
+        "metadata": json.dumps(metadata)
+    }
+
+    response = requests.post(
+        "http://localhost:1865/rabbithole/batch",
+        files=files,
+        data=payload
+    )
+    ```
+    """
+
+    ccat = cats.cheshire_cat
+
+    # Check the file format is supported
+    file_handlers = ccat.file_handlers
+    admitted_types = file_handlers.keys()
+    log.info(f"Uploading {len(files)} files")
+
+    response = {}
+    metadata_dict = json.loads(metadata)
+
+    for file in files:
+        # Get file mime type
+        content_type = mimetypes.guess_type(file.filename)[0]
+        log.info(f"Uploaded {file.filename} {content_type} down the rabbit hole")
+
+        # check if MIME type of uploaded file is supported
+        if content_type not in admitted_types:
+            raise HTTPException(
+                status_code=400,
+                detail={
+                    "error": f'MIME type {content_type} not supported. Admitted types: {" - ".join(admitted_types)}'
+                },
+            )
+
+        # upload file to long term memory, in the background
+        background_tasks.add_task(
+            # we deepcopy the file because FastAPI does not keep the file in memory after the response returns to the client
+            # https://github.com/tiangolo/fastapi/discussions/10936
+            request.app.state.lizard.rabbit_hole.ingest_file,
+            cats.stray_cat,
+            file_handlers,
+            ccat.text_splitter,
+            deepcopy(format_upload_file(file)),
+            chunk_size=chunk_size,
+            chunk_overlap=chunk_overlap,
+            # if file.filename in dictionary pass the metadata otherwise pass empty dictionary
+            metadata=metadata_dict[file.filename] if file.filename in metadata_dict else {}
+        )
+
+        # reply to client
+        response[file.filename] = {
+            "filename": file.filename,
+            "content_type": file.content_type,
+            "info": "File is being ingested asynchronously",
+        }
+
+    return response
 
 
 @router.post("/web")

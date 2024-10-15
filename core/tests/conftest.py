@@ -8,6 +8,7 @@ import warnings
 from pydantic import PydanticDeprecatedSince20
 from qdrant_client import QdrantClient
 from fastapi.testclient import TestClient
+import time
 
 from cat.auth import auth_utils
 from cat.auth.permissions import AuthUserInfo, get_base_permissions
@@ -25,6 +26,8 @@ from tests.utils import create_mock_plugin_zip
 mock_plugin_path = "tests/mocks/mock_plugin/"
 redis_client = redis.Redis(host=get_env("CCAT_REDIS_HOST"), db="1", encoding="utf-8", decode_responses=True)
 agent_id = "agent_test"
+
+FAKE_TIMESTAMP = 1705855981
 
 
 # substitute classes' methods where necessary for testing purposes
@@ -95,6 +98,10 @@ def encapsulate_each_test(request, monkeypatch):
     # monkeypatch classes
     mock_classes(monkeypatch)
 
+    # env variables
+    current_ccat_debug = get_env("CCAT_DEBUG")
+    os.environ["CCAT_DEBUG"] = "false"  # do not autoreload
+
     # clean up tmp files, folders and redis database
     clean_up_mocks()
 
@@ -106,6 +113,9 @@ def encapsulate_each_test(request, monkeypatch):
     # clean up tmp files, folders and redis database
     clean_up_mocks()
 
+    if current_ccat_debug:
+        os.environ["CCAT_DEBUG"] = current_ccat_debug
+
 
 # Main fixture for the FastAPI app
 @pytest.fixture(scope="function")
@@ -114,20 +124,8 @@ def client(monkeypatch) -> Generator[TestClient, Any, None]:
     Create a new FastAPI TestClient.
     """
 
-    # monkeypatch classes
-    mock_classes(monkeypatch)
-
-    # clean up tmp files, folders and redis database
-    clean_up_mocks()
-
-    # delete all singletons!!!
-    utils.singleton.instances = {}
-
     with TestClient(cheshire_cat_api) as client:
         yield client
-
-    # clean up tmp files, folders and redis database
-    clean_up_mocks()
 
 
 @pytest.fixture(scope="function")
@@ -141,10 +139,12 @@ def lizard():
 def secure_client(client):
     current_api_key = os.getenv("CCAT_API_KEY")
     current_api_ws = os.getenv("CCAT_API_KEY_WS")
+    current_jwt_secret = os.getenv("CCAT_JWT_SECRET")
 
     # set ENV variables
     os.environ["CCAT_API_KEY"] = "meow_http"
     os.environ["CCAT_API_KEY_WS"] = "meow_ws"
+    os.environ["CCAT_JWT_SECRET"] = "meow_jwt"
 
     yield client
 
@@ -157,6 +157,10 @@ def secure_client(client):
         os.environ["CCAT_API_KEY_WS"] = current_api_ws
     else:
         del os.environ["CCAT_API_KEY_WS"]
+    if current_jwt_secret:
+        os.environ["CCAT_JWT_SECRET"] = current_jwt_secret
+    else:
+        del os.environ["CCAT_JWT_SECRET"]
 
 
 # This fixture is useful to write tests in which
@@ -256,6 +260,15 @@ def stray_no_memory(client, cheshire_cat) -> StrayCat:
 def apply_warning_filters():
     # ignore deprecation warnings due to langchain not updating to pydantic v2
     warnings.filterwarnings("ignore", category=PydanticDeprecatedSince20)
+
+
+#fixture for mock time.time function
+@pytest.fixture
+def patch_time_now(monkeypatch):
+    def mytime():
+        return FAKE_TIMESTAMP
+
+    monkeypatch.setattr(time, 'time', mytime)
 
 
 # this fixture will give test functions a ready instantiated plugin

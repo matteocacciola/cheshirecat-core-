@@ -1,9 +1,10 @@
 from fastapi import APIRouter, Depends, Body
+from fastapi.concurrency import run_in_threadpool
 from typing import Dict
 import tomli
+
 from cat.auth.permissions import AuthPermission, AuthResource
 from cat.auth.connection import HTTPAuth, ContextualCats
-
 from cat.convo.messages import CatMessage
 
 router = APIRouter()
@@ -24,8 +25,9 @@ async def message_with_cat(
     payload: Dict = Body(...),
     cats: ContextualCats = Depends(HTTPAuth(AuthResource.CONVERSATION, AuthPermission.WRITE)),
 ) -> Dict:
+    """Get a response from the Cat"""
     stray = cats.stray_cat
 
-    """Get a response from the Cat"""
-    answer = await stray({"user_id": stray.user_id, **payload})
+    user_message_json = {"user_id": stray.user_id, **payload}
+    answer = await run_in_threadpool(stray.run, user_message_json, True)
     return {**answer, **{"user_id": stray.user_id, "agent_id": cats.cheshire_cat.id}}

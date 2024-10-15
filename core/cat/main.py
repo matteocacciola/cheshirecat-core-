@@ -21,7 +21,7 @@ from cat.routes import (
     llm,
     embedder,
     auth_handler,
-    memory,
+    memory_router as memory,
     plugins,
     upload,
     websocket,
@@ -84,7 +84,7 @@ cheshire_cat_api.add_middleware(
 )
 
 # Add routers to the middleware stack.
-cheshire_cat_api.include_router(base.router, tags=["Status"])
+cheshire_cat_api.include_router(base.router, tags=["Home"])
 cheshire_cat_api.include_router(auth.router, tags=["User Auth"], prefix="/auth")
 cheshire_cat_api.include_router(admins.router, tags=["Admins"], prefix="/admins")
 cheshire_cat_api.include_router(users.router, tags=["Users"], prefix="/users")

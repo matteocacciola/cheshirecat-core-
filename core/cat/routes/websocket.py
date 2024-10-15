@@ -20,7 +20,7 @@ async def receive_message(websocket: WebSocket, stray: StrayCat):
         user_message["user_id"] = stray.user_id
 
         # Run the `stray` object's method in a threadpool since it might be a CPU-bound operation.
-        await run_in_threadpool(stray.run, user_message)
+        await run_in_threadpool(stray.run, user_message, return_message=False)
 
 
 @router.websocket("/ws")
@@ -44,5 +44,5 @@ async def websocket_endpoint(
         await receive_message(websocket, stray)
     except WebSocketDisconnect:
         # Handle the event where the user disconnects their WebSocket.
-        stray.ws = None
+        stray.nullify_connection()
         log.info("WebSocket connection closed")

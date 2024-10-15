@@ -1,5 +1,6 @@
 from abc import ABC, abstractmethod
 from datetime import datetime, timedelta
+from typing import Literal
 from pytz import utc
 import jwt
 
@@ -21,6 +22,7 @@ class BaseAuthHandler(ABC):  # TODOAUTH: pydantic model?
     # with JWT, the user id is in the token ad has priority
     async def authorize_user_from_credential(
         self,
+        protocol: Literal["http", "websocket"],
         credential: str,
         auth_resource: AuthResource,
         auth_permission: AuthPermission,
@@ -29,9 +31,9 @@ class BaseAuthHandler(ABC):  # TODOAUTH: pydantic model?
     ) -> AuthUserInfo | None:
         if is_jwt(credential):
             # JSON Web Token auth
-            return await self.authorize_user_from_jwt(credential, auth_resource, auth_permission, key_id=key_id)
+            return await self.authorize_user_from_jwt(credential, auth_resource, auth_permission, key_id)
         # API_KEY auth
-        return await self.authorize_user_from_key(user_id, credential, auth_resource, auth_permission, key_id=key_id)
+        return await self.authorize_user_from_key(protocol, user_id, credential, auth_resource, auth_permission, key_id)
 
     @abstractmethod
     async def authorize_user_from_jwt(
@@ -43,6 +45,7 @@ class BaseAuthHandler(ABC):  # TODOAUTH: pydantic model?
     @abstractmethod
     async def authorize_user_from_key(
         self,
+        protocol: Literal["http", "websocket"],
         user_id: str,
         api_key: str,
         auth_resource: AuthResource,
@@ -89,6 +92,7 @@ class CoreAuthHandler(BaseAuthHandler):
 
     async def authorize_user_from_key(
         self,
+        protocol: Literal["http", "websocket"],
         user_id: str,
         api_key: str,
         auth_resource: AuthResource,
@@ -98,6 +102,7 @@ class CoreAuthHandler(BaseAuthHandler):
         """
         Authorize a user from an API key. This method is used to authorize users when they are not using a JWT token.
         Args:
+            protocol: the protocol used to authorize the user (either "http" or "websocket")
             user_id: the user ID to authorize
             api_key: the API key to authorize the user
             auth_resource: the resource to authorize the user on
@@ -107,28 +112,45 @@ class CoreAuthHandler(BaseAuthHandler):
         Returns:
             An AuthUserInfo object if the user is authorized, None otherwise.
         """
-        http_api_key = get_env("CCAT_API_KEY")
-        ws_api_key = get_env("CCAT_API_KEY_WS")
 
-        # chatting over websocket
-        if auth_resource == AuthResource.CONVERSATION and api_key == ws_api_key:
-            return AuthUserInfo(
-                id=user_id,
-                name=user_id,
-                permissions=get_base_permissions()
-            )
+        http_key = get_env("CCAT_API_KEY")
+        ws_key = get_env("CCAT_API_KEY_WS")
 
-        # any http endpoint
-        if api_key == http_api_key:
+        if not http_key and not ws_key:
             return AuthUserInfo(
                 id=user_id,
                 name=user_id,
                 permissions=get_full_permissions()
             )
 
-        # do not pass
+        if protocol == "websocket":
+            return self._authorize_websocket_key(user_id, api_key, ws_key)
+        return self._authorize_http_key(user_id, api_key, http_key)
+
+    def _authorize_http_key(self, user_id: str, api_key: str, http_key: str) -> AuthUserInfo | None:
+        # HTTP API key match -> allow access with full permissions
+        if api_key == http_key:
+            return AuthUserInfo(
+                id=user_id,
+                name=user_id,
+                permissions=get_full_permissions()
+            )
+
+        # No match -> deny access
         return None
-    
+
+    def _authorize_websocket_key(self, user_id: str, api_key: str, ws_key: str) -> AuthUserInfo | None:
+        # WebSocket API key match -> allow access with base permissions
+        if api_key == ws_key:
+            return AuthUserInfo(
+                id=user_id,
+                name=user_id,
+                permissions=get_base_permissions()
+            )
+
+        # No match -> deny access
+        return None
+
     async def issue_jwt(self, username: str, password: str, key_id: str) -> str | None:
         """
         Authenticate local user credentials and return a JWT token.
@@ -170,22 +192,3 @@ class CoreOnlyAuthHandler(BaseAuthHandler):
 
     async def authorize_user_from_key(*args, **kwargs) -> AuthUserInfo | None:
         return None
-
-
-# Api Key Auth, require CCAT_API_KEY usage for admin permissions and CCAT_API_KEY_WS for chat only permission
-# TODOAUTH: review
-# class ApiKeyAuthHandler(BaseAuthHandler):
-#    async def authorize_user_from_token(self, credential: str, auth_resource: AuthResource, auth_permission: AuthPermission) -> AuthUserInfo | None:
-#        environment_api_key = get_env("CCAT_API_KEY")
-#        environment_public_api_key = get_env("CCAT_API_KEY_WS")
-#
-#        if auth_resource == AuthResource.CONVERSATION and auth_permission == AuthPermission.WRITE and credential == environment_public_api_key:
-#            return AuthUserInfo(
-#                user_id="user",
-#                user_data={}
-#            )
-#        if credential == environment_api_key:
-#            return AuthUserInfo(
-#                user_id="admin",
-#                user_data={}
-#            )

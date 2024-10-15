@@ -1,6 +1,27 @@
 import pytest
 
 from tests.utils import send_websocket_message, get_declarative_memory_contents
+from tests.conftest import FAKE_TIMESTAMP, cheshire_cat
+
+
+def create_point_wrong_collection(client, cheshire_cat):
+    req_json = {
+        "content": "Hello dear"
+    }
+
+    # wrong collection
+    res = client.post(
+        "/memory/collections/wrongcollection/points", json=req_json, headers={"agent_id": cheshire_cat.id}
+    )
+    assert res.status_code == 400
+    assert "Collection does not exist" in res.json()["detail"]["error"]
+
+    # cannot write procedural point
+    res = client.post(
+        "/memory/collections/procedural/points", json=req_json, headers={"agent_id": cheshire_cat.id}
+    )
+    assert res.status_code == 400
+    assert "Procedural memory is read-only" in res.json()["detail"]["error"]
 
 
 def test_point_deleted(client, cheshire_cat):
@@ -108,28 +129,9 @@ def test_points_deleted_by_metadata(client, cheshire_cat):
     assert len(declarative_memories) == 0
 
 
-def create_point_wrong_collection(client, cheshire_cat):
-    req_json = {
-        "content": "Hello dear"
-    }
-
-    # wrong collection
-    res = client.post(
-        "/memory/collections/wrongcollection/points", json=req_json, headers={"agent_id": cheshire_cat.id}
-    )
-    assert res.status_code == 400
-    assert "Collection does not exist" in res.json()["detail"]["error"]
-
-    # cannot write procedural point
-    res = client.post(
-        "/memory/collections/procedural/points", json=req_json, headers={"agent_id": cheshire_cat.id}
-    )
-    assert res.status_code == 400
-    assert "Procedural memory is read-only" in res.json()["detail"]["error"]
-
-
 @pytest.mark.parametrize("collection", ["episodic", "declarative"])
-def test_create_memory_point(client, cheshire_cat, collection):
+def test_create_memory_point(client, cheshire_cat, patch_time_now, collection):
+    agent_id = cheshire_cat.id
 
     # create a point
     content = "Hello dear"
@@ -139,12 +141,12 @@ def test_create_memory_point(client, cheshire_cat, collection):
         "metadata": metadata,
     }
     res = client.post(
-        f"/memory/collections/{collection}/points", json=req_json, headers={"agent_id": cheshire_cat.id}
+        f"/memory/collections/{collection}/points", json=req_json, headers={"agent_id": agent_id}
     )
     assert res.status_code == 200
     json = res.json()
     assert json["content"] == content
-    expected_metadata = {"source": "user", **metadata}
+    expected_metadata = {"when": FAKE_TIMESTAMP, "source": "user", **metadata}
     assert json["metadata"] == expected_metadata
     assert "id" in json
     assert "vector" in json
@@ -153,10 +155,139 @@ def test_create_memory_point(client, cheshire_cat, collection):
 
     # check memory contents
     params = {"text": "dear, hello"}
-    response = client.get("/memory/recall/", params=params, headers={"agent_id": cheshire_cat.id})
+    response = client.get("/memory/recall/", params=params, headers={"agent_id": agent_id})
     json = response.json()
     assert response.status_code == 200
     assert len(json["vectors"]["collections"][collection]) == 1
     memory = json["vectors"]["collections"][collection][0]
     assert memory["page_content"] == content
     assert memory["metadata"] == expected_metadata
+
+
+def test_get_collection_points_wrong_collection(client, cheshire_cat):
+    agent_id = cheshire_cat.id
+
+    # unexisting collection
+    res = client.get("/memory/collections/unexistent/points", headers={"agent_id": agent_id})
+    assert res.status_code == 400
+    assert "Collection does not exist" in res.json()["detail"]["error"]
+
+    # reserved procedural collection
+    res = client.get("/memory/collections/procedural/points", headers={"agent_id": agent_id})
+    assert res.status_code == 400
+    assert "Procedural memory is not readable via API" in res.json()["detail"]["error"]
+
+
+@pytest.mark.parametrize("collection", ["episodic", "declarative"])
+def test_get_collection_points(client, cheshire_cat, patch_time_now, collection):
+    agent_id = cheshire_cat.id
+
+    # create 100 points
+    n_points = 100
+    new_points = [{"content": f"MIAO {i}!", "metadata": {"custom_key": f"custom_key_{i}"}} for i in range(n_points)]
+
+    # Add points
+    for req_json in new_points:
+        res = client.post(
+            f"/memory/collections/{collection}/points", json=req_json, headers={"agent_id": agent_id}
+        )
+        assert res.status_code == 200
+
+    # get all the points no limit, by default is 100
+    res = client.get(f"/memory/collections/{collection}/points", headers={"agent_id": agent_id})
+    assert res.status_code == 200
+    json = res.json()
+
+    points = json["points"]
+    offset = json["next_offset"]
+
+    assert offset is None  # the result should contain all the points so no offset
+
+    expected_payloads = [
+        {
+            "page_content": p["content"],
+            "metadata": {
+                "when": FAKE_TIMESTAMP,
+                "source": "user",
+                **p["metadata"]
+            },
+            "group_id": cheshire_cat.id,
+        } for p in new_points
+    ]
+
+    assert len(points) == len(new_points)
+    # check all the points contains id and vector
+    for point in points:
+        assert "id" in point
+        assert "vector" in point
+
+    # check points payload
+    points_payloads = [p["payload"] for p in points]
+    # sort the list and compare payload
+    points_payloads.sort(key=lambda p: p["page_content"])
+    expected_payloads.sort(key=lambda p: p["page_content"])
+    assert points_payloads == expected_payloads
+
+
+@pytest.mark.parametrize("collection", ["episodic", "declarative"])
+def test_get_collection_points_offset(client, cheshire_cat, patch_time_now, collection):
+    agent_id = cheshire_cat.id
+
+    # create 200 points
+    n_points = 200
+    new_points = [{"content": f"MIAO {i}!", "metadata": {"custom_key": f"custom_key_{i}"}} for i in range(n_points)]
+
+    # Add points
+    for req_json in new_points:
+        res = client.post(
+            f"/memory/collections/{collection}/points", json=req_json, headers={"agent_id": agent_id}
+        )
+        assert res.status_code == 200
+
+    # get all the points with limit 10
+    limit = 10
+    next_offset = ""
+    all_points = []
+
+    while True:
+        res = client.get(
+            f"/memory/collections/{collection}/points?limit={limit}&offset={next_offset}",
+            headers = {"agent_id": agent_id}
+        )
+        assert res.status_code == 200
+        json = res.json()
+        points = json["points"]
+        next_offset = json["next_offset"]
+        assert len(points) == limit
+
+        for point in points:
+            all_points.append(point)
+
+        if next_offset is None:  # break if no new data
+            break
+
+    # create the expected payloads for all the points
+    expected_payloads = [
+        {
+            "page_content": p["content"],
+            "metadata": {
+                "when": FAKE_TIMESTAMP,
+                "source": "user",
+                **p["metadata"]
+            },
+            "group_id": cheshire_cat.id,
+        } for p in new_points
+    ]
+
+    assert len(all_points) == len(new_points)
+    # check all the points contains id and vector
+    for point in all_points:
+        assert "id" in point
+        assert "vector" in point
+
+    # check points payload
+    points_payloads = [p["payload"] for p in all_points]
+    # sort the list and compare payload
+    points_payloads.sort(key=lambda p: p["page_content"])
+    expected_payloads.sort(key=lambda p: p["page_content"])
+    assert points_payloads == expected_payloads

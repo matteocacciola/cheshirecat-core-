@@ -88,7 +88,7 @@ def test_memory_collections_wipe(client, cheshire_cat):
     file_path = f"tests/mocks/{file_name}"
     with open(file_path, "rb") as f:
         files = {"file": (file_name, f, "text/plain")}
-        response = client.post("/rabbithole/", files=files, headers={"agent_id": cheshire_cat.id})
+        client.post("/rabbithole/", files=files, headers={"agent_id": cheshire_cat.id})
 
     collections_n_points = get_collections_names_and_point_count(client, cheshire_cat)
     assert collections_n_points["procedural"] == 3  # default tool

@@ -1,6 +1,7 @@
 from typing import Dict, List
 from pydantic import BaseModel
 from fastapi import Query, APIRouter, HTTPException, Depends
+import time
 
 from cat.auth.connection import HTTPAuth, ContextualCats
 from cat.auth.permissions import AuthPermission, AuthResource
@@ -22,11 +23,13 @@ class MemoryPoint(MemoryPointBase):
 
 # GET memories from recall
 @router.get("/recall")
-async def recall_memories_from_text(
+async def recall_memory_points_from_text(
     text: str = Query(description="Find memories similar to this text."),
     k: int = Query(default=100, description="How many memories to return."),
     cats: ContextualCats = Depends(HTTPAuth(AuthResource.MEMORY, AuthPermission.READ)),
 ) -> Dict:
+    """Search k memories similar to given text."""
+
     def build_memory_dict(metadata, score, vector, id):
         memory_dict = dict(metadata)
         memory_dict.pop("lc_kwargs", None)  # langchain stuff, not needed
@@ -42,8 +45,6 @@ async def recall_memories_from_text(
             k=k,
             metadata={"source": cats.stray_cat.user_id} if c == MemoryCollection.EPISODIC else None
         )
-
-    """Search k memories similar to given text."""
 
     ccat = cats.cheshire_cat
 
@@ -67,70 +68,12 @@ async def recall_memories_from_text(
     }
 
 
-# GET collection list with some metadata
-@router.get("/collections")
-async def get_collections(
-    cats: ContextualCats = Depends(HTTPAuth(AuthResource.MEMORY, AuthPermission.READ))
-) -> Dict:
-    """Get list of available collections"""
-
-    collections_metadata = [{
-        "name": str(c),
-        "vectors_count": cats.cheshire_cat.memory.vectors.collections[str(c)].get_vectors_count()
-    } for c in MemoryCollection]
-
-    return {"collections": collections_metadata}
-
-
-# DELETE all collections
-@router.delete("/collections")
-async def wipe_collections(
-    cats: ContextualCats = Depends(HTTPAuth(AuthResource.MEMORY, AuthPermission.DELETE)),
-) -> Dict:
-    """Delete and create all collections"""
-
-    ccat = cats.cheshire_cat
-
-    to_return = {str(c): ccat.memory.vectors.collections[str(c)].wipe() for c in MemoryCollection}
-
-    ccat.load_memory()  # recreate the long term memories
-    ccat.mad_hatter.find_plugins()
-
-    return {
-        "deleted": to_return,
-    }
-
-
-# DELETE one collection
-@router.delete("/collections/{collection_id}")
-async def wipe_single_collection(
-    collection_id: str,
-    cats: ContextualCats = Depends(HTTPAuth(AuthResource.MEMORY, AuthPermission.DELETE)),
-) -> Dict:
-    """Delete and recreate a collection"""
-    # check if collection exists
-    if collection_id not in MemoryCollection:
-        raise HTTPException(
-            status_code=400, detail={"error": "Collection does not exist."}
-        )
-
-    ccat = cats.cheshire_cat
-    ret = ccat.memory.vectors.collections[collection_id].wipe()
-
-    ccat.load_memory()  # recreate the long term memories
-    ccat.mad_hatter.find_plugins()
-
-    return {
-        "deleted": {collection_id: ret},
-    }
-
-
 # CREATE a point in memory
 @router.post("/collections/{collection_id}/points", response_model=MemoryPoint)
 async def create_memory_point(
-    collection_id: str,
-    point: MemoryPointBase,
-    cats: ContextualCats = Depends(HTTPAuth(AuthResource.MEMORY, AuthPermission.WRITE)),
+        collection_id: str,
+        point: MemoryPointBase,
+        cats: ContextualCats = Depends(HTTPAuth(AuthResource.MEMORY, AuthPermission.WRITE)),
 ) -> MemoryPoint:
     """Create a point in memory"""
 
@@ -150,10 +93,14 @@ async def create_memory_point(
 
     # embed content
     embedding = ccat.embedder.embed_query(point.content)
-    
+
     # ensure source is set
     if not point.metadata.get("source"):
-        point.metadata["source"] = cats.stray_cat.user_id # this will do also for declarative memory
+        point.metadata["source"] = cats.stray_cat.user_id  # this will do also for declarative memory
+
+    # ensure when is set
+    if not point.metadata.get("when"):
+        point.metadata["when"] = time.time() #if when is not in the metadata set the current time
 
     # create point
     qdrant_point = ccat.memory.vectors.collections[collection_id].add_point(
@@ -168,6 +115,7 @@ async def create_memory_point(
         vector=qdrant_point.vector,
         id=qdrant_point.id
     )
+
 
 # DELETE memories
 @router.delete("/collections/{collection_id}/points/{point_id}")
@@ -214,23 +162,92 @@ async def delete_memory_points_by_metadata(
     }
 
 
-# DELETE conversation history from working memory
-@router.delete("/conversation_history")
-async def wipe_conversation_history(
+# GET all the points from a single collection
+@router.get("/collections/{collection_id}/points")
+async def get_points_in_collection(
+    collection_id: str,
+    limit: int = Query(
+        default=100,
+        description="How many points to return"
+    ),
+    offset: str = Query(
+        default=None,
+        description="If provided (or not empty string) - skip points with ids less than given `offset`"
+    ),
     cats: ContextualCats = Depends(HTTPAuth(AuthResource.MEMORY, AuthPermission.DELETE)),
 ) -> Dict:
-    """Delete the specified user's conversation history from working memory"""
+    """Retrieve all the points from a single collection
 
-    cats.stray_cat.working_memory.reset_conversation_history()
+    Example
+    ----------
+    ```
+    collection = "declarative"
+    res = requests.get(
+        f"http://localhost:1865/memory/collections/{collection}/points",
+    )
+    json = res.json()
+    points = json["points"]
 
-    return {"deleted": True}
+    for point in points:
+        payload = point["payload"]
+        vector = point["vector"]
+        print(payload)
+        print(vector)
+    ```
 
+    Example using offset
+    ----------
+    ```
+    # get all the points with limit 10
+    limit = 10
+    next_offset = ""
+    collection = "declarative"
 
-# GET conversation history from working memory
-@router.get("/conversation_history")
-async def get_conversation_history(
-    cats: ContextualCats = Depends(HTTPAuth(AuthResource.MEMORY, AuthPermission.READ)),
-) -> Dict:
-    """Get the specified user's conversation history from working memory"""
+    while True:
+        res = requests.get(
+            f"http://localhost:1865/memory/collections/{collection}/points?limit={limit}&offset={next_offset}",
+        )
+        json = res.json()
+        points = json["points"]
+        next_offset = json["next_offset"]
 
-    return {"history": cats.stray_cat.working_memory.get_conversation_history()}
+        for point in points:
+            payload = point["payload"]
+            vector = point["vector"]
+            print(payload)
+            print(vector)
+
+        if next_offset is None:
+            break
+    ```
+    """
+
+    # do not allow procedural memory reads via network
+    if collection_id == "procedural":
+        raise HTTPException(
+            status_code=400,
+            detail={
+                "error": "Procedural memory is not readable via API"
+            }
+        )
+
+    # check if collection exists
+    if collection_id not in MemoryCollection:
+        raise HTTPException(
+            status_code=400,
+            detail={
+                "error": "Collection does not exist."
+            }
+        )
+
+    # if offset is empty string set to null
+    if offset == "":
+        offset = None
+
+    memory_collection = cats.stray_cat.memory.vectors.collections[collection_id]
+    points, next_offset = memory_collection.get_all_points(limit=limit, offset=offset)
+
+    return {
+        "points": points,
+        "next_offset": next_offset
+    }
