@@ -13,7 +13,7 @@ from cat.db.database import get_db
 from cat.env import get_env, fix_legacy_env_variables
 from cat.log import log
 from cat.routes import (
-    admins,
+    admins_router as admins,
     base,
     auth,
     users,

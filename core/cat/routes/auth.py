@@ -6,9 +6,9 @@ from cat.auth.permissions import get_full_permissions
 from cat.routes.auth_utils import (
     UserCredentials,
     JWTResponse,
-    auth_index as fnc_auth_index,
+    auth_login as fnc_login,
     auth_token as fnc_auth_token,
-    core_login_token as fnc_core_login_token,
+    auth_redirect as fnc_redirect,
 )
 
 router = APIRouter()
@@ -16,20 +16,22 @@ router = APIRouter()
 
 # set cookies and redirect to origin page after login
 @router.post("/redirect", include_in_schema=False)
-async def core_login_token(request: Request):
+async def redirect(request: Request):
     # get agent_id from request
-    agent_id = extract_agent_id_from_request(request)
+    form_data = await request.form()
+    agent_id = form_data.get("agent_id")
+
     if not agent_id:
         raise HTTPException(status_code=404, detail={"error": "Forbidden access"})
 
-    return await fnc_core_login_token(request, agent_id, "/auth/login")
+    return await fnc_redirect(request, agent_id, f"/auth/{agent_id}/login/")
 
 
-@router.get("/login", include_in_schema=False)
-async def auth_index(request: Request, referer: str = Query(None), retry: int = Query(0)):
+@router.get("/{agent_id}/login", include_in_schema=False)
+async def login(request: Request, agent_id: str, referer: str = Query(None), retry: int = Query(0)):
     """Core login form, used when no external Identity Provider is configured"""
 
-    return fnc_auth_index(request, "/auth/redirect", referer, retry)
+    return fnc_login(request, "/auth/redirect", referer=referer, retry=retry, agent_id=agent_id)
 
 
 # TODOAUTH /logout endpoint

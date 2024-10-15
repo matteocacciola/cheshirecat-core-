@@ -17,35 +17,33 @@ class JWTResponse(BaseModel):
     token_type: str = "bearer"
 
 
-async def core_login_token(request: Request, agent_id: str, route: str) -> RedirectResponse:
+async def auth_redirect(request: Request, agent_id: str, route: str) -> RedirectResponse:
     # get form data from submitted core login form (/auth/core_login)
     form_data = await request.form()
 
     # use username and password to authenticate user from local identity provider and get token
     auth_handler = request.app.state.lizard.core_auth_handler
-    access_token = await auth_handler.issue_jwt(form_data["username"], form_data["password"], key_id=agent_id)
+    access_token = await auth_handler.issue_jwt(form_data.get("username"), form_data.get("password"), key_id=agent_id)
 
     if access_token:
         response = RedirectResponse(
-            url=form_data["referer"], status_code=status.HTTP_303_SEE_OTHER
+            url=form_data.get("referer"), status_code=status.HTTP_303_SEE_OTHER
         )
         response.set_cookie(key="ccat_user_token", value=access_token)
         return response
 
     # credentials are wrong, wait a second (for brute force attacks) and go back to login
     await asyncio.sleep(1)
-    referer_query = urlencode(
-        {
-            "referer": form_data["referer"],
-            "retry": 1,
-        }
-    )
+
+    referer_query = urlencode({"referer": form_data.get("referer"), "retry": 1})
     login_url = f"{route}?{referer_query}"
     response = RedirectResponse(url=login_url, status_code=status.HTTP_303_SEE_OTHER)
     return response
 
 
-async def auth_index(request: Request, redirect_to: str, referer: str = Query(None), retry: int = Query(0)):
+async def auth_login(
+    request: Request, redirect_to: str, referer: str = Query(None), retry: int = Query(0), agent_id: str | None = None
+):
     """Core login form, used when no external Identity Provider is configured"""
 
     error_message = ""
@@ -59,7 +57,8 @@ async def auth_index(request: Request, redirect_to: str, referer: str = Query(No
     template_context = {
         "referer": referer,
         "error_message": error_message,
-        "redirect_action": redirect_to
+        "redirect_action": redirect_to,
+        "agent_id": agent_id,
     }
 
     response = templates.TemplateResponse(
