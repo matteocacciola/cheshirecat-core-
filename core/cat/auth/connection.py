@@ -14,7 +14,6 @@ from cat.auth.permissions import AdminAuthResource, AuthPermission, AuthResource
 from cat.looking_glass.cheshire_cat import CheshireCat
 from cat.looking_glass.stray_cat import StrayCat
 from cat.log import log
-from cat.utils import DefaultAgentKeys
 
 
 class SuperCredentials(BaseModel):
@@ -103,7 +102,7 @@ class ConnectionAuth(ABC):
         pass
 
     @abstractmethod
-    def not_allowed(self, connection: HTTPConnection):
+    def not_allowed(self, connection: HTTPConnection, **kwargs):
         pass
         
 
@@ -136,7 +135,7 @@ class HTTPAuth(ConnectionAuth):
 
         return stray_cat
     
-    def not_allowed(self, connection: Request):
+    def not_allowed(self, connection: Request, **kwargs):
         raise HTTPException(status_code=403, detail={"error": "Invalid Credentials"})
     
 
@@ -176,7 +175,7 @@ class WebSocketAuth(ConnectionAuth):
         ccat.add_stray(stray)
         return stray
 
-    def not_allowed(self, connection: WebSocket):
+    def not_allowed(self, connection: WebSocket, **kwargs):
         raise WebSocketException(code=1004, reason="Invalid Credentials")
 
 
@@ -186,19 +185,24 @@ class CoreFrontendAuth(HTTPAuth):
         Extract user_id from cookie
         """
 
+        agent_id = extract_agent_id_from_request(connection)
+        if not agent_id:
+            raise HTTPException(status_code=404, detail={"error": "Forbidden access"})
+
         token = connection.cookies.get("ccat_user_token", None)
 
         # core webapps cannot be accessed without a cookie
         if token is None or token == "":
-            self.not_allowed(connection)
+            self.not_allowed(connection, route="/auth/login")
 
-        return Credentials(agent_id="agent", user_id="user", credential=token)
+        return Credentials(agent_id=agent_id, user_id="user", credential=token)
     
-    def not_allowed(self, connection: Request):
+    def not_allowed(self, connection: Request, **kwargs):
+        route = kwargs.get("route", "/auth/login")
         referer_query = urlencode({"referer": connection.url.path})
         raise HTTPException(
             status_code=307,
             headers={
-                "Location": f"/auth/login?{referer_query}"
+                "Location": f"{route}?{referer_query}"
             }
         )

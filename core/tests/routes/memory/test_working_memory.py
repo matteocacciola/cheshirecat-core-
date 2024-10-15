@@ -1,6 +1,5 @@
 import time
 
-from tests.conftest import agent_id
 from tests.utils import send_websocket_message
 
 

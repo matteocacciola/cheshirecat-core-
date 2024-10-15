@@ -1,4 +1,5 @@
 import pytest
+
 from cat.env import get_env
 
 # test endpoints with different user permissions

@@ -1,5 +1,3 @@
-
-
 def test_list_plugins(client, cheshire_cat):
     response = client.get("/plugins", headers={"agent_id": cheshire_cat.id})
     json = response.json()

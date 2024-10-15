@@ -5,9 +5,18 @@ from uuid import uuid4
 from cat.auth.auth_utils import hash_password, check_password
 from cat.db.database import get_db
 from cat.db.models import Setting
+from cat.utils import DefaultAgentKeys
+
+
+def __format_key(key: str) -> str:
+    if key == str(DefaultAgentKeys.SYSTEM):
+        return key
+
+    return f"{DefaultAgentKeys.AGENT}:{key}"
 
 
 def __get(key: str) -> List | Dict | None:
+    key = __format_key(key)
     value = get_db().get(key)
     if not value:
         return None
@@ -19,6 +28,7 @@ def __get(key: str) -> List | Dict | None:
 
 
 def __set(key: str, value: List | Dict) -> List | Dict | None:
+    key = __format_key(key)
     new = get_db().set(key, json.dumps(value), get=True)
     if not new:
         return None
@@ -27,6 +37,11 @@ def __set(key: str, value: List | Dict) -> List | Dict | None:
         return json.loads(new)
     else:
         raise ValueError(f"Unexpected type for Redis value: {type(new)}")
+
+
+def __del(key: str) -> None:
+    key = __format_key(key)
+    get_db().delete(key)
 
 
 def get_settings(key_id: str, search: str = "") -> List[Dict]:

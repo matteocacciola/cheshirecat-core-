@@ -1,4 +1,3 @@
-from tests.conftest import cheshire_cat
 from tests.utils import get_procedural_memory_contents
 
 

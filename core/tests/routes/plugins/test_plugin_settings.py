@@ -1,5 +1,3 @@
-
-
 # endpoint to get settings and settings schema
 def test_get_all_plugin_settings(client, cheshire_cat, just_installed_plugin):
     response = client.get("/plugins/settings", headers={"agent_id": cheshire_cat.id})

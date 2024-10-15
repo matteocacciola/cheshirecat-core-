@@ -1,4 +1,3 @@
-from tests.conftest import agent_id
 from tests.utils import send_n_websocket_messages
 
 

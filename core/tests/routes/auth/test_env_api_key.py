@@ -1,4 +1,5 @@
 import pytest
+
 from tests.utils import send_websocket_message
 
 # these tests use the secure_client fixture defined in conftest.py

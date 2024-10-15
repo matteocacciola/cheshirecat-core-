@@ -1,4 +1,3 @@
-from tests.conftest import agent_id
 from tests.utils import send_websocket_message, get_collections_names_and_point_count
 
 

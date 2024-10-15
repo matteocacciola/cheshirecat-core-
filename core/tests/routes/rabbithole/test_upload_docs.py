@@ -1,5 +1,5 @@
-
 import json
+
 from tests.utils import get_declarative_memory_contents
 
 
