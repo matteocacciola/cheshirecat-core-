@@ -1,3 +1,4 @@
+from cat.convo.messages import Role
 from cat.db import models
 from cat.looking_glass.stray_cat import StrayCat
 
@@ -22,8 +23,8 @@ def test_session_creation_from_websocket(client, cheshire_cat):
     assert stray_cat.user_id == user_id
     convo = stray_cat.working_memory.get_conversation_history()
     assert len(convo) == 2
-    assert convo[0]["who"] == "Human"
-    assert convo[0]["message"] == mex["text"]
+    assert convo[0].who == Role.HUMAN
+    assert convo[0].message == mex["text"]
 
 
 def test_session_creation_from_http(client, cheshire_cat):

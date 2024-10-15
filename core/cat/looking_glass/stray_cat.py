@@ -41,7 +41,9 @@ class StrayCat:
         self.__agent_id = agent_id
 
         self.__user = user_data
-        self.working_memory = WorkingMemory()
+        self.working_memory = WorkingMemory(
+            **{"agent_id": self.__agent_id, "user_id": self.__user.id}
+        )
 
         # attribute to store ws connection
         self.__ws = ws
@@ -148,7 +150,7 @@ class StrayCat:
 
         if save:
             self.working_memory.update_conversation_history(
-                who="AI", message=message["content"], why=message.why
+                who=Role.AI, message=message["content"], why=message.why
             )
 
         self.__send_ws_json(message.model_dump())
@@ -400,9 +402,7 @@ class StrayCat:
         user_message_text = self.working_memory.user_message_json.text
 
         # update conversation history (Human turn)
-        self.working_memory.update_conversation_history(
-            who="Human", message=user_message_text
-        )
+        self.working_memory.update_conversation_history(who=Role.HUMAN, message=user_message_text)
 
         # recall episodic and declarative memories from vector collections
         #   and store them in working_memory
@@ -479,7 +479,7 @@ class StrayCat:
 
         # update conversation history (AI turn)
         self.working_memory.update_conversation_history(
-            who="AI", message=final_output.content, why=final_output.why
+            who=Role.AI, message=final_output.content, why=final_output.why
         )
 
         self.__last_message_time = time.time()
@@ -575,15 +575,11 @@ Allowed classes are:
         """Serialize chat history.
         Converts to text the recent conversation turns.
 
-        Parameters
-        ----------
-        latest_n : int
-            Hoe many latest turns to stringify.
+        Args:
+            latest_n (int. optional): How many latest turns to stringify. Defaults to 5.
 
         Returns
-        -------
-        history : str
-            String with recent conversation turns.
+            str: String with recent conversation turns.
 
         Notes
         -----
@@ -592,30 +588,32 @@ Allowed classes are:
         The chat history is a dictionary with keys::
             'who': the name of who said the utterance;
             'message': the utterance.
-
         """
 
         history = self.working_memory.get_conversation_history()[-latest_n:]
+        history = [h.model_dump() for h in history]
 
-        history_string = ""
-        for turn in history:
-            history_string += f"\n - {turn['who']}: {turn['message']}"
-
-        return history_string
+        history_strings = [f"\n - {str(turn['who'])}: {turn['message']}" for turn in history]
+        return "".join(history_strings)
 
     def langchainfy_chat_history(self, latest_n: int = 5) -> List[BaseMessage]:
-        chat_history = self.working_memory.get_conversation_history()[-latest_n:]
+        """Get the chat history in Langchain format.
 
-        langchain_chat_history = []
-        for message in chat_history:
-            if message["role"] == Role.Human:
-                langchain_chat_history.append(
-                    HumanMessage(name=message["who"], content=message["message"])
-                )
-            else:
-                langchain_chat_history.append(
-                    AIMessage(name=message["who"], content=message["message"])
-                )
+        Args:
+            latest_n (int, optional): Number of latest messages to get. Defaults to 5.
+
+        Returns:
+            List[BaseMessage]: List of Langchain messages.
+        """
+
+        chat_history = self.working_memory.get_conversation_history()[-latest_n:]
+        chat_history = [ch.model_dump() for ch in chat_history]
+
+        langchain_chat_history = [
+            HumanMessage(name=str(message["who"]), content=message["message"])
+            if message["role"] == Role.HUMAN else AIMessage(name=str(message["who"]), content=message["message"])
+            for message in chat_history
+        ]
 
         return langchain_chat_history
 

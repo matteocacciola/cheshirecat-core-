@@ -1,14 +1,14 @@
+import time
 from typing import List, Literal, Dict
 from langchain_core.messages import AIMessage, HumanMessage
 from pydantic import BaseModel, Field, ConfigDict
-import time
 
 from cat.utils import BaseModelDict, Enum
 
 
 class Role(Enum):
     AI = "AI"
-    Human = "Human"
+    HUMAN = "Human"
 
 
 class ModelInteraction(BaseModel):
@@ -74,6 +74,14 @@ class UserMessage(BaseModelDict):
 
     text: str
     user_id: str
+
+
+class ConversationHistoryInfo(BaseModel):
+    who: Role
+    message: str
+    why: MessageWhy | None = None
+    when: float | None = time.time()
+    role: Role
 
 
 def convert_to_langchain_message(

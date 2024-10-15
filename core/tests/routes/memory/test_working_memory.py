@@ -1,5 +1,6 @@
 import time
 
+from cat.convo.messages import Role
 from tests.utils import send_websocket_message
 
 
@@ -24,9 +25,12 @@ def test_convo_history_update(client, cheshire_cat):
     assert response.status_code == 200
     assert "history" in json
     assert len(json["history"]) == 2  # mex and reply
-    assert json["history"][0]["who"] == "Human"
-    assert json["history"][0]["message"] == message
-    assert json["history"][0]["why"] == {}
+
+    picked_history = json["history"][0]
+
+    assert picked_history["who"] == str(Role.HUMAN)
+    assert picked_history["message"] == message
+    assert picked_history["why"] is None
     assert isinstance(json["history"][0]["when"], float)  # timestamp
 
 
@@ -76,10 +80,10 @@ def test_convo_history_by_user(client, cheshire_cat):
             assert "message" in m
             if m_idx % 2 == 0:  # even message
                 m_number_from_user = int(m_idx / 2)
-                assert m["who"] == "Human"
+                assert m["who"] == str(Role.HUMAN)
                 assert m["message"] == f"Mex n.{m_number_from_user} from {user_id}"
             else:
-                assert m["who"] == "AI"
+                assert m["who"] == str(Role.AI)
 
     # delete White Rabbit convo
     response = client.delete(

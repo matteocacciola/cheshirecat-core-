@@ -1,10 +1,18 @@
 from typing import Dict, List
 
 from cat.db import crud, models
+from cat.utils import DefaultAgentKeys
+
+
+def __format_key(key: str) -> str:
+    if key == str(DefaultAgentKeys.SYSTEM):
+        return key
+
+    return f"{DefaultAgentKeys.AGENT}:{key}"
 
 
 def get_settings(key_id: str, search: str = "") -> List[Dict]:
-    settings: List[Dict] = crud.read(key_id)
+    settings: List[Dict] = crud.read(__format_key(key_id))
     if not settings:
         return []
 
@@ -16,7 +24,7 @@ def get_settings(key_id: str, search: str = "") -> List[Dict]:
 
 
 def get_settings_by_category(key_id: str, category: str) -> List[Dict]:
-    settings: List[Dict] = crud.read(key_id)
+    settings: List[Dict] = crud.read(__format_key(key_id))
     if not settings:
         return []
 
@@ -24,15 +32,17 @@ def get_settings_by_category(key_id: str, category: str) -> List[Dict]:
 
 
 def create_setting(key_id: str, payload: models.Setting) -> Dict:
-    settings: List[Dict] = crud.read(key_id) or []
+    fkey_id = __format_key(key_id)
+
+    settings: List[Dict] = crud.read(fkey_id) or []
     settings.append(payload.model_dump())
 
     # create and retrieve the record we just created
-    return crud.store(key_id, settings)
+    return crud.store(fkey_id, settings)
 
 
 def get_setting_by_name(key_id: str, name: str) -> Dict | None:
-    settings: List[Dict] = crud.read(key_id)
+    settings: List[Dict] = crud.read(__format_key(key_id))
     if not settings:
         return None
 
@@ -41,7 +51,7 @@ def get_setting_by_name(key_id: str, name: str) -> Dict | None:
 
 
 def get_setting_by_id(key_id: str, setting_id: str) -> Dict | None:
-    settings: List[Dict] = crud.read(key_id)
+    settings: List[Dict] = crud.read(__format_key(key_id))
 
     settings = [setting for setting in settings if setting["setting_id"] == setting_id]
     if not settings:
@@ -51,27 +61,32 @@ def get_setting_by_id(key_id: str, setting_id: str) -> Dict | None:
 
 
 def delete_setting_by_id(key_id: str, setting_id: str) -> None:
-    settings: List[Dict] = crud.read(key_id)
+    fkey_id = __format_key(key_id)
+
+    settings: List[Dict] = crud.read(fkey_id)
 
     if not settings:
         return
 
     settings = [setting for setting in settings if setting["setting_id"] != setting_id]
-    crud.store(key_id, settings)
+    crud.store(fkey_id, settings)
 
 
 def delete_settings_by_category(key_id: str, category: str) -> None:
-    settings: List[Dict] = crud.read(key_id)
+    fkey_id = __format_key(key_id)
 
+    settings: List[Dict] = crud.read(fkey_id)
     if not settings:
         return
 
     settings = [setting for setting in settings if setting["category"] != category]
-    crud.store(key_id, settings)
+    crud.store(fkey_id, settings)
 
 
 def update_setting_by_id(key_id: str, payload: models.Setting) -> Dict | None:
-    settings: List[Dict] = crud.read(key_id)
+    fkey_id = __format_key(key_id)
+
+    settings: List[Dict] = crud.read(fkey_id)
 
     if not settings:
         return None
@@ -80,21 +95,23 @@ def update_setting_by_id(key_id: str, payload: models.Setting) -> Dict | None:
         if setting["setting_id"] == payload.setting_id:
             setting.update(payload.model_dump())
 
-    crud.store(key_id, settings)
+    crud.store(fkey_id, settings)
     return get_setting_by_id(key_id, payload.setting_id)
 
 
 def upsert_setting_by_name(key_id: str, payload: models.Setting) -> Dict:
     old_setting = get_setting_by_name(key_id, payload.name)
 
+    fkey_id = __format_key(key_id)
+
     if not old_setting:
         create_setting(key_id, payload)
     else:
-        settings: List[Dict] = crud.read(key_id) or []
+        settings: List[Dict] = crud.read(fkey_id) or []
         for setting in settings:
             if setting["name"] == payload.name:
                 setting.update(payload.model_dump())
 
-        crud.store(key_id, settings)
+        crud.store(fkey_id, settings)
 
     return get_setting_by_name(key_id, payload.name)
