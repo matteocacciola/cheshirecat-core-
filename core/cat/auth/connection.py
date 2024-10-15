@@ -14,6 +14,7 @@ from cat.auth.permissions import AdminAuthResource, AuthPermission, AuthResource
 from cat.looking_glass.cheshire_cat import CheshireCat
 from cat.looking_glass.stray_cat import StrayCat
 from cat.log import log
+from cat.utils import DefaultAgentKeys
 
 
 class SuperCredentials(BaseModel):
@@ -114,6 +115,9 @@ class HTTPAuth(ConnectionAuth):
 
         # when using CCAT_API_KEY, agent_id and user_id are passed in headers
         agent_id = extract_agent_id_from_request(connection)
+        if agent_id == str(DefaultAgentKeys.CORE):
+            raise HTTPException(status_code=403, detail={"error": "Invalid Agent ID: \"core\" is reserved."})
+
         user_id = extract_user_id_from_request(connection)
 
         # Proper Authorization header
@@ -143,6 +147,9 @@ class WebSocketAuth(ConnectionAuth):
         Extract token from WebSocket query string
         """
         agent_id = extract_agent_id_from_request(connection)
+        if agent_id == str(DefaultAgentKeys.CORE):
+            raise WebSocketException(code=1003, reason="Invalid Agent ID: \"core\" is reserved.")
+
         user_id = extract_user_id_from_request(connection)
 
         # TODO AUTH: is there a more secure way to pass the token over websocket?

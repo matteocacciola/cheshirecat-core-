@@ -126,6 +126,9 @@ def client(monkeypatch) -> Generator[TestClient, Any, None]:
     with TestClient(cheshire_cat_api) as client:
         yield client
 
+    # clean up tmp files, folders and redis database
+    clean_up_mocks()
+
 
 @pytest.fixture(scope="function")
 def lizard():

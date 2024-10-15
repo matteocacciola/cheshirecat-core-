@@ -5,7 +5,7 @@ import jwt
 
 from cat.auth.permissions import AuthPermission, AuthResource, AuthUserInfo, get_base_permissions, get_full_permissions
 from cat.auth.auth_utils import is_jwt
-from cat.db.crud import get_users, get_user_by_credentials
+from cat.db import crud
 from cat.env import get_env
 from cat.log import log
 
@@ -67,7 +67,7 @@ class CoreAuthHandler(BaseAuthHandler):
             return None
 
         # get user from DB
-        users = get_users(key_id)
+        users = crud.get_users(key_id)
         if payload["sub"] not in users.keys():
             # do not pass
             return None
@@ -144,7 +144,7 @@ class CoreAuthHandler(BaseAuthHandler):
 
         # brutal search over users, which are stored in a simple dictionary.
         # waiting to have graph in core to store them properly
-        user = get_user_by_credentials(key_id, username, password)
+        user = crud.get_user_by_credentials(key_id, username, password)
         if not user:
             return None
 

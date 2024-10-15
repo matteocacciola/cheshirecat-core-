@@ -178,9 +178,9 @@ def parse_json(json_string: str, pydantic_model: BaseModel = None) -> Dict:
 
 
 def match_prompt_variables(
-        prompt_variables: Dict,
-        prompt_template: str
-    ) -> Tuple[Dict, str]:
+    prompt_variables: Dict,
+    prompt_template: str
+) -> Tuple[Dict, str]:
     """Ensure prompt variables and prompt placeholders map, so there are no issues on mismatches"""
 
     tmp_prompt = PromptTemplate.from_template(
@@ -332,3 +332,8 @@ class MetaEnum(EnumMeta):
 class Enum(BaseEnum, metaclass=MetaEnum):
     def __str__(self):
         return self.value
+
+
+class DefaultAgentKeys(Enum):
+    AGENT = "agent"
+    CORE = "core"

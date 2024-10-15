@@ -19,7 +19,7 @@ from cat.looking_glass.cheshire_cat import CheshireCat
 from cat.looking_glass.white_rabbit import WhiteRabbit
 from cat.mad_hatter.mad_hatter import MadHatter
 from cat.rabbit_hole import RabbitHole
-from cat.utils import singleton
+from cat.utils import singleton, DefaultAgentKeys
 
 
 @singleton
@@ -39,7 +39,7 @@ class BillTheLizard:
 
     def __init__(self):
         self.__cheshire_cats: Dict[str, CheshireCat] = {}
-        self.__key = "core"
+        self.__key = str(DefaultAgentKeys.CORE)
 
         # Start scheduling system
         self.white_rabbit = WhiteRabbit()

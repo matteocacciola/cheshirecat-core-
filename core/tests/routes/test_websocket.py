@@ -1,4 +1,6 @@
+import pytest
 import time
+from fastapi import WebSocketDisconnect
 
 from tests.utils import send_websocket_message, send_n_websocket_messages
 
@@ -57,3 +59,9 @@ def test_websocket_multiple_messages(client):
 
     for res in replies:
         check_correct_websocket_reply(res)
+
+
+def test_ping_error(client):
+    with pytest.raises(WebSocketDisconnect):
+        # send websocket message
+        res = send_websocket_message({"text": "It's late! It's late"}, client, agent_id="core")
