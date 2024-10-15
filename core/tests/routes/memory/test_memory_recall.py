@@ -1,10 +1,11 @@
+from tests.conftest import agent_id
 from tests.utils import send_n_websocket_messages
 
 
 # search on default startup memory
-def test_memory_recall_default_success(client):
+def test_memory_recall_default_success(client, cheshire_cat):
     params = {"text": "Red Queen"}
-    response = client.get("/memory/recall/", params=params)
+    response = client.get("/memory/recall/", params=params, headers={"agent_id": cheshire_cat.id})
     json = response.json()
     assert response.status_code == 200
 
@@ -29,20 +30,20 @@ def test_memory_recall_default_success(client):
 
 
 # search without query should throw error
-def test_memory_recall_without_query_error(client):
-    response = client.get("/memory/recall")
+def test_memory_recall_without_query_error(client, cheshire_cat):
+    response = client.get("/memory/recall", headers={"agent_id": cheshire_cat.id})
     assert response.status_code == 400
 
 
 # search with query
-def test_memory_recall_success(client):
+def test_memory_recall_success(client, cheshire_cat):
     # send a few messages via chat
     num_messages = 3
-    send_n_websocket_messages(num_messages, client)
+    send_n_websocket_messages(num_messages, client, agent_id=cheshire_cat.id)
 
     # recall
     params = {"text": "Red Queen"}
-    response = client.get("/memory/recall/", params=params)
+    response = client.get("/memory/recall/", params=params, headers={"agent_id": cheshire_cat.id})
     json = response.json()
     assert response.status_code == 200
     episodic_memories = json["vectors"]["collections"]["episodic"]
@@ -50,15 +51,15 @@ def test_memory_recall_success(client):
 
 
 # search with query and k
-def test_memory_recall_with_k_success(client):
+def test_memory_recall_with_k_success(client, cheshire_cat):
     # send a few messages via chat
     num_messages = 6
-    send_n_websocket_messages(num_messages, client)
+    send_n_websocket_messages(num_messages, client, agent_id=cheshire_cat.id)
 
     # recall at max k memories
     max_k = 2
     params = {"k": max_k, "text": "Red Queen"}
-    response = client.get("/memory/recall/", params=params)
+    response = client.get("/memory/recall/", params=params, headers={"agent_id": cheshire_cat.id})
     json = response.json()
     assert response.status_code == 200
     episodic_memories = json["vectors"]["collections"]["episodic"]

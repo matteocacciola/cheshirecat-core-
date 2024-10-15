@@ -1,10 +1,12 @@
-def test_ping_success(client):
-    response = client.get("/")
+from cat.utils import DefaultAgentKeys
+
+
+def test_ping_success(client, cheshire_cat):
+    response = client.get("/", headers={"agent_id": cheshire_cat.id})
     assert response.status_code == 200
     assert response.json()["status"] == "We're all mad here, dear!"
 
 
 def test_ping_error(client):
-    response = client.get("/", headers={"agent_id": "core"})
-    assert response.status_code == 403
-    assert response.json()["detail"]["error"] == "Invalid Agent ID: \"core\" is reserved."
+    response = client.get("/")
+    assert response.status_code == 404

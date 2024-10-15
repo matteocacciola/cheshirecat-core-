@@ -28,10 +28,14 @@ def send_websocket_message(msg, client, user_id="user", agent_id=None, query_par
 
 
 # utility to send n messages via chat
-def send_n_websocket_messages(num_messages, client):
+def send_n_websocket_messages(num_messages, client, agent_id=None):
     responses = []
 
-    with client.websocket_connect("/ws") as websocket:
+    url = "/ws"
+    if agent_id:
+        url += f"/user/{agent_id}"
+
+    with client.websocket_connect(url) as websocket:
         for m in range(num_messages):
             message = {"text": f"Red Queen {m}"}
             # sed ws message
@@ -67,17 +71,17 @@ def create_mock_plugin_zip(flat: bool):
 
 
 # utility to retrieve embedded tools from endpoint
-def get_procedural_memory_contents(client, params=None):
+def get_procedural_memory_contents(client, cheshire_cat, params=None):
     final_params = (params or {}) | {"text": "random"}
-    response = client.get("/memory/recall/", params=final_params)
+    response = client.get("/memory/recall/", params=final_params, headers={"agent_id": cheshire_cat.id})
     json = response.json()
     return json["vectors"]["collections"]["procedural"]
 
 
 # utility to retrieve declarative memory contents
-def get_declarative_memory_contents(client):
+def get_declarative_memory_contents(client, cheshire_cat):
     params = {"text": "Something"}
-    response = client.get("/memory/recall/", params=params)
+    response = client.get("/memory/recall/", params=params, headers={"agent_id": cheshire_cat.id})
     assert response.status_code == 200
     json = response.json()
     declarative_memories = json["vectors"]["collections"]["declarative"]
@@ -85,17 +89,17 @@ def get_declarative_memory_contents(client):
 
 
 # utility to get collections and point count from `GET /memory/collections` in a simpler format
-def get_collections_names_and_point_count(client):
-    response = client.get("/memory/collections")
+def get_collections_names_and_point_count(client, cheshire_cat):
+    response = client.get("/memory/collections", headers={"agent_id": cheshire_cat.id})
     json = response.json()
     assert response.status_code == 200
     collections_n_points = {c["name"]: c["vectors_count"] for c in json["collections"]}
     return collections_n_points
 
 
-def create_new_user(client, route: str):
+def create_new_user(client, route: str, headers=None):
     new_user = {"username": "Alice", "password": "wandering_in_wonderland"}
-    response = client.post(route, json=new_user)
+    response = client.post(route, json=new_user, headers=headers)
     assert response.status_code == 200
     return response.json()
 

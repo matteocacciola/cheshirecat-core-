@@ -5,8 +5,8 @@ from tests.utils import create_mock_plugin_zip
 # TODO: registry responses here should be mocked, at the moment we are actually calling the service
 
 
-def test_list_registry_plugins(client):
-    response = client.get("/plugins")
+def test_list_registry_plugins(client, cheshire_cat):
+    response = client.get("/plugins", headers={"agent_id": cheshire_cat.id})
     json = response.json()
 
     assert response.status_code == 200
@@ -23,9 +23,9 @@ def test_list_registry_plugins(client):
         assert key in json["filters"].keys()
 
 
-def test_list_registry_plugins_by_query(client):
+def test_list_registry_plugins_by_query(client, cheshire_cat):
     params = {"query": "podcast"}
-    response = client.get("/plugins", params=params)
+    response = client.get("/plugins", params=params, headers={"agent_id": cheshire_cat.id})
     json = response.json()
 
     assert response.status_code == 200
@@ -36,7 +36,7 @@ def test_list_registry_plugins_by_query(client):
         assert params["query"] in plugin_text  # verify searched text
 
 
-def test_plugin_install_from_registry(client, monkeypatch):
+def test_plugin_install_from_registry(client, cheshire_cat, monkeypatch):
     # Mock the download from the registry creating a zip on-the-fly
     monkeypatch.setattr(
         "cat.routes.plugins.registry_download_plugin", create_mock_plugin_zip
@@ -51,14 +51,14 @@ def test_plugin_install_from_registry(client, monkeypatch):
 
     # install plugin from registry
     payload = {"url": "https://mockup_url.com"}
-    response = client.post("/plugins/upload/registry", json=payload)
+    response = client.post("/plugins/upload/registry", json=payload, headers={"agent_id": cheshire_cat.id})
 
     assert response.status_code == 200
     assert response.json()["url"] == payload["url"]
     assert response.json()["info"] == "Plugin is being installed asynchronously"
 
     # GET plugin endpoint responds
-    response = client.get("/plugins/mock_plugin")
+    response = client.get("/plugins/mock_plugin", headers={"agent_id": cheshire_cat.id})
     assert response.status_code == 200
     json = response.json()
     assert json["data"]["id"] == "mock_plugin"
@@ -66,7 +66,7 @@ def test_plugin_install_from_registry(client, monkeypatch):
     assert json["data"]["active"]
 
     # GET plugins endpoint lists the plugin
-    response = client.get("/plugins")
+    response = client.get("/plugins", headers={"agent_id": cheshire_cat.id})
     assert response.status_code == 200
     installed_plugins = response.json()["installed"]
     installed_plugins_names = list(map(lambda p: p["id"], installed_plugins))
@@ -83,13 +83,13 @@ def test_plugin_install_from_registry(client, monkeypatch):
 
 
 # take away from the list of available registry plugins, the ones that are already installed
-def test_list_registry_plugins_without_duplicating_installed_plugins(client):
+def test_list_registry_plugins_without_duplicating_installed_plugins(client, cheshire_cat):
     # 1. install plugin from registry
     # TODO !!!
 
     # 2. get available plugins searching for the one just installed
     params = {"query": "podcast"}
-    response = client.get("/plugins", params=params)
+    response = client.get("/plugins", params=params, headers={"agent_id": cheshire_cat.id})
     #json = response.json()
 
     # 3. plugin should show up among installed by not among registry ones
@@ -100,12 +100,11 @@ def test_list_registry_plugins_without_duplicating_installed_plugins(client):
 
 # TOOD: these tests are to be activated when also search by tag and author is activated in core
 """
-def test_list_registry_plugins_by_author(client):
-
+def test_list_registry_plugins_by_author(client, cheshire_cat):
     params = {
         "author": "Nicola Corbellini"
     }
-    response = client.get("/plugins", params=params)
+    response = client.get("/plugins", params=params, headers={"agent_id": cheshire_cat.id})
     json = response.json()
 
     assert response.status_code == 200
@@ -115,12 +114,11 @@ def test_list_registry_plugins_by_author(client):
         assert params["author"] in plugin["author_name"] # verify author
 
 
-def test_list_registry_plugins_by_tag(client):
-
+def test_list_registry_plugins_by_tag(client, cheshire_cat):
     params = {
         "tag": "llm"
     }
-    response = client.get("/plugins", params=params)
+    response = client.get("/plugins", params=params, headers={"agent_id": cheshire_cat.id})
     json = response.json()
 
     assert response.status_code == 200

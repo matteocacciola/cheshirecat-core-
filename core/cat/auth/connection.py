@@ -115,8 +115,8 @@ class HTTPAuth(ConnectionAuth):
 
         # when using CCAT_API_KEY, agent_id and user_id are passed in headers
         agent_id = extract_agent_id_from_request(connection)
-        if agent_id == str(DefaultAgentKeys.CORE):
-            raise HTTPException(status_code=403, detail={"error": "Invalid Agent ID: \"core\" is reserved."})
+        if not agent_id:
+            raise HTTPException(status_code=404, detail={"error": "Forbidden access"})
 
         user_id = extract_user_id_from_request(connection)
 
@@ -147,8 +147,8 @@ class WebSocketAuth(ConnectionAuth):
         Extract token from WebSocket query string
         """
         agent_id = extract_agent_id_from_request(connection)
-        if agent_id == str(DefaultAgentKeys.CORE):
-            raise WebSocketException(code=1003, reason="Invalid Agent ID: \"core\" is reserved.")
+        if not agent_id:
+            raise WebSocketException(code=1003, reason="Forbidden access")
 
         user_id = extract_user_id_from_request(connection)
 

@@ -39,7 +39,7 @@ class BillTheLizard:
 
     def __init__(self):
         self.__cheshire_cats: Dict[str, CheshireCat] = {}
-        self.__key = str(DefaultAgentKeys.CORE)
+        self.__key = str(DefaultAgentKeys.SYSTEM)
 
         # Start scheduling system
         self.white_rabbit = WhiteRabbit()

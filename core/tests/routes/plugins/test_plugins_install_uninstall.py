@@ -1,17 +1,19 @@
 import os
+
+from tests.conftest import cheshire_cat
 from tests.utils import get_procedural_memory_contents
 
 
 # NOTE: here we test zip upload install
 # install from registry is in `./test_plugins_registry.py`
-def test_plugin_install_from_zip(client, just_installed_plugin):
+def test_plugin_install_from_zip(client, cheshire_cat, just_installed_plugin):
     # during tests, the cat uses a different folder for plugins
     mock_plugin_final_folder = "tests/mocks/mock_plugin_folder/mock_plugin"
 
     #### PLUGIN IS ALREADY ACTIVE
 
     # GET plugin endpoint responds
-    response = client.get("/plugins/mock_plugin")
+    response = client.get("/plugins/mock_plugin", headers={"agent_id": cheshire_cat.id})
     assert response.status_code == 200
     json = response.json()
     assert json["data"]["id"] == "mock_plugin"
@@ -19,7 +21,7 @@ def test_plugin_install_from_zip(client, just_installed_plugin):
     assert json["data"]["active"]
 
     # GET plugins endpoint lists the plugin
-    response = client.get("/plugins")
+    response = client.get("/plugins", headers={"agent_id": cheshire_cat.id})
     installed_plugins = response.json()["installed"]
     installed_plugins_names = list(map(lambda p: p["id"], installed_plugins))
     assert "mock_plugin" in installed_plugins_names
@@ -32,7 +34,7 @@ def test_plugin_install_from_zip(client, just_installed_plugin):
     assert os.path.exists(mock_plugin_final_folder)
 
     # check whether new tool has been embedded
-    procedures = get_procedural_memory_contents(client)
+    procedures = get_procedural_memory_contents(client, cheshire_cat)
     assert len(procedures) == 9  # two tools, 4 tools examples, 3  form triggers
     procedures_names = list(map(lambda t: t["metadata"]["source"], procedures))
     assert procedures_names.count("mock_tool") == 3
@@ -48,16 +50,16 @@ def test_plugin_install_from_zip(client, just_installed_plugin):
     assert procedures_triggers.count("description") == 3
 
 
-def test_plugin_uninstall(client, just_installed_plugin):
+def test_plugin_uninstall(client, cheshire_cat, just_installed_plugin):
     # during tests, the cat uses a different folder for plugins
     mock_plugin_final_folder = "tests/mocks/mock_plugin_folder/mock_plugin"
 
     # remove plugin via endpoint (will delete also plugin folder in mock_plugin_folder)
-    response = client.delete("/plugins/mock_plugin")
+    response = client.delete("/plugins/mock_plugin", headers={"agent_id": cheshire_cat.id})
     assert response.status_code == 200
 
     # mock_plugin is not installed in the cat (check both via endpoint and filesystem)
-    response = client.get("/plugins")
+    response = client.get("/plugins", headers={"agent_id": cheshire_cat.id})
     installed_plugins_names = list(map(lambda p: p["id"], response.json()["installed"]))
     assert "mock_plugin" not in installed_plugins_names
     assert not os.path.exists(
@@ -65,7 +67,7 @@ def test_plugin_uninstall(client, just_installed_plugin):
     )  # plugin folder removed from disk
 
     # plugin tool disappeared
-    procedures = get_procedural_memory_contents(client)
+    procedures = get_procedural_memory_contents(client, cheshire_cat)
     assert len(procedures) == 3
     procedures_names = set(map(lambda t: t["metadata"]["source"], procedures))
     assert procedures_names == {"get_the_time"}

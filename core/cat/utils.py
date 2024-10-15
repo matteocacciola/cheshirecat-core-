@@ -336,4 +336,4 @@ class Enum(BaseEnum, metaclass=MetaEnum):
 
 class DefaultAgentKeys(Enum):
     AGENT = "agent"
-    CORE = "core"
+    SYSTEM = "system"

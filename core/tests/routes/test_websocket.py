@@ -46,16 +46,16 @@ def check_correct_websocket_reply(reply):
             assert mi["source"] == "recall"
 
 
-def test_websocket(client):
+def test_websocket(client, cheshire_cat):
     # send websocket message
-    res = send_websocket_message({"text": "It's late! It's late"}, client)
+    res = send_websocket_message({"text": "It's late! It's late"}, client, agent_id=cheshire_cat.id)
 
     check_correct_websocket_reply(res)
 
 
-def test_websocket_multiple_messages(client):
+def test_websocket_multiple_messages(client, cheshire_cat):
     # send websocket message
-    replies = send_n_websocket_messages(3, client)
+    replies = send_n_websocket_messages(3, client, agent_id=cheshire_cat.id)
 
     for res in replies:
         check_correct_websocket_reply(res)
@@ -64,4 +64,4 @@ def test_websocket_multiple_messages(client):
 def test_ping_error(client):
     with pytest.raises(WebSocketDisconnect):
         # send websocket message
-        res = send_websocket_message({"text": "It's late! It's late"}, client, agent_id="core")
+        res = send_websocket_message({"text": "It's late! It's late"}, client)

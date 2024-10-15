@@ -44,10 +44,7 @@ def extract_agent_id_from_request(request: HTTPConnection) -> str:
         "agent_id",
         request.path_params.get(
             "agent_id",
-            request.query_params.get(
-                "agent_id",
-                str(DefaultAgentKeys.AGENT)
-            )
+            request.query_params.get("agent_id")
         )
     )
 

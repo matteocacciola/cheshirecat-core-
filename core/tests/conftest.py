@@ -163,7 +163,7 @@ def secure_client(client):
 #   a plugin was just uploaded via http.
 #   It wraps any test function having `just_installed_plugin` as an argument
 @pytest.fixture(scope="function")
-def just_installed_plugin(client):
+def just_installed_plugin(client, cheshire_cat):
     ### executed before each test function
 
     # create zip file with a plugin
@@ -173,7 +173,9 @@ def just_installed_plugin(client):
     # upload plugin via endpoint
     with open(zip_path, "rb") as f:
         response = client.post(
-            "/plugins/upload/", files={"file": (zip_file_name, f, "application/zip")}
+            "/plugins/upload/",
+            files={"file": (zip_file_name, f, "application/zip")},
+            headers = {"agent_id": cheshire_cat.id}
         )
 
     # request was processed

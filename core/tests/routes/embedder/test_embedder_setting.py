@@ -3,8 +3,6 @@ from fastapi.encoders import jsonable_encoder
 
 from cat.factory.embedder import get_embedders_schemas
 
-from tests.utils import get_procedural_memory_contents
-
 
 def test_get_all_embedder_settings(client, lizard):
     embedder_schemas = get_embedders_schemas(lizard.mad_hatter)

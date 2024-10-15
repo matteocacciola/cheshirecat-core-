@@ -1,4 +1,5 @@
 import pytest
+
 from cat.env import get_env
 
 # test endpoints with different user permissions
@@ -41,7 +42,7 @@ from cat.env import get_env
 ])
 
 
-def test_users_permissions(secure_client, credentials, endpoint):
+def test_users_permissions(secure_client, cheshire_cat, credentials, endpoint):
     # create new user that will be edited by calling the endpoints
     # we create it using directly CCAT_API_KEY
     response = secure_client.post(
@@ -52,7 +53,8 @@ def test_users_permissions(secure_client, credentials, endpoint):
         },
         headers={
             "Authorization": f"Bearer {get_env('CCAT_API_KEY')}",
-            "user_id": "admin"
+            "user_id": "admin",
+            "agent_id": cheshire_cat.id
         }
     )
     assert response.status_code == 200
@@ -64,13 +66,14 @@ def test_users_permissions(secure_client, credentials, endpoint):
     res = secure_client.request(
         endpoint["method"],
         endpoint["path"].replace("ID_PLACEHOLDER", target_user_id),
-        json=endpoint["payload"]
+        json=endpoint["payload"],
+        headers={"agent_id": cheshire_cat.id}
     )
     assert res.status_code == 403
     assert res.json()["detail"]["error"] == "Invalid Credentials"
     
     # obtain JWT
-    res = secure_client.post("/auth/token", json=credentials)
+    res = secure_client.post("/auth/token", json=credentials, headers={"agent_id": cheshire_cat.id})
     assert res.status_code == 200
     jwt = res.json()["access_token"]
 
@@ -79,12 +82,10 @@ def test_users_permissions(secure_client, credentials, endpoint):
         endpoint["method"],
         endpoint["path"].replace("ID_PLACEHOLDER", target_user_id),
         json=endpoint["payload"],
-        headers={"Authorization": f"Bearer {jwt}"} # using credentials
+        headers={"Authorization": f"Bearer {jwt}", "agent_id": cheshire_cat.id} # using credentials
     )
     # `admin` can now use endpoints, `user` cannot
     if credentials["username"] == "admin":
         assert res.status_code == 200
     else:
         assert res.status_code == 403
-
-# TODOAUTH: more tests here on critical endpoints

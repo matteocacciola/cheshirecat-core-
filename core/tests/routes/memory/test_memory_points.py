@@ -2,13 +2,13 @@ import pytest
 from tests.utils import send_websocket_message, get_declarative_memory_contents
 
 
-def test_point_deleted(client):
+def test_point_deleted(client, cheshire_cat):
     # send websocket message
-    res = send_websocket_message({"text": "Hello Mad Hatter"}, client)
+    res = send_websocket_message({"text": "Hello Mad Hatter"}, client, agent_id=cheshire_cat.id)
 
     # get point back
     params = {"text": "Mad Hatter"}
-    response = client.get("/memory/recall/", params=params)
+    response = client.get("/memory/recall/", params=params, headers={"agent_id": cheshire_cat.id})
     json = response.json()
     assert response.status_code == 200
     assert len(json["vectors"]["collections"]["episodic"]) == 1
@@ -16,36 +16,36 @@ def test_point_deleted(client):
     assert memory["page_content"] == "Hello Mad Hatter"
 
     # delete point (wrong collection)
-    res = client.delete(f"/memory/collections/wrongcollection/points/{memory['id']}")
+    res = client.delete(f"/memory/collections/wrongcollection/points/{memory['id']}", headers={"agent_id": cheshire_cat.id})
     assert res.status_code == 400
     assert res.json()["detail"]["error"] == "Collection does not exist."
 
     # delete point (wrong id)
-    res = client.delete("/memory/collections/episodic/points/wrong_id")
+    res = client.delete("/memory/collections/episodic/points/wrong_id", headers={"agent_id": cheshire_cat.id})
     assert res.status_code == 400
     assert res.json()["detail"]["error"] == "Point does not exist."
 
     # delete point (all right)
-    res = client.delete(f"/memory/collections/episodic/points/{memory['id']}")
+    res = client.delete(f"/memory/collections/episodic/points/{memory['id']}", headers={"agent_id": cheshire_cat.id})
     assert res.status_code == 200
     assert res.json()["deleted"] == memory["id"]
 
     # there is no point now
     params = {"text": "Mad Hatter"}
-    response = client.get("/memory/recall/", params=params)
+    response = client.get("/memory/recall/", params=params, headers={"agent_id": cheshire_cat.id})
     json = response.json()
     assert response.status_code == 200
     assert len(json["vectors"]["collections"]["episodic"]) == 0
 
     # delete again the same point (should not be found)
-    res = client.delete(f"/memory/collections/episodic/points/{memory['id']}")
+    res = client.delete(f"/memory/collections/episodic/points/{memory['id']}", headers={"agent_id": cheshire_cat.id})
     assert res.status_code == 400
     assert res.json()["detail"]["error"] == "Point does not exist."
 
 
 # test delete points by filter
 # TODO: have a fixture uploading docs and separate test cases
-def test_points_deleted_by_metadata(client):
+def test_points_deleted_by_metadata(client, cheshire_cat):
     expected_chunks = 4
 
     # upload to rabbithole a document
@@ -55,81 +55,80 @@ def test_points_deleted_by_metadata(client):
     with open(file_path, "rb") as f:
         files = {"file": (file_name, f, content_type)}
 
-        response = client.post("/rabbithole/", files=files)
+        response = client.post("/rabbithole/", files=files, headers={"agent_id": cheshire_cat.id})
     # check response
     assert response.status_code == 200
     # check memory contents
-    declarative_memories = get_declarative_memory_contents(client)
+    declarative_memories = get_declarative_memory_contents(client, cheshire_cat)
     assert len(declarative_memories) == expected_chunks
 
     # upload another document
     with open(file_path, "rb") as f:
         files = {"file": ("sample2.pdf", f, content_type)}
 
-        response = client.post("/rabbithole/", files=files)
+        response = client.post("/rabbithole/", files=files, headers={"agent_id": cheshire_cat.id})
     # check response
     assert response.status_code == 200
     # check memory contents
-    declarative_memories = get_declarative_memory_contents(client)
+    declarative_memories = get_declarative_memory_contents(client, cheshire_cat)
     assert len(declarative_memories) == expected_chunks * 2
 
     # delete nothing
     metadata = {"source": "invented.pdf"}
     res = client.request(
-        "DELETE", "/memory/collections/declarative/points", json=metadata
+        "DELETE", "/memory/collections/declarative/points", json=metadata, headers={"agent_id": cheshire_cat.id}
     )
     # check memory contents
     assert res.status_code == 200
-    declarative_memories = get_declarative_memory_contents(client)
+    declarative_memories = get_declarative_memory_contents(client, cheshire_cat)
     assert len(declarative_memories) == expected_chunks * 2
 
     # delete first document
     metadata = {"source": "sample.pdf"}
     res = client.request(
-        "DELETE", "/memory/collections/declarative/points", json=metadata
+        "DELETE", "/memory/collections/declarative/points", json=metadata, headers={"agent_id": cheshire_cat.id}
     )
     # check memory contents
     assert res.status_code == 200
     json = res.json()
     assert isinstance(json["deleted"], dict)
     # assert len(json["deleted"]) == expected_chunks
-    declarative_memories = get_declarative_memory_contents(client)
+    declarative_memories = get_declarative_memory_contents(client, cheshire_cat)
     assert len(declarative_memories) == expected_chunks
 
     # delete second document
     metadata = {"source": "sample2.pdf"}
     res = client.request(
-        "DELETE", "/memory/collections/declarative/points", json=metadata
+        "DELETE", "/memory/collections/declarative/points", json=metadata, headers={"agent_id": cheshire_cat.id}
     )
     # check memory contents
     assert res.status_code == 200
-    declarative_memories = get_declarative_memory_contents(client)
+    declarative_memories = get_declarative_memory_contents(client, cheshire_cat)
     assert len(declarative_memories) == 0
 
 
-def create_point_wrong_collection(client):
-
+def create_point_wrong_collection(client, cheshire_cat):
     req_json = {
         "content": "Hello dear"
     }
 
     # wrong collection
     res = client.post(
-        "/memory/collections/wrongcollection/points", json=req_json
+        "/memory/collections/wrongcollection/points", json=req_json, headers={"agent_id": cheshire_cat.id}
     )
     assert res.status_code == 400
     assert "Collection does not exist" in res.json()["detail"]["error"]
 
     # cannot write procedural point
     res = client.post(
-        "/memory/collections/procedural/points", json=req_json
+        "/memory/collections/procedural/points", json=req_json, headers={"agent_id": cheshire_cat.id}
     )
     assert res.status_code == 400
     assert "Procedural memory is read-only" in res.json()["detail"]["error"]
 
 
 @pytest.mark.parametrize("collection", ["episodic", "declarative"])
-def test_create_memory_point(client, collection):
+def test_create_memory_point(client, cheshire_cat, collection):
 
     # create a point
     content = "Hello dear"
@@ -139,7 +138,7 @@ def test_create_memory_point(client, collection):
         "metadata": metadata,
     }
     res = client.post(
-        f"/memory/collections/{collection}/points", json=req_json
+        f"/memory/collections/{collection}/points", json=req_json, headers={"agent_id": cheshire_cat.id}
     )
     assert res.status_code == 200
     json = res.json()
@@ -153,12 +152,10 @@ def test_create_memory_point(client, collection):
 
     # check memory contents
     params = {"text": "dear, hello"}
-    response = client.get("/memory/recall/", params=params)
+    response = client.get("/memory/recall/", params=params, headers={"agent_id": cheshire_cat.id})
     json = response.json()
     assert response.status_code == 200
     assert len(json["vectors"]["collections"][collection]) == 1
     memory = json["vectors"]["collections"][collection][0]
     assert memory["page_content"] == content
     assert memory["metadata"] == expected_metadata
-
-

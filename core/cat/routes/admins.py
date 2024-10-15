@@ -1,12 +1,20 @@
 from pydantic import BaseModel, Field, ConfigDict
 from typing import List, Dict
-from fastapi import Depends, APIRouter, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
 
 from cat.auth.permissions import AdminAuthResource, AuthPermission, get_full_admin_permissions
 from cat.auth.auth_utils import hash_password
 from cat.auth.connection import ConnectionSuperAdminAuth
 from cat.bill_the_lizard import BillTheLizard
 from cat.db import crud
+from cat.routes.auth_utils import (
+    UserCredentials,
+    JWTResponse,
+    auth_index as fnc_auth_index,
+    auth_token as fnc_auth_token,
+    core_login_token as fnc_core_login_token,
+)
+from cat.utils import DefaultAgentKeys
 
 router = APIRouter()
 
@@ -97,3 +105,30 @@ def delete_admin(
         raise HTTPException(status_code=404, detail={"error": "User not found"})
 
     return deleted_user
+
+
+# set cookies and redirect to origin page after login
+@router.post("/redirect", include_in_schema=False)
+async def core_login_token(request: Request):
+    # get agent_id from request
+    agent_id = str(DefaultAgentKeys.SYSTEM)
+
+    return await fnc_core_login_token(request, agent_id, "/admins/login")
+
+
+@router.get("/login", include_in_schema=False)
+async def auth_index(request: Request, referer: str = Query(None), retry: int = Query(0)):
+    """Core login form, used when no external Identity Provider is configured"""
+
+    return fnc_auth_index(request, "/admins/redirect", referer, retry)
+
+
+@router.post("/token", response_model=JWTResponse)
+async def auth_token(request: Request, credentials: UserCredentials):
+    """Endpoint called from client to get a JWT from local identity provider.
+    This endpoint receives username and password as form-data, validates credentials and issues a JWT.
+    """
+
+    agent_id = str(DefaultAgentKeys.SYSTEM)
+
+    return await fnc_auth_token(request, credentials, agent_id)

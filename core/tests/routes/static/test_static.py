@@ -6,7 +6,7 @@ def test_call(client):
     assert response.status_code == 404
 
 
-def test_call_specific_file(client):
+def test_call_specific_file(client, cheshire_cat):
     static_file_name = "Meooow.txt"
     static_file_path = f"/app/cat/static/{static_file_name}"
 
@@ -18,7 +18,7 @@ def test_call_specific_file(client):
     with open(static_file_path, "w") as f:
         f.write("Meow")
 
-    response = client.get(f"/static/{static_file_name}")
+    response = client.get(f"/static/{static_file_name}", headers={"agent_id": cheshire_cat.id})
     assert response.status_code == 200
 
     os.remove(static_file_path)

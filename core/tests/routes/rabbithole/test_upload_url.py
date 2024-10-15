@@ -1,9 +1,9 @@
 from tests.utils import get_declarative_memory_contents
 
 
-def test_rabbithole_upload_invalid_url(client):
+def test_rabbithole_upload_invalid_url(client, cheshire_cat):
     payload = {"url": "https://www.example.sbadabim"}
-    response = client.post("/rabbithole/web/", json=payload)
+    response = client.post("/rabbithole/web/", json=payload, headers={"agent_id": cheshire_cat.id})
 
     # check response
     assert response.status_code == 400
@@ -11,13 +11,13 @@ def test_rabbithole_upload_invalid_url(client):
     assert json["detail"]["error"] == "Unable to reach the URL"
 
     # check declarative memory is still empty
-    declarative_memories = get_declarative_memory_contents(client)
+    declarative_memories = get_declarative_memory_contents(client, cheshire_cat)
     assert len(declarative_memories) == 0
 
 
-def test_rabbithole_upload_url(client):
+def test_rabbithole_upload_url(client, cheshire_cat):
     payload = {"url": "https://www.example.com"}
-    response = client.post("/rabbithole/web/", json=payload)
+    response = client.post("/rabbithole/web/", json=payload, headers={"agent_id": cheshire_cat.id})
 
     # check response
     assert response.status_code == 200
@@ -26,11 +26,11 @@ def test_rabbithole_upload_url(client):
     assert json["url"] == payload["url"]
 
     # check declarative memories have been stored
-    declarative_memories = get_declarative_memory_contents(client)
+    declarative_memories = get_declarative_memory_contents(client, cheshire_cat)
     assert len(declarative_memories) == 1
 
 
-def test_rabbithole_upload_url_with_metadata(client):
+def test_rabbithole_upload_url_with_metadata(client, cheshire_cat):
     metadata = {
         "domain": "example.com",
         "scraped_with": "scrapy",
@@ -38,7 +38,7 @@ def test_rabbithole_upload_url_with_metadata(client):
     }
     payload = {"url": "https://www.example.com", "metadata": metadata}
 
-    response = client.post("/rabbithole/web/", json=payload)
+    response = client.post("/rabbithole/web/", json=payload, headers={"agent_id": cheshire_cat.id})
 
     # check response
     assert response.status_code == 200
@@ -47,7 +47,7 @@ def test_rabbithole_upload_url_with_metadata(client):
     assert json["url"] == payload["url"]
 
     # check declarative memories have been stored
-    declarative_memories = get_declarative_memory_contents(client)
+    declarative_memories = get_declarative_memory_contents(client, cheshire_cat)
     assert len(declarative_memories) == 1
     assert "when" in declarative_memories[0]["metadata"]
     assert "source" in declarative_memories[0]["metadata"]
