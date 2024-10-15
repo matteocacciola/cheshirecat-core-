@@ -1,7 +1,11 @@
 import shutil
-from uuid import UUID
+from uuid import UUID, uuid4
 from urllib.parse import urlencode
 from concurrent.futures import ThreadPoolExecutor
+
+from cat.auth.auth_utils import hash_password
+from cat.auth.permissions import get_base_permissions
+from cat.db import crud_users
 
 
 def get_class_from_decorated_singleton(singleton):
@@ -131,3 +135,19 @@ async def async_run_job(job, obj, loop):
     Asynchronously run job_on_idle_strays in a separate thread.
     """
     return await loop.run_in_executor(None, run_job_in_thread, job, obj, loop)
+
+
+def create_basic_user(agent_id: str) -> None:
+    user_id = str(uuid4())
+
+    basic_user = {
+        user_id: {
+            "id": user_id,
+            "username": "user",
+            "password": hash_password("user"),
+            # user has minor permissions
+            "permissions": get_base_permissions(),
+        }
+    }
+
+    crud_users.update_users(agent_id, basic_user)

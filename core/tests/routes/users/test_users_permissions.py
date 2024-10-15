@@ -1,16 +1,15 @@
 import pytest
 
+from cat.db import crud_users
+
+from tests.utils import create_basic_user
+
+
 # test endpoints with different user permissions
 # NOTE: we are using here the secure_client:
 # - CCAT_API_KEY, CCAT_API_KEY_WS and CCAT_JWT_SECRET are active
 # - we will auth with JWT
 
-
-@pytest.mark.parametrize("credentials", [
-    # default users: `admin` has USERS permissions, `user` has not
-    {"username": "user", "password": "user"},
-    {"username": "admin", "password": "admin"},
-])
 @pytest.mark.parametrize("endpoint", [
     {
         "method": "GET",
@@ -40,7 +39,11 @@ import pytest
 ])
 
 
-def test_users_permissions(secure_client, cheshire_cat, credentials, endpoint):
+def test_users_permissions(secure_client, cheshire_cat, endpoint):
+    agent_id = cheshire_cat.id
+    create_basic_user(agent_id)
+    credentials = {"username": "user", "password": "user"}
+
     # create new user that will be edited by calling the endpoints
     # we create it using directly CCAT_API_KEY
     response = secure_client.post(
@@ -52,7 +55,7 @@ def test_users_permissions(secure_client, cheshire_cat, credentials, endpoint):
         headers={
             "Authorization": f"Bearer meow_http",
             "user_id": "admin",
-            "agent_id": cheshire_cat.id
+            "agent_id": agent_id
         }
     )
     assert response.status_code == 200
@@ -87,3 +90,5 @@ def test_users_permissions(secure_client, cheshire_cat, credentials, endpoint):
         assert res.status_code == 200
     else:
         assert res.status_code == 403
+
+    crud_users.update_users(agent_id, {})

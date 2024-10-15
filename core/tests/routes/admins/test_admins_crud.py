@@ -114,22 +114,22 @@ def test_update_admin(client):
     assert data["permissions"] == get_full_admin_permissions()
 
     # change permissions
-    updated_admin = {"permissions": {"MEMORY": ["READ"]}}
+    updated_admin = {"permissions": {"EMBEDDER": ["READ"]}}
     response = client.put(f"/admins/{admin_id}", json=updated_admin)
     assert response.status_code == 200
     data = response.json()
     check_user_fields(data)
     assert data["username"] == "Alice2"
-    assert data["permissions"] == {"MEMORY": ["READ"]}
+    assert data["permissions"] == {"EMBEDDER": ["READ"]}
 
     # change username and permissions
-    updated_admin = {"username": "Alice3", "permissions": {"UPLOAD":["WRITE"]}}
+    updated_admin = {"username": "Alice3", "permissions": {"EMBEDDER": ["WRITE"]}}
     response = client.put(f"/admins/{admin_id}", json=updated_admin)
     assert response.status_code == 200
     data = response.json()
     check_user_fields(data)
     assert data["username"] == "Alice3"
-    assert data["permissions"] == {"UPLOAD":["WRITE"]}
+    assert data["permissions"] == {"EMBEDDER": ["WRITE"]}
 
     # get list of admins
     response = client.get("/admins")
@@ -140,7 +140,7 @@ def test_update_admin(client):
         check_user_fields(d)
         assert d["username"] in ["admin", "Alice3"]
         if d["username"] == "Alice3":
-            assert d["permissions"] == {"UPLOAD": ["WRITE"]}
+            assert d["permissions"] == {"EMBEDDER": ["WRITE"]}
         else:
             assert d["permissions"] == get_full_admin_permissions()
 

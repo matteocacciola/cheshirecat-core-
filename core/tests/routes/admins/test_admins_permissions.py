@@ -8,9 +8,6 @@ from cat.env import get_env
 # - we will auth with JWT
 
 
-@pytest.mark.parametrize("credentials", [
-    {"username": "admin", "password": "admin"},
-])
 @pytest.mark.parametrize("endpoint", [
     {
         "method": "GET",
@@ -40,7 +37,9 @@ from cat.env import get_env
 ])
 
 
-def test_admins_permissions(secure_client, credentials, endpoint):
+def test_admins_permissions(secure_client, endpoint):
+    credentials = {"username": "admin", "password": get_env("CCAT_ADMIN_DEFAULT_PASSWORD")}
+
     # create new admin that will be edited by calling the endpoints
     # we create it using directly CCAT_API_KEY
     response = secure_client.post(

@@ -2,7 +2,7 @@ from pydantic import BaseModel, Field, ConfigDict
 from typing import List, Dict
 from fastapi import Depends, APIRouter, HTTPException
 
-from cat.db import crud
+from cat.db import crud_users
 from cat.auth.permissions import AuthPermission, AuthResource, get_base_permissions
 from cat.auth.auth_utils import hash_password
 from cat.auth.connection import HTTPAuth, ContextualCats
@@ -38,7 +38,7 @@ def create_user(
     cats: ContextualCats = Depends(HTTPAuth(AuthResource.USERS, AuthPermission.WRITE)),
 ):
     agent_id = cats.cheshire_cat.id
-    created_user = crud.create_user(agent_id, new_user.model_dump())
+    created_user = crud_users.create_user(agent_id, new_user.model_dump())
     if not created_user:
         raise HTTPException(status_code=403, detail={"error": "Cannot duplicate user"})
 
@@ -51,7 +51,7 @@ def read_users(
     limit: int = 100,
     cats: ContextualCats = Depends(HTTPAuth(AuthResource.USERS, AuthPermission.LIST)),
 ):
-    users_db = crud.get_users(cats.cheshire_cat.id)
+    users_db = crud_users.get_users(cats.cheshire_cat.id)
 
     users = list(users_db.values())[skip: skip + limit]
     return users
@@ -62,7 +62,7 @@ def read_user(
     user_id: str,
     cats: ContextualCats = Depends(HTTPAuth(AuthResource.USERS, AuthPermission.READ)),
 ):
-    users_db = crud.get_users(cats.cheshire_cat.id)
+    users_db = crud_users.get_users(cats.cheshire_cat.id)
 
     if user_id not in users_db:
         raise HTTPException(status_code=404, detail={"error": "User not found"})
@@ -76,7 +76,7 @@ def update_user(
     cats: ContextualCats = Depends(HTTPAuth(AuthResource.USERS, AuthPermission.EDIT)),
 ):
     agent_id = cats.cheshire_cat.id
-    stored_user = crud.get_user(agent_id, user_id)
+    stored_user = crud_users.get_user(agent_id, user_id)
     if not stored_user:
         raise HTTPException(status_code=404, detail={"error": "User not found"})
     
@@ -84,7 +84,7 @@ def update_user(
         user.password = hash_password(user.password)
     updated_info = stored_user | user.model_dump(exclude_unset=True)
 
-    crud.update_user(agent_id, user_id, updated_info)
+    crud_users.update_user(agent_id, user_id, updated_info)
     return updated_info
 
 
@@ -94,7 +94,7 @@ def delete_user(
     cats: ContextualCats = Depends(HTTPAuth(AuthResource.USERS, AuthPermission.DELETE)),
 ):
     agent_id = cats.cheshire_cat.id
-    deleted_user = crud.delete_user(agent_id, user_id)
+    deleted_user = crud_users.delete_user(agent_id, user_id)
     if not deleted_user:
         raise HTTPException(status_code=404, detail={"error": "User not found"})
 

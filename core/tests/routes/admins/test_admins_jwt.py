@@ -33,7 +33,7 @@ def test_refuse_issue_jwt(client):
 async def test_issue_jwt(client, lizard, cheshire_cat):
     creds = {
         "username": "admin",
-        "password": "admin"
+        "password": get_env("CCAT_ADMIN_DEFAULT_PASSWORD"),
     }
 
     res = client.post("/admins/token", json=creds)

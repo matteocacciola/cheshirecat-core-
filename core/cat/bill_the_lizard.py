@@ -1,10 +1,12 @@
 import asyncio
 from typing import Dict, List
+from uuid import uuid4
 
 from cat import utils
 from cat.agents.main_agent import MainAgent
+from cat.auth.auth_utils import hash_password
 from cat.auth.permissions import get_full_admin_permissions
-from cat.db import crud, models
+from cat.db import crud, models, crud_users
 from cat.env import get_env
 from cat.exceptions import LoadMemoryException
 from cat.factory.custom_auth_handler import CoreAuthHandler
@@ -60,8 +62,21 @@ class BillTheLizard:
         # Main agent instance (for reasoning)
         self.main_agent = MainAgent()
 
-        if not crud.get_users(self.__key):
-            crud.create_basic_users(self.__key, get_full_admin_permissions())
+        # Initialize the default admin if not present
+        if not crud_users.get_users(self.__key):
+            self.__initialize_users()
+
+    def __initialize_users(self):
+            admin_id = str(uuid4())
+            crud_users.update_users(self.__key, {
+                admin_id: {
+                    "id": admin_id,
+                    "username": "admin",
+                    "password": hash_password(get_env("CCAT_ADMIN_DEFAULT_PASSWORD")),
+                    # admin has all permissions
+                    "permissions": get_full_admin_permissions()
+                }
+            })
 
     def load_language_embedder(self) -> EmbedderSettings:
         """Hook into the embedder selection.

@@ -29,7 +29,7 @@ def test_get_users(client, cheshire_cat):
     assert response.status_code == 200
     data = response.json()
     assert isinstance(data, list)
-    assert len(data) == 2 # admin and user
+    assert len(data) == 0 # admin and user
 
     # create user
     create_new_user(client, "/users", headers={"agent_id": cheshire_cat.id})
@@ -39,16 +39,13 @@ def test_get_users(client, cheshire_cat):
     assert response.status_code == 200
     data = response.json()
     assert isinstance(data, list)
-    assert len(data) == 3 # admin, user and Alice
+    assert len(data) == 1
 
     # check users integrity and values
-    for idx, d in enumerate(data):
-        check_user_fields(d)
-        assert d["username"] in ["admin", "user", "Alice"]
-        if d["username"] == "admin":
-            assert d["permissions"] == get_full_permissions()
-        else:
-            assert d["permissions"] == get_base_permissions()
+    d = data[0]
+    check_user_fields(d)
+    assert d["username"] == "Alice"
+    assert d["permissions"] == get_base_permissions()
 
 
 def test_get_user(client, cheshire_cat):
@@ -136,16 +133,12 @@ def test_update_user(client, cheshire_cat):
     response = client.get("/users", headers={"agent_id": cheshire_cat.id})
     assert response.status_code == 200
     data = response.json()
-    assert len(data) == 3
-    for d in data:
-        check_user_fields(d)
-        assert d["username"] in ["admin", "user", "Alice3"]
-        if d["username"] == "Alice3":
-            assert d["permissions"] == {"UPLOAD":["WRITE"]}
-        elif d["username"] == "admin":
-            assert d["permissions"] == get_full_permissions()
-        else:
-            assert d["permissions"] == get_base_permissions()
+    assert len(data) == 1
+
+    d = data[0]
+    check_user_fields(d)
+    assert d["username"] == "Alice3"
+    assert d["permissions"] == {"UPLOAD":["WRITE"]}
 
 
 def test_delete_user(client, cheshire_cat):
@@ -173,9 +166,7 @@ def test_delete_user(client, cheshire_cat):
     assert response.status_code == 200
     data = response.json()
     assert isinstance(data, list)
-    assert len(data) == 2 # admin and user
-    assert data[0]["username"] == "admin"
-    assert data[1]["username"] == "user"
+    assert len(data) == 0
 
 
 # note: using secure client (api key set both for http and ws)
@@ -204,6 +195,4 @@ def test_no_access_if_api_keys_active(secure_client, cheshire_cat):
     headers = {"Authorization": f"Bearer meow_http", "agent_id": cheshire_cat.id}
     response = secure_client.get("/users", headers=headers)
     assert response.status_code == 200
-    assert len(response.json()) == 2
-    assert response.json()[0]["username"] == "admin"
-    assert response.json()[1]["username"] == "user"
+    assert len(response.json()) == 0

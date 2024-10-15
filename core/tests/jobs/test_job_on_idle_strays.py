@@ -3,7 +3,7 @@ import os
 
 from cat.auth.permissions import AuthUserInfo, get_base_permissions
 from cat.bill_the_lizard import job_on_idle_strays, BillTheLizard
-from cat.db import crud
+from cat.db import crud_users
 from cat.looking_glass.stray_cat import StrayCat
 
 from tests.utils import async_run_job
@@ -26,7 +26,7 @@ def test_job_on_idle_strays():
 
     assert cheshire_cat.get_stray(stray.user_id) is None
     assert cheshire_cat.has_strays() is False
-    assert crud.get_user(lizard.config_key, stray.user_id) is None
+    assert crud_users.get_user(lizard.config_key, stray.user_id) is None
     assert lizard.has_cheshire_cats is False
 
     # clean up
