@@ -3,7 +3,7 @@ from fastapi import Depends, APIRouter, HTTPException
 from cat.auth.permissions import AuthPermission, AuthResource
 from cat.auth.connection import HTTPAuth, ContextualCats
 from cat.db import models
-from cat.db import crud
+from cat.db.cruds import settings as crud_settings
 
 router = APIRouter()
 
@@ -15,7 +15,7 @@ def get_settings(
 ):
     """Get the entire list of settings available in the database"""
 
-    settings = crud.get_settings(cats.cheshire_cat.id, search=search)
+    settings = crud_settings.get_settings(cats.cheshire_cat.id, search=search)
 
     return {"settings": settings}
 
@@ -31,7 +31,7 @@ def create_setting(
     payload = models.Setting(**payload.model_dump())
 
     # save to DB
-    new_setting = crud.create_setting(cats.cheshire_cat.id, payload)
+    new_setting = crud_settings.create_setting(cats.cheshire_cat.id, payload)
 
     return {"setting": new_setting}
 
@@ -43,7 +43,7 @@ def get_setting(
 ):
     """Get the specific setting from the database"""
 
-    setting = crud.get_setting_by_id(cats.cheshire_cat.id, setting_id)
+    setting = crud_settings.get_setting_by_id(cats.cheshire_cat.id, setting_id)
     if not setting:
         raise HTTPException(
             status_code=404,
@@ -65,7 +65,7 @@ def update_setting(
     agent_id = cats.cheshire_cat.id
 
     # does the setting exist?
-    setting = crud.get_setting_by_id(agent_id, setting_id)
+    setting = crud_settings.get_setting_by_id(agent_id, setting_id)
     if not setting:
         raise HTTPException(
             status_code=404,
@@ -79,7 +79,7 @@ def update_setting(
     payload.setting_id = setting_id  # force this to be the setting_id
 
     # save to DB
-    updated_setting = crud.update_setting_by_id(agent_id, payload)
+    updated_setting = crud_settings.update_setting_by_id(agent_id, payload)
 
     return {"setting": updated_setting}
 
@@ -94,7 +94,7 @@ def delete_setting(
     agent_id = cats.cheshire_cat.id
 
     # does the setting exist?
-    setting = crud.get_setting_by_id(agent_id, setting_id)
+    setting = crud_settings.get_setting_by_id(agent_id, setting_id)
     if not setting:
         raise HTTPException(
             status_code=404,
@@ -104,6 +104,6 @@ def delete_setting(
         )
 
     # delete
-    crud.delete_setting_by_id(agent_id, setting_id)
+    crud_settings.delete_setting_by_id(agent_id, setting_id)
 
     return {"deleted": setting_id}

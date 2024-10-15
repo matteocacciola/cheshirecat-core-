@@ -2,14 +2,14 @@ from typing import Dict
 from uuid import uuid4
 
 from cat.auth.auth_utils import hash_password, check_password
-from cat.db import crud
+from cat.db.cruds import settings as crud_settings
 from cat.db.models import Setting
 
 
 # We store users in a setting and when there will be a graph db in the cat, we will store them there.
 # create admin user
 def get_users(key_id: str) -> Dict[str, Dict]:
-    users = crud.get_setting_by_name(key_id, "users")
+    users = crud_settings.get_setting_by_name(key_id, "users")
     return users["value"] if users else {}
 
 
@@ -71,7 +71,7 @@ def delete_user(key_id: str, user_id: str) -> Dict | None:
 def update_users(key_id, users: Dict[str, Dict]) -> Dict | None:
     updated_users = Setting(name="users", value=users)
 
-    return crud.upsert_setting_by_name(key_id, updated_users)
+    return crud_settings.upsert_setting_by_name(key_id, updated_users)
 
 
 def get_user_by_credentials(key_id: str, username: str, password: str) -> Dict | None:

@@ -6,7 +6,7 @@ import traceback
 from copy import deepcopy
 from typing import List, Dict
 
-from cat.db import crud
+from cat.db.cruds import settings as crud_settings
 from cat.db.models import Setting
 from cat.log import log
 from cat.mad_hatter.plugin_extractor import PluginExtractor
@@ -161,7 +161,7 @@ class MadHatter:
         return plugin_id in self.plugins.keys()
 
     def load_active_plugins_from_db(self):
-        active_plugins = crud.get_setting_by_name(self.__config_key, "active_plugins")
+        active_plugins = crud_settings.get_setting_by_name(self.__config_key, "active_plugins")
 
         if active_plugins is None:
             active_plugins = []
@@ -218,7 +218,7 @@ class MadHatter:
 
         # update DB with list of active plugins, delete duplicate plugins
         active_plugins = list(set(self.active_plugins))
-        crud.upsert_setting_by_name(self.__config_key, Setting(name="active_plugins", value=active_plugins))
+        crud_settings.upsert_setting_by_name(self.__config_key, Setting(name="active_plugins", value=active_plugins))
 
         # update cache and embeddings
         self.sync_hooks_tools_and_forms()

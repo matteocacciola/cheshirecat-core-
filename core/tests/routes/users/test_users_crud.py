@@ -1,4 +1,4 @@
-from cat.auth.permissions import get_base_permissions, get_full_permissions
+from cat.auth.permissions import get_base_permissions
 from tests.utils import create_new_user, check_user_fields
 
 
@@ -29,7 +29,7 @@ def test_get_users(client, cheshire_cat):
     assert response.status_code == 200
     data = response.json()
     assert isinstance(data, list)
-    assert len(data) == 0 # admin and user
+    assert len(data) == 1 # user
 
     # create user
     create_new_user(client, "/users", headers={"agent_id": cheshire_cat.id})
@@ -39,13 +39,13 @@ def test_get_users(client, cheshire_cat):
     assert response.status_code == 200
     data = response.json()
     assert isinstance(data, list)
-    assert len(data) == 1
+    assert len(data) == 2
 
     # check users integrity and values
-    d = data[0]
-    check_user_fields(d)
-    assert d["username"] == "Alice"
-    assert d["permissions"] == get_base_permissions()
+    for idx, d in enumerate(data):
+        check_user_fields(d)
+        assert d["username"] in ["user", "Alice"]
+        assert d["permissions"] == get_base_permissions()
 
 
 def test_get_user(client, cheshire_cat):
@@ -133,12 +133,14 @@ def test_update_user(client, cheshire_cat):
     response = client.get("/users", headers={"agent_id": cheshire_cat.id})
     assert response.status_code == 200
     data = response.json()
-    assert len(data) == 1
-
-    d = data[0]
-    check_user_fields(d)
-    assert d["username"] == "Alice3"
-    assert d["permissions"] == {"UPLOAD":["WRITE"]}
+    assert len(data) == 2
+    for d in data:
+        check_user_fields(d)
+        assert d["username"] in ["user", "Alice3"]
+        if d["username"] == "Alice3":
+            assert d["permissions"] == {"UPLOAD": ["WRITE"]}
+        else:
+            assert d["permissions"] == get_base_permissions()
 
 
 def test_delete_user(client, cheshire_cat):
@@ -166,7 +168,7 @@ def test_delete_user(client, cheshire_cat):
     assert response.status_code == 200
     data = response.json()
     assert isinstance(data, list)
-    assert len(data) == 0
+    assert len(data) == 1
 
 
 # note: using secure client (api key set both for http and ws)
@@ -195,4 +197,5 @@ def test_no_access_if_api_keys_active(secure_client, cheshire_cat):
     headers = {"Authorization": f"Bearer meow_http", "agent_id": cheshire_cat.id}
     response = secure_client.get("/users", headers=headers)
     assert response.status_code == 200
-    assert len(response.json()) == 0
+    assert len(response.json()) == 1
+    assert response.json()[0]["username"] == "user"

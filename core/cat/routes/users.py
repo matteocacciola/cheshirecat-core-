@@ -2,10 +2,10 @@ from pydantic import BaseModel, Field, ConfigDict
 from typing import List, Dict
 from fastapi import Depends, APIRouter, HTTPException
 
-from cat.db import crud_users
 from cat.auth.permissions import AuthPermission, AuthResource, get_base_permissions
 from cat.auth.auth_utils import hash_password
 from cat.auth.connection import HTTPAuth, ContextualCats
+from cat.db.cruds import users as crud_users
 
 router = APIRouter()
 

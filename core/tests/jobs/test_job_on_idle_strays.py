@@ -3,7 +3,7 @@ import os
 
 from cat.auth.permissions import AuthUserInfo, get_base_permissions
 from cat.bill_the_lizard import job_on_idle_strays, BillTheLizard
-from cat.db import crud_users
+from cat.db.cruds import users as crud_users
 from cat.looking_glass.stray_cat import StrayCat
 
 from tests.utils import async_run_job

@@ -3,7 +3,8 @@ from fastapi import APIRouter, Body, HTTPException, Depends
 
 from cat.auth.connection import HTTPAuth, ContextualCats
 from cat.auth.permissions import AuthPermission, AuthResource
-from cat.db import crud, models
+from cat.db import models
+from cat.db.cruds import settings as crud_settings
 from cat.factory.auth_handler import get_auth_handlers_schemas
 
 router = APIRouter()
@@ -18,11 +19,11 @@ def get_auth_handler_settings(
     agent_id = cats.cheshire_cat.id
 
     # get selected AuthHandler
-    selected = crud.get_setting_by_name(agent_id, "auth_handler_selected")
+    selected = crud_settings.get_setting_by_name(agent_id, "auth_handler_selected")
     if selected is not None:
         selected = selected["value"]["name"]
 
-    saved_settings = crud.get_settings_by_category(agent_id, "auth_handler_factory")
+    saved_settings = crud_settings.get_settings_by_category(agent_id, "auth_handler_factory")
     saved_settings = {s["name"]: s for s in saved_settings}
 
     settings = [{
@@ -55,7 +56,7 @@ def get_auth_handler_setting(
             },
         )
 
-    setting = crud.get_setting_by_name(cats.cheshire_cat.id, auth_handler_name)
+    setting = crud_settings.get_setting_by_name(cats.cheshire_cat.id, auth_handler_name)
     schema = auth_handler_schemas[auth_handler_name]
 
     setting = {} if setting is None else setting["value"]
@@ -85,14 +86,14 @@ def upsert_authenticator_setting(
             },
         )
 
-    crud.upsert_setting_by_name(
+    crud_settings.upsert_setting_by_name(
         agent_id,
         models.Setting(
             name=auth_handler_name, value=payload, category="auth_handler_factory"
         ),
     )
 
-    crud.upsert_setting_by_name(
+    crud_settings.upsert_setting_by_name(
         agent_id,
         models.Setting(
             name="auth_handler_selected",

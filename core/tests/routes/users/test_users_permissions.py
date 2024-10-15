@@ -1,10 +1,5 @@
 import pytest
 
-from cat.db import crud_users
-
-from tests.utils import create_basic_user
-
-
 # test endpoints with different user permissions
 # NOTE: we are using here the secure_client:
 # - CCAT_API_KEY, CCAT_API_KEY_WS and CCAT_JWT_SECRET are active
@@ -41,7 +36,6 @@ from tests.utils import create_basic_user
 
 def test_users_permissions(secure_client, cheshire_cat, endpoint):
     agent_id = cheshire_cat.id
-    create_basic_user(agent_id)
     credentials = {"username": "user", "password": "user"}
 
     # create new user that will be edited by calling the endpoints
@@ -90,5 +84,3 @@ def test_users_permissions(secure_client, cheshire_cat, endpoint):
         assert res.status_code == 200
     else:
         assert res.status_code == 403
-
-    crud_users.update_users(agent_id, {})

@@ -3,12 +3,12 @@ import pytest
 import time
 import jwt
 
-from cat.db import crud_users
+from cat.db.cruds import users as crud_users
 from cat.env import get_env
 from cat.auth.permissions import AuthPermission, AuthResource
 from cat.auth.auth_utils import is_jwt
 
-from tests.utils import send_websocket_message, create_basic_user
+from tests.utils import send_websocket_message
 
 # TODOAUTH: test token refresh / invalidation / logoff
 
@@ -26,7 +26,6 @@ def test_is_jwt(client, cheshire_cat):
 
 def test_refuse_issue_jwt(client, cheshire_cat):
     agent_id = cheshire_cat.id
-    create_basic_user(agent_id)
 
     creds = {"username": "user", "password": "wrong"}
     res = client.post("/auth/token", json=creds, headers={"agent_id": agent_id})
@@ -36,13 +35,10 @@ def test_refuse_issue_jwt(client, cheshire_cat):
     json = res.json()
     assert json["detail"]["error"] == "Invalid Credentials"
 
-    crud_users.update_users(agent_id, {})
-
 
 @pytest.mark.asyncio  # to test async functions
 async def test_issue_jwt(client, lizard, cheshire_cat):
     agent_id = cheshire_cat.id
-    create_basic_user(agent_id)
 
     creds = { "username": "user","password": "user"}
 
@@ -75,8 +71,6 @@ async def test_issue_jwt(client, lizard, cheshire_cat):
         assert (payload["exp"] - time.time() < 60 * 60 * 24)  # expires in less than 24 hours
     except jwt.exceptions.DecodeError:
         assert False
-
-    crud_users.update_users(agent_id, {})
 
 
 @pytest.mark.asyncio
@@ -126,7 +120,6 @@ def test_jwt_expiration(secure_client, cheshire_cat):
     assert response.json()["detail"]["error"] == "Invalid Credentials"
 
     # request JWT
-    create_basic_user(agent_id)
     creds = {"username": "user", "password": "user"}
     res = secure_client.post("/auth/token", json=creds, headers={"agent_id": agent_id})
     assert res.status_code == 200
@@ -152,8 +145,6 @@ def test_jwt_expiration(secure_client, cheshire_cat):
     else:
         del os.environ["CCAT_JWT_EXPIRE_MINUTES"]
 
-    crud_users.update_users(agent_id, {})
-
 
 # test ws and http endpoints can get user_id from JWT
 # NOTE: here we are using the secure_client fixture (see conftest.py)
@@ -166,16 +157,13 @@ def test_jwt_imposes_user_id(secure_client, cheshire_cat):
     assert response.json()["detail"]["error"] == "Invalid Credentials"
 
     # request JWT
-    create_basic_user(agent_id)
     creds = {"username": "user", "password": "user"}
     res = secure_client.post("/auth/token", json=creds, headers={"agent_id": agent_id})
     assert res.status_code == 200
     token = res.json()["access_token"]
 
     # we will send this message both via http and ws, having the user_id carried by the JWT
-    message = {
-        "text": "hey"
-    }
+    message = {"text": "hey"}
 
     # send user specific message via http
     headers = {"Authorization": f"Bearer {token}"}
@@ -201,13 +189,10 @@ def test_jwt_imposes_user_id(secure_client, cheshire_cat):
         assert em["metadata"]["source"] == user_db["id"]
         assert em["page_content"] == "hey"
 
-    crud_users.update_users(agent_id, {})
-
 
 # test that a JWT signed knowing the secret, passes
 def test_jwt_self_signature_passes_on_unsecure_client(client, cheshire_cat):
     agent_id = cheshire_cat.id
-    create_basic_user(agent_id)
 
     # get list of users (we need the ids)
     response = client.get("/users", headers={"agent_id": agent_id})
@@ -232,13 +217,10 @@ def test_jwt_self_signature_passes_on_unsecure_client(client, cheshire_cat):
         response = send_websocket_message(message, client, query_params=params, agent_id=agent_id)
         assert "You did not configure" in response["content"]
 
-    crud_users.update_users(agent_id, {})
-
 
 # test that a JWT signed with the wrong secret is not accepted
 def test_jwt_self_signature_fails_on_secure_client(secure_client, cheshire_cat):
     agent_id = cheshire_cat.id
-    create_basic_user(agent_id)
 
     # get list of users (we need the ids)
     response = secure_client.get(
@@ -269,5 +251,3 @@ def test_jwt_self_signature_fails_on_secure_client(secure_client, cheshire_cat):
         with pytest.raises(Exception) as e_info:
             send_websocket_message(message, secure_client, query_params=params, agent_id=agent_id)
             assert str(e_info.type.__name__) == "WebSocketDisconnect"
-
-    crud_users.update_users(agent_id, {})

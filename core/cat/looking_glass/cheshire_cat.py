@@ -1,6 +1,8 @@
 import time
 from copy import deepcopy
 from typing import List, Dict
+from uuid import uuid4
+
 from langchain_community.document_loaders.parsers.pdf import PDFMinerParser
 from langchain_community.document_loaders.parsers.html.bs4 import BS4HTMLParser
 from langchain_community.document_loaders.parsers.txt import TextParser
@@ -14,7 +16,11 @@ from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.output_parsers.string import StrOutputParser
 
 import cat.factory.auth_handler as auth_handlers
-from cat.db import crud, models, crud_users
+from cat.auth.auth_utils import hash_password
+from cat.auth.permissions import get_base_permissions
+from cat.db import models
+from cat.db.cruds import settings as crud_settings
+from cat.db.cruds import users as crud_users
 from cat.factory.embedder import EmbedderSettings
 from cat.factory.llm import LLMDefaultConfig
 from cat.factory.llm import get_llm_from_name
@@ -82,6 +88,10 @@ class CheshireCat:
         self.mad_hatter.on_finish_plugins_sync_callback = self.embed_procedures
         self.embed_procedures()  # first time launched manually
 
+        # Initialize the default user if not present
+        if not crud_users.get_users(self.id):
+            self.__initialize_users()
+
         # allows plugins to do something after the cat bootstrap is complete
         self.mad_hatter.execute_hook("after_cat_bootstrap", cat=self)
 
@@ -96,6 +106,19 @@ class CheshireCat:
 
     def __repr__(self):
         return f"CheshireCat(agent_id={self.id})"
+
+    def __initialize_users(self):
+        user_id = str(uuid4())
+
+        crud_users.update_users(self.id, {
+            user_id: {
+                "id": user_id,
+                "username": "user",
+                "password": hash_password("user"),
+                # user has minor permissions
+                "permissions": get_base_permissions(),
+            }
+        })
 
     def __next_stray(self, user_id: str) -> "StrayCat":
         """
@@ -164,7 +187,7 @@ class CheshireCat:
 
         """
 
-        selected_llm = crud.get_setting_by_name(self.id, "llm_selected")
+        selected_llm = crud_settings.get_setting_by_name(self.id, "llm_selected")
 
         if selected_llm is None:
             # return default LLM
@@ -175,7 +198,7 @@ class CheshireCat:
             factory_class = get_llm_from_name(selected_llm_class, self.mad_hatter)
 
             # obtain configuration and instantiate LLM
-            selected_llm_config = crud.get_setting_by_name(self.id, selected_llm_class)
+            selected_llm_config = crud_settings.get_setting_by_name(self.id, selected_llm_class)
             try:
                 llm = factory_class.get_llm_from_config(selected_llm_config["value"])
             except Exception:
@@ -188,18 +211,18 @@ class CheshireCat:
 
     def load_auth(self):
         # Custom auth_handler # TODOAUTH: change the name to custom_auth
-        selected_auth_handler = crud.get_setting_by_name(self.id, "auth_handler_selected")
+        selected_auth_handler = crud_settings.get_setting_by_name(self.id, "auth_handler_selected")
 
         # if no auth_handler is saved, use default one and save to db
         if selected_auth_handler is None:
             # create the auth settings
-            crud.upsert_setting_by_name(
+            crud_settings.upsert_setting_by_name(
                 self.id,
                 models.Setting(
                     name="CoreOnlyAuthConfig", category="auth_handler_factory", value={}
                 ),
             )
-            crud.upsert_setting_by_name(
+            crud_settings.upsert_setting_by_name(
                 self.id,
                 models.Setting(
                     name="auth_handler_selected",
@@ -209,14 +232,14 @@ class CheshireCat:
             )
 
             # reload from db
-            selected_auth_handler = crud.get_setting_by_name(self.id, "auth_handler_selected")
+            selected_auth_handler = crud_settings.get_setting_by_name(self.id, "auth_handler_selected")
 
         # get AuthHandler factory class
         selected_auth_handler_class = selected_auth_handler["value"]["name"]
         factory_class = auth_handlers.get_auth_handler_from_name(selected_auth_handler_class, self.mad_hatter)
 
         # obtain configuration and instantiate AuthHandler
-        selected_auth_handler_config = crud.get_setting_by_name(self.id, selected_auth_handler_class)
+        selected_auth_handler_config = crud_settings.get_setting_by_name(self.id, selected_auth_handler_class)
         try:
             auth_handler = factory_class.get_auth_handler_from_config(selected_auth_handler_config["value"])
         except Exception:
@@ -403,13 +426,13 @@ class CheshireCat:
             The dictionary resuming the new name and settings of the LLM
         """
         # create the setting and upsert it
-        final_setting = crud.upsert_setting_by_name(
+        final_setting = crud_settings.upsert_setting_by_name(
             self.id,
             models.Setting(name=language_model_name, category="llm_factory", value=settings),
         )
 
         # general LLM settings are saved in settings table under "llm" category
-        crud.upsert_setting_by_name(
+        crud_settings.upsert_setting_by_name(
             self.id,
             models.Setting(name="llm_selected", category="llm", value={"name": language_model_name}),
         )

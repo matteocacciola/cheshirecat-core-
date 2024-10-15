@@ -6,7 +6,9 @@ from cat import utils
 from cat.agents.main_agent import MainAgent
 from cat.auth.auth_utils import hash_password
 from cat.auth.permissions import get_full_admin_permissions
-from cat.db import crud, models, crud_users
+from cat.db import models
+from cat.db.cruds import settings as crud_settings
+from cat.db.cruds import users as crud_users
 from cat.env import get_env
 from cat.exceptions import LoadMemoryException
 from cat.factory.custom_auth_handler import CoreAuthHandler
@@ -67,16 +69,17 @@ class BillTheLizard:
             self.__initialize_users()
 
     def __initialize_users(self):
-            admin_id = str(uuid4())
-            crud_users.update_users(self.__key, {
-                admin_id: {
-                    "id": admin_id,
-                    "username": "admin",
-                    "password": hash_password(get_env("CCAT_ADMIN_DEFAULT_PASSWORD")),
-                    # admin has all permissions
-                    "permissions": get_full_admin_permissions()
-                }
-            })
+        admin_id = str(uuid4())
+
+        crud_users.update_users(self.__key, {
+            admin_id: {
+                "id": admin_id,
+                "username": "admin",
+                "password": hash_password(get_env("CCAT_ADMIN_DEFAULT_PASSWORD")),
+                # admin has all permissions
+                "permissions": get_full_admin_permissions()
+            }
+        })
 
     def load_language_embedder(self) -> EmbedderSettings:
         """Hook into the embedder selection.
@@ -89,7 +92,7 @@ class BillTheLizard:
             Selected embedder model.
         """
 
-        selected_embedder = crud.get_setting_by_name(self.__key, "embedder_selected")
+        selected_embedder = crud_settings.get_setting_by_name(self.__key, "embedder_selected")
 
         if selected_embedder is not None:
             # get Embedder factory class
@@ -97,7 +100,7 @@ class BillTheLizard:
             factory_class = get_embedder_from_name(selected_embedder_class, self.mad_hatter)
 
             # obtain configuration and instantiate Embedder
-            selected_embedder_config = crud.get_setting_by_name(self.__key, selected_embedder_class)
+            selected_embedder_config = crud_settings.get_setting_by_name(self.__key, selected_embedder_class)
             try:
                 embedder = factory_class.get_embedder_from_config(selected_embedder_config["value"])
             except AttributeError:
@@ -127,11 +130,11 @@ class BillTheLizard:
 
         # get selected config if any
         # embedder selected configuration is saved under "embedder_selected" name
-        selected = crud.get_setting_by_name(self.__key, "embedder_selected")
+        selected = crud_settings.get_setting_by_name(self.__key, "embedder_selected")
 
         # create the setting and upsert it
         # embedder type and config are saved in settings table under "embedder_factory" category
-        final_setting = crud.upsert_setting_by_name(
+        final_setting = crud_settings.upsert_setting_by_name(
             self.__key,
             models.Setting(
                 name=language_embedder_name, category="embedder_factory", value=settings
@@ -139,7 +142,7 @@ class BillTheLizard:
         )
 
         # general embedder settings are saved in settings table under "embedder" category
-        crud.upsert_setting_by_name(
+        crud_settings.upsert_setting_by_name(
             self.__key,
             models.Setting(
                 name="embedder_selected",
@@ -160,10 +163,10 @@ class BillTheLizard:
             except Exception as e:  # restore the original Embedder
                 log.error(e)
 
-                crud.delete_settings_by_category(self.__key, "embedder")
+                crud_settings.delete_settings_by_category(self.__key, "embedder")
 
                 # embedder type and config are saved in settings table under "embedder_factory" category
-                crud.delete_settings_by_category(self.__key, "embedder_factory")
+                crud_settings.delete_settings_by_category(self.__key, "embedder_factory")
 
                 # if a selected config is present, restore it
                 if selected is not None:
@@ -179,7 +182,7 @@ class BillTheLizard:
     def get_selected_embedder_settings(self) -> Dict | None:
         # get selected Embedder settings, if any
         # embedder selected configuration is saved under "embedder_selected" name
-        selected = crud.get_setting_by_name(self.__key, "embedder_selected")
+        selected = crud_settings.get_setting_by_name(self.__key, "embedder_selected")
         if selected is not None:
             selected = selected["value"]["name"]
         else:

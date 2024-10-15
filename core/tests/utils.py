@@ -5,7 +5,7 @@ from concurrent.futures import ThreadPoolExecutor
 
 from cat.auth.auth_utils import hash_password
 from cat.auth.permissions import get_base_permissions
-from cat.db import crud_users
+from cat.db.cruds import users as crud_users
 
 
 def get_class_from_decorated_singleton(singleton):

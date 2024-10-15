@@ -4,7 +4,7 @@ from fastapi import APIRouter, Body, HTTPException, Depends
 from cat.auth.connection import ConnectionSuperAdminAuth
 from cat.auth.permissions import AdminAuthResource, AuthPermission
 from cat.bill_the_lizard import BillTheLizard
-from cat.db import crud
+from cat.db.cruds import settings as crud_settings
 from cat.exceptions import LoadMemoryException
 from cat.factory.embedder import get_embedders_schemas
 
@@ -19,7 +19,7 @@ def get_embedders_settings(
     """Get the list of the Embedders"""
 
     # embedder type and config are saved in settings table under "embedder_factory" category
-    saved_settings = crud.get_settings_by_category(lizard.config_key, "embedder_factory")
+    saved_settings = crud_settings.get_settings_by_category(lizard.config_key, "embedder_factory")
     saved_settings = {s["name"]: s for s in saved_settings}
 
     settings = [{
@@ -53,7 +53,7 @@ def get_embedder_settings(
             },
         )
 
-    setting = crud.get_setting_by_name(lizard.config_key, language_embedder_name)
+    setting = crud_settings.get_setting_by_name(lizard.config_key, language_embedder_name)
     schema = embedder_schemas[language_embedder_name]
 
     setting = {} if setting is None else setting["value"]

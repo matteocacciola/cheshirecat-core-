@@ -6,7 +6,7 @@ from cat.auth.permissions import AdminAuthResource, AuthPermission, get_full_adm
 from cat.auth.auth_utils import hash_password
 from cat.auth.connection import ConnectionSuperAdminAuth
 from cat.bill_the_lizard import BillTheLizard
-from cat.db import crud_users
+from cat.db.cruds import users as crud_users
 
 router = APIRouter()
 
