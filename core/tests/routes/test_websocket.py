@@ -1,8 +1,6 @@
-import pytest
 import time
-from fastapi import WebSocketDisconnect
 
-from tests.utils import send_websocket_message, send_n_websocket_messages
+from tests.utils import send_websocket_message, send_n_websocket_messages, agent_id
 
 
 def check_correct_websocket_reply(reply):
@@ -46,16 +44,16 @@ def check_correct_websocket_reply(reply):
             assert mi["source"] == "recall"
 
 
-def test_websocket(client, cheshire_cat):
+def test_websocket(secure_client):
     # send websocket message
-    res = send_websocket_message({"text": "It's late! It's late"}, client, agent_id=cheshire_cat.id)
+    res = send_websocket_message({"text": "It's late! It's late"}, secure_client)
 
     check_correct_websocket_reply(res)
 
 
-def test_websocket_multiple_messages(client, cheshire_cat):
+def test_websocket_multiple_messages(secure_client):
     # send websocket message
-    replies = send_n_websocket_messages(3, client, agent_id=cheshire_cat.id)
+    replies = send_n_websocket_messages(3, secure_client)
 
     for res in replies:
         check_correct_websocket_reply(res)

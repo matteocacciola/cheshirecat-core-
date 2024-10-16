@@ -1,11 +1,6 @@
 import asyncio
-from urllib.parse import urlencode
 from pydantic import BaseModel
-from fastapi import Request, HTTPException, status, Query
-from fastapi.responses import RedirectResponse
-
-from cat.routes.static.templates import get_jinja_templates
-
+from fastapi import Request, HTTPException
 
 class UserCredentials(BaseModel):
     username: str
@@ -15,57 +10,6 @@ class UserCredentials(BaseModel):
 class JWTResponse(BaseModel):
     access_token: str
     token_type: str = "bearer"
-
-
-async def auth_redirect(request: Request, agent_id: str, route: str) -> RedirectResponse:
-    # get form data from submitted core login form (/auth/core_login)
-    form_data = await request.form()
-
-    # use username and password to authenticate user from local identity provider and get token
-    auth_handler = request.app.state.lizard.core_auth_handler
-    access_token = await auth_handler.issue_jwt(form_data.get("username"), form_data.get("password"), key_id=agent_id)
-
-    if access_token:
-        response = RedirectResponse(
-            url=form_data.get("referer"), status_code=status.HTTP_303_SEE_OTHER
-        )
-        response.set_cookie(key="ccat_user_token", value=access_token)
-        return response
-
-    # credentials are wrong, wait a second (for brute force attacks) and go back to login
-    await asyncio.sleep(1)
-
-    referer_query = urlencode({"referer": form_data.get("referer"), "retry": 1})
-    login_url = f"{route}?{referer_query}"
-    response = RedirectResponse(url=login_url, status_code=status.HTTP_303_SEE_OTHER)
-    return response
-
-
-async def auth_login(
-    request: Request, redirect_to: str, referer: str = Query(None), retry: int = Query(0), agent_id: str | None = None
-):
-    """Core login form, used when no external Identity Provider is configured"""
-
-    error_message = ""
-    if retry == 1:
-        error_message = "Invalid Credentials"
-
-    if referer is None:
-        referer = "/admin/"
-
-    templates = get_jinja_templates()
-    template_context = {
-        "referer": referer,
-        "error_message": error_message,
-        "redirect_action": redirect_to,
-        "agent_id": agent_id,
-    }
-
-    response = templates.TemplateResponse(
-        request=request, name="auth/login.html", context=template_context
-    )
-    response.delete_cookie(key="ccat_user_token")
-    return response
 
 
 async def auth_token(request: Request, credentials: UserCredentials, agent_id: str):

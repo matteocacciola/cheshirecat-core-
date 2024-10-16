@@ -1,13 +1,14 @@
 import os
 import shutil
+import pytest
 
 from tests.utils import create_mock_plugin_zip
 
 # TODO: registry responses here should be mocked, at the moment we are actually calling the service
 
 
-def test_list_registry_plugins(client, cheshire_cat):
-    response = client.get("/plugins", headers={"agent_id": cheshire_cat.id})
+def test_list_registry_plugins(secure_client, secure_client_headers):
+    response = secure_client.get("/plugins", headers=secure_client_headers)
     json = response.json()
 
     assert response.status_code == 200
@@ -24,20 +25,20 @@ def test_list_registry_plugins(client, cheshire_cat):
         assert key in json["filters"].keys()
 
 
-def test_list_registry_plugins_by_query(client, cheshire_cat):
+def test_list_registry_plugins_by_query(secure_client, secure_client_headers):
     params = {"query": "podcast"}
-    response = client.get("/plugins", params=params, headers={"agent_id": cheshire_cat.id})
+    response = secure_client.get("/plugins", params=params, headers=secure_client_headers)
     json = response.json()
 
     assert response.status_code == 200
     assert json["filters"]["query"] == params["query"]
     assert len(json["registry"]) > 0  # found registry plugins with text
-    for plugin in json["registry"]:
-        plugin_text = plugin["name"] + plugin["description"]
+    for p in json["registry"]:
+        plugin_text = p["name"] + p["description"]
         assert params["query"] in plugin_text  # verify searched text
 
 
-def test_plugin_install_from_registry(client, cheshire_cat, monkeypatch):
+def test_plugin_install_from_registry(secure_client, secure_client_headers, monkeypatch):
     # Mock the download from the registry creating a zip on-the-fly
     monkeypatch.setattr(
         "cat.routes.plugins.registry_download_plugin", create_mock_plugin_zip
@@ -52,14 +53,14 @@ def test_plugin_install_from_registry(client, cheshire_cat, monkeypatch):
 
     # install plugin from registry
     payload = {"url": "https://mockup_url.com"}
-    response = client.post("/plugins/upload/registry", json=payload, headers={"agent_id": cheshire_cat.id})
+    response = secure_client.post("/plugins/upload/registry", json=payload, headers=secure_client_headers)
 
     assert response.status_code == 200
     assert response.json()["url"] == payload["url"]
     assert response.json()["info"] == "Plugin is being installed asynchronously"
 
     # GET plugin endpoint responds
-    response = client.get("/plugins/mock_plugin", headers={"agent_id": cheshire_cat.id})
+    response = secure_client.get("/plugins/mock_plugin", headers=secure_client_headers)
     assert response.status_code == 200
     json = response.json()
     assert json["data"]["id"] == "mock_plugin"
@@ -67,7 +68,7 @@ def test_plugin_install_from_registry(client, cheshire_cat, monkeypatch):
     assert json["data"]["active"]
 
     # GET plugins endpoint lists the plugin
-    response = client.get("/plugins", headers={"agent_id": cheshire_cat.id})
+    response = secure_client.get("/plugins", headers=secure_client_headers)
     assert response.status_code == 200
     installed_plugins = response.json()["installed"]
     installed_plugins_names = list(map(lambda p: p["id"], installed_plugins))
@@ -84,13 +85,13 @@ def test_plugin_install_from_registry(client, cheshire_cat, monkeypatch):
 
 
 # take away from the list of available registry plugins, the ones that are already installed
-def test_list_registry_plugins_without_duplicating_installed_plugins(client, cheshire_cat):
+def test_list_registry_plugins_without_duplicating_installed_plugins(secure_client, secure_client_headers):
     # 1. install plugin from registry
     # TODO !!!
 
     # 2. get available plugins searching for the one just installed
     params = {"query": "podcast"}
-    response = client.get("/plugins", params=params, headers={"agent_id": cheshire_cat.id})
+    response = secure_client.get("/plugins", params=params, headers=secure_client_headers)
     #json = response.json()
 
     # 3. plugin should show up among installed by not among registry ones
@@ -99,33 +100,32 @@ def test_list_registry_plugins_without_duplicating_installed_plugins(client, che
     # TODO plugin does not appear in registry!!!
 
 
-# TOOD: these tests are to be activated when also search by tag and author is activated in core
-"""
-def test_list_registry_plugins_by_author(client, cheshire_cat):
+@pytest.mark.skip("This test has to be activated when also search by tag and author is activated in core")
+def test_list_registry_plugins_by_author(secure_client, secure_client_headers):
     params = {
         "author": "Nicola Corbellini"
     }
-    response = client.get("/plugins", params=params, headers={"agent_id": cheshire_cat.id})
+    response = secure_client.get("/plugins", params=params, headers=secure_client_headers)
     json = response.json()
 
     assert response.status_code == 200
     assert json["filters"]["author"] == params["query"]
     assert len(json["registry"]) > 0 # found registry plugins with author
-    for plugin in json["registry"]:
-        assert params["author"] in plugin["author_name"] # verify author
+    for p in json["registry"]:
+        assert params["author"] in p["author_name"] # verify author
 
 
-def test_list_registry_plugins_by_tag(client, cheshire_cat):
+@pytest.mark.skip("This test has to be activated when also search by tag and author is activated in core")
+def test_list_registry_plugins_by_tag(secure_client, secure_client_headers):
     params = {
         "tag": "llm"
     }
-    response = client.get("/plugins", params=params, headers={"agent_id": cheshire_cat.id})
+    response = secure_client.get("/plugins", params=params, headers=secure_client_headers)
     json = response.json()
 
     assert response.status_code == 200
     assert json["filters"]["tag"] == params["tag"]
     assert len(json["registry"]) > 0 # found registry plugins with tag
-    for plugin in json["registry"]:
-        plugin_tags = plugin["tags"].split(", ")
+    for p in json["registry"]:
+        plugin_tags = p["tags"].split(", ")
         assert params["tag"] in plugin_tags # verify tag
-"""

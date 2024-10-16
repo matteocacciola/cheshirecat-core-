@@ -21,11 +21,17 @@ from cat.main import cheshire_cat_api
 from cat.memory.vector_memory import VectorMemory
 import cat.utils as utils
 
-from tests.utils import create_mock_plugin_zip
+from tests.utils import (
+    agent_id,
+    api_key,
+    api_key_ws,
+    jwt_secret,
+    create_mock_plugin_zip,
+    get_class_from_decorated_singleton,
+)
 
 mock_plugin_path = "tests/mocks/mock_plugin/"
 redis_client = redis.Redis(host=get_env("CCAT_REDIS_HOST"), db="1", encoding="utf-8", decode_responses=True)
-agent_id = "agent_test"
 
 FAKE_TIMESTAMP = 1705855981
 
@@ -44,7 +50,7 @@ def mock_classes(monkeypatch):
     def mock_get_redis_client(self, *args, **kwargs):
         return redis_client
 
-    monkeypatch.setattr(Database().__class__, "get_redis_client", mock_get_redis_client)
+    monkeypatch.setattr(get_class_from_decorated_singleton(Database), "get_redis_client", mock_get_redis_client)
 
     # Use mock utils plugin folder
     def get_test_plugin_folder():
@@ -117,20 +123,20 @@ def encapsulate_each_test(request, monkeypatch):
         os.environ["CCAT_DEBUG"] = current_ccat_debug
 
 
+@pytest.fixture(scope="function")
+def lizard(monkeypatch):
+    yield BillTheLizard()
+
+
 # Main fixture for the FastAPI app
 @pytest.fixture(scope="function")
-def client(monkeypatch) -> Generator[TestClient, Any, None]:
+def client(monkeypatch, lizard) -> Generator[TestClient, Any, None]:
     """
     Create a new FastAPI TestClient.
     """
 
     with TestClient(cheshire_cat_api) as client:
         yield client
-
-
-@pytest.fixture(scope="function")
-def lizard():
-    yield BillTheLizard()
 
 
 # This fixture sets the CCAT_API_KEY and CCAT_API_KEY_WS environment variables,
@@ -142,9 +148,9 @@ def secure_client(client):
     current_jwt_secret = os.getenv("CCAT_JWT_SECRET")
 
     # set ENV variables
-    os.environ["CCAT_API_KEY"] = "meow_http"
-    os.environ["CCAT_API_KEY_WS"] = "meow_ws"
-    os.environ["CCAT_JWT_SECRET"] = "meow_jwt"
+    os.environ["CCAT_API_KEY"] = api_key
+    os.environ["CCAT_API_KEY_WS"] = api_key_ws
+    os.environ["CCAT_JWT_SECRET"] = jwt_secret
 
     yield client
 
@@ -163,11 +169,16 @@ def secure_client(client):
         del os.environ["CCAT_JWT_SECRET"]
 
 
+@pytest.fixture(scope="function")
+def secure_client_headers(secure_client):
+    yield {"agent_id": agent_id, "access_token": api_key}
+
+
 # This fixture is useful to write tests in which
 #   a plugin was just uploaded via http.
 #   It wraps any test function having `just_installed_plugin` as an argument
 @pytest.fixture(scope="function")
-def just_installed_plugin(client, cheshire_cat):
+def just_installed_plugin(secure_client, secure_client_headers):
     ### executed before each test function
 
     # create zip file with a plugin
@@ -176,10 +187,10 @@ def just_installed_plugin(client, cheshire_cat):
 
     # upload plugin via endpoint
     with open(zip_path, "rb") as f:
-        response = client.post(
+        response = secure_client.post(
             "/plugins/upload/",
             files={"file": (zip_file_name, f, "application/zip")},
-            headers = {"agent_id": cheshire_cat.id}
+            headers=secure_client_headers
         )
 
     # request was processed
@@ -194,14 +205,14 @@ def just_installed_plugin(client, cheshire_cat):
 
 
 @pytest.fixture
-def cheshire_cat(client, lizard):
+def cheshire_cat(lizard):
     cheshire_cat = lizard.get_or_create_cheshire_cat(agent_id)
     yield cheshire_cat
     lizard.remove_cheshire_cat(agent_id)
 
 
 @pytest.fixture
-def mad_hatter(client, cheshire_cat):  # client here injects the monkeypatched version of the manager
+def mad_hatter(cheshire_cat):
     # each test is given the mad_hatter instance
     mad_hatter = cheshire_cat.mad_hatter
 
@@ -213,24 +224,33 @@ def mad_hatter(client, cheshire_cat):  # client here injects the monkeypatched v
 
 
 @pytest.fixture
-def mad_hatter_no_plugins(client, cheshire_cat):  # client here injects the monkeypatched version of the manager
-    mad_hatter = cheshire_cat.mad_hatter
-
-    # each test is given the mad_hatter instance
-    yield mad_hatter
+def mad_hatter_no_plugins(cheshire_cat):
+    yield cheshire_cat.mad_hatter  # each test is given the mad_hatter instance
 
 
 @pytest.fixture
-def mad_hatter_lizard(client, lizard):  # client here injects the monkeypatched version of the manager
-    mad_hatter = lizard.mad_hatter
+def mad_hatter_lizard(lizard):
+    yield lizard.mad_hatter  # each test is given the mad_hatter instance
 
-    # each test is given the mad_hatter instance
-    yield mad_hatter
+
+@pytest.fixture
+def embedder(lizard):
+    yield lizard.embedder  # each test is given the embedder instance
+
+
+@pytest.fixture
+def llm(cheshire_cat):
+    yield cheshire_cat.llm  # each test is given the llm instance
+
+
+@pytest.fixture
+def memory(client, cheshire_cat):
+    yield cheshire_cat.memory  # each test is given the memory instance
 
 
 # fixtures to test the main agent
 @pytest.fixture
-def main_agent(client, lizard):
+def main_agent(lizard):
     yield lizard.main_agent  # each test receives as argument the main agent instance
 
 

@@ -1,11 +1,19 @@
 import shutil
-from uuid import UUID, uuid4
+import time
+import uuid
+import random
 from urllib.parse import urlencode
 from concurrent.futures import ThreadPoolExecutor
 
 from cat.auth.auth_utils import hash_password
 from cat.auth.permissions import get_base_permissions
 from cat.db.cruds import users as crud_users
+from cat.env import get_env
+
+agent_id = "agent_test"
+api_key = "meow_http"
+api_key_ws = "meow_ws"
+jwt_secret = "meow_jwt"
 
 
 def get_class_from_decorated_singleton(singleton):
@@ -13,14 +21,9 @@ def get_class_from_decorated_singleton(singleton):
 
 
 # utility function to communicate with the cat via websocket
-def send_websocket_message(msg, client, user_id="user", agent_id=None, query_params=None):
-    url = f"/ws/{user_id}"
-
-    if agent_id:
-        url += f"/{agent_id}"
-
-    if query_params:
-        url += "?" + urlencode(query_params)
+def send_websocket_message(msg, client, user_id="user", query_params=None):
+    query_params = query_params if query_params is not None else {"token": api_key_ws}
+    url = f"/ws/{user_id}/{agent_id}?" + urlencode(query_params)
 
     with client.websocket_connect(url) as websocket:
         # sed ws message
@@ -32,12 +35,10 @@ def send_websocket_message(msg, client, user_id="user", agent_id=None, query_par
 
 
 # utility to send n messages via chat
-def send_n_websocket_messages(num_messages, client, agent_id=None):
+def send_n_websocket_messages(num_messages, client):
     responses = []
 
-    url = "/ws"
-    if agent_id:
-        url += f"/user/{agent_id}"
+    url = f"/ws/user/{agent_id}?" + urlencode({"token": api_key_ws})
 
     with client.websocket_connect(url) as websocket:
         for m in range(num_messages):
@@ -75,17 +76,19 @@ def create_mock_plugin_zip(flat: bool):
 
 
 # utility to retrieve embedded tools from endpoint
-def get_procedural_memory_contents(client, cheshire_cat, params=None):
+def get_procedural_memory_contents(client, params=None, headers=None):
+    headers = headers or {} | {"agent_id": agent_id}
     final_params = (params or {}) | {"text": "random"}
-    response = client.get("/memory/recall/", params=final_params, headers={"agent_id": cheshire_cat.id})
+    response = client.get("/memory/recall/", params=final_params, headers=headers)
     json = response.json()
     return json["vectors"]["collections"]["procedural"]
 
 
 # utility to retrieve declarative memory contents
-def get_declarative_memory_contents(client, cheshire_cat):
+def get_declarative_memory_contents(client, headers=None):
+    headers = headers or {} | {"agent_id": agent_id}
     params = {"text": "Something"}
-    response = client.get("/memory/recall/", params=params, headers={"agent_id": cheshire_cat.id})
+    response = client.get("/memory/recall/", params=params, headers=headers)
     assert response.status_code == 200
     json = response.json()
     declarative_memories = json["vectors"]["collections"]["declarative"]
@@ -93,8 +96,9 @@ def get_declarative_memory_contents(client, cheshire_cat):
 
 
 # utility to get collections and point count from `GET /memory/collections` in a simpler format
-def get_collections_names_and_point_count(client, cheshire_cat):
-    response = client.get("/memory/collections", headers={"agent_id": cheshire_cat.id})
+def get_collections_names_and_point_count(client, headers=None):
+    headers = headers or {} | {"agent_id": agent_id}
+    response = client.get("/memory/collections", headers=headers)
     json = response.json()
     assert response.status_code == 200
     collections_n_points = {c["name"]: c["vectors_count"] for c in json["collections"]}
@@ -114,7 +118,7 @@ def check_user_fields(u):
     assert isinstance(u["permissions"], dict)
     try:
         # Attempt to create a UUID object from the string to validate it
-        uuid_obj = UUID(u["id"], version=4)
+        uuid_obj = uuid.UUID(u["id"], version=4)
         assert str(uuid_obj) == u["id"]
     except ValueError:
         # If a ValueError is raised, the UUID string is invalid
@@ -138,7 +142,7 @@ async def async_run_job(job, obj, loop):
 
 
 def create_basic_user(agent_id: str) -> None:
-    user_id = str(uuid4())
+    user_id = str(uuid.uuid4())
 
     basic_user = {
         user_id: {
@@ -151,3 +155,32 @@ def create_basic_user(agent_id: str) -> None:
     }
 
     crud_users.update_users(agent_id, basic_user)
+
+
+def get_fake_memory_export(embedder_name="DumbEmbedder", dim=2367):
+    return {
+        "embedder": embedder_name,
+        "collections": {
+            "declarative": [
+                {
+                    "page_content": "test_memory",
+                    "metadata": {"source": "user", "when": time.time()},
+                    "id": str(uuid.uuid4()),
+                    "vector": [random.random() for _ in range(dim)],
+                }
+            ]
+        },
+    }
+
+
+def get_client_admin_headers(client):
+    creds = {
+        "username": "admin",
+        "password": get_env("CCAT_ADMIN_DEFAULT_PASSWORD"),
+    }
+
+    res = client.post("/admins/auth/token", json=creds)
+    assert res.status_code == 200
+    token = res.json()["access_token"]
+
+    return {"Authorization": f"Bearer {token}"}

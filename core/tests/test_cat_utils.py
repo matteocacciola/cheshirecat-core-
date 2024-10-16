@@ -77,45 +77,27 @@ def test_base_dict_model():
     cat = Cat(color="pink", origin=origin)
     assert cat["color"] == cat.color == "pink"
 
-    accesses = set(
-        [
-            "Cheshire",
-            cat.origin.location,
-            cat.origin["location"],
-            cat["origin"].location,
-            cat["origin"]["location"],
-            cat.get("origin").get("location"),
-        ]
-    )
+    accesses = {"Cheshire", cat.origin.location, cat.origin["location"], cat["origin"].location,
+                cat["origin"]["location"], cat.get("origin").get("location")}
     assert len(accesses) == 1
 
     # edit custom attributes
     cat.something = "meow"
     cat.origin.something = "meow"
-    accesses = set(
-        [
-            "meow",
-            cat.something,
-            cat["something"],
-            cat.origin.something,
-            cat["origin"]["something"],
-            cat["origin"].something,
-            cat.get("origin").get("something"),
-            cat.get("missing", "meow"),
-            cat.origin.get("missing", "meow"),
-        ]
-    )
+    accesses = {"meow", cat.something, cat["something"], cat.origin.something, cat["origin"]["something"],
+                cat["origin"].something, cat.get("origin").get("something"), cat.get("missing", "meow"),
+                cat.origin.get("missing", "meow")}
     assert len(accesses) == 1
 
     # .keys()
-    assert set(cat.keys()) == set(["color", "origin", "something"])
-    assert set(cat.origin.keys()) == set(["location", "something"])
+    assert set(cat.keys()) == {"color", "origin", "something"}
+    assert set(cat.origin.keys()) == {"location", "something"}
 
     # .values() # TODO: does not work recursively
     # print(cat.values())
     # for val in ["pink", "meow"]:
     #    assert val in set(cat.values())
-    assert set(cat.origin.values()) == set(["Cheshire", "meow"])
+    assert set(cat.origin.values()) == {"Cheshire", "meow"}
 
     # in
     assert "color" in cat

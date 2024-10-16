@@ -3,18 +3,22 @@
 # to have a standard auth interface.
 import asyncio
 from abc import ABC, abstractmethod
-from urllib.parse import urlencode
 from fastapi import Request, WebSocket, HTTPException, WebSocketException
 from fastapi.requests import HTTPConnection
 from pydantic import BaseModel, ConfigDict
 
 from cat.bill_the_lizard import BillTheLizard
 from cat.auth.auth_utils import extract_agent_id_from_request, extract_user_id_from_request, extract_token
-from cat.auth.permissions import AdminAuthResource, AuthPermission, AuthResource, AuthUserInfo
+from cat.auth.permissions import (
+    AdminAuthResource,
+    AuthPermission,
+    AuthResource,
+    AuthUserInfo,
+    get_full_admin_permissions,
+)
 from cat.looking_glass.cheshire_cat import CheshireCat
 from cat.looking_glass.stray_cat import StrayCat
 from cat.log import log
-from cat.utils import DefaultAgentKeys
 
 
 class SuperCredentials(BaseModel):
@@ -55,6 +59,7 @@ class ConnectionSuperAdminAuth:
             self.permission,
             key_id=lizard.config_key,
             user_id=user_id,
+            http_permissions=get_full_admin_permissions(),
         )
         if user:
             return lizard
@@ -179,30 +184,3 @@ class WebSocketAuth(ConnectionAuth):
 
     def not_allowed(self, connection: WebSocket, **kwargs):
         raise WebSocketException(code=1004, reason="Invalid Credentials")
-
-
-class CoreFrontendAuth(HTTPAuth):
-    async def extract_credentials(self, connection: Request) -> Credentials:
-        """
-        Extract user_id from cookie
-        """
-
-        agent_id = extract_agent_id_from_request(connection)
-        token = connection.cookies.get("ccat_user_token", None)
-
-        # core webapps cannot be accessed without a cookie
-        if token:
-            return Credentials(agent_id=agent_id, user_id="user", credential=token)
-
-        route = f"/auth/{agent_id}/login" if agent_id == str(DefaultAgentKeys.SYSTEM) else f"/admins/auth/login"
-        self.not_allowed(connection, route=route)
-    
-    def not_allowed(self, connection: Request, **kwargs):
-        route = kwargs.get("route")
-        referer_query = urlencode({"referer": connection.url.path})
-        raise HTTPException(
-            status_code=307,
-            headers={
-                "Location": f"{route}?{referer_query}"
-            }
-        )

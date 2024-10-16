@@ -36,7 +36,7 @@ class AdminResponse(AdminBase):
 @router.post("/", response_model=AdminResponse)
 def create_admin(
     new_user: AdminCreate,
-    lizard: BillTheLizard = Depends(ConnectionSuperAdminAuth(AdminAuthResource.ADMINS, AuthPermission.LIST)),
+    lizard: BillTheLizard = Depends(ConnectionSuperAdminAuth(AdminAuthResource.ADMINS, AuthPermission.WRITE)),
 ):
     created_user = crud_users.create_user(lizard.config_key, new_user.model_dump())
     if not created_user:

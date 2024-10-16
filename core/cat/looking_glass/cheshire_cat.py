@@ -2,7 +2,6 @@ import time
 from copy import deepcopy
 from typing import List, Dict
 from uuid import uuid4
-
 from langchain_community.document_loaders.parsers.pdf import PDFMinerParser
 from langchain_community.document_loaders.parsers.html.bs4 import BS4HTMLParser
 from langchain_community.document_loaders.parsers.txt import TextParser
@@ -460,6 +459,16 @@ class CheshireCat:
     def rabbit_hole(self) -> "RabbitHole":
         from cat.bill_the_lizard import BillTheLizard
         return BillTheLizard().rabbit_hole
+
+    @property
+    def core_auth_handler(self) -> "CoreAuthHandler":
+        from cat.bill_the_lizard import BillTheLizard
+        return BillTheLizard().core_auth_handler
+
+    @property
+    def main_agent(self) -> "MainAgent":
+        from cat.bill_the_lizard import BillTheLizard
+        return BillTheLizard().main_agent
 
     # each time we access the file handlers, plugins can intervene
     @property

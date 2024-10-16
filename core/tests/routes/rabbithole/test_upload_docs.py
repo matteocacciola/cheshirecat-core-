@@ -3,13 +3,13 @@ import json
 from tests.utils import get_declarative_memory_contents
 
 
-def test_rabbithole_upload_txt(client, cheshire_cat):
+def test_rabbithole_upload_txt(secure_client, secure_client_headers):
     content_type = "text/plain"
     file_name = "sample.txt"
     file_path = f"tests/mocks/{file_name}"
     with open(file_path, "rb") as f:
         files = {"file": (file_name, f, content_type)}
-        response = client.post("/rabbithole/", files=files, headers={"agent_id": cheshire_cat.id})
+        response = secure_client.post("/rabbithole/", files=files, headers=secure_client_headers)
 
     # check response
     assert response.status_code == 200
@@ -20,19 +20,19 @@ def test_rabbithole_upload_txt(client, cheshire_cat):
 
     # check memory contents
     # check declarative memory is empty
-    declarative_memories = get_declarative_memory_contents(client, cheshire_cat)
+    declarative_memories = get_declarative_memory_contents(secure_client, secure_client_headers)
     assert (
         len(declarative_memories) == 3
     )  # TODO: why txt produces one chunk less than pdf?
 
 
-def test_rabbithole_upload_pdf(client, cheshire_cat):
+def test_rabbithole_upload_pdf(secure_client, secure_client_headers):
     content_type = "application/pdf"
     file_name = "sample.pdf"
     file_path = f"tests/mocks/{file_name}"
     with open(file_path, "rb") as f:
         files = {"file": (file_name, f, content_type)}
-        response = client.post("/rabbithole/", files=files, headers={"agent_id": cheshire_cat.id})
+        response = secure_client.post("/rabbithole/", files=files, headers=secure_client_headers)
 
     # check response
     assert response.status_code == 200
@@ -43,17 +43,17 @@ def test_rabbithole_upload_pdf(client, cheshire_cat):
 
     # check memory contents
     # check declarative memory is empty
-    declarative_memories = get_declarative_memory_contents(client, cheshire_cat)
+    declarative_memories = get_declarative_memory_contents(secure_client, secure_client_headers)
     assert len(declarative_memories) == 4
 
 
-def test_rabbithole_upload_batch_one_file(client, cheshire_cat):
+def test_rabbithole_upload_batch_one_file(secure_client, secure_client_headers):
     content_type = "application/pdf"
     file_name = "sample.pdf"
     file_path = f"tests/mocks/{file_name}"
     with open(file_path, "rb") as f:
         files = [("files", (file_name, f, content_type))]
-        response = client.post("/rabbithole/batch", files=files, headers={"agent_id": cheshire_cat.id})
+        response = secure_client.post("/rabbithole/batch", files=files, headers=secure_client_headers)
 
     # check response
     assert response.status_code == 200
@@ -66,11 +66,11 @@ def test_rabbithole_upload_batch_one_file(client, cheshire_cat):
 
     # check memory contents
     # check declarative memory is empty
-    declarative_memories = get_declarative_memory_contents(client, cheshire_cat)
+    declarative_memories = get_declarative_memory_contents(secure_client, secure_client_headers)
     assert len(declarative_memories) == 4
 
 
-def test_rabbithole_upload_batch_multiple_files(client, cheshire_cat):
+def test_rabbithole_upload_batch_multiple_files(secure_client, secure_client_headers):
     files = []
     files_to_upload = {"sample.pdf": "application/pdf", "sample.txt": "application/txt"}
     for file_name in files_to_upload:
@@ -78,7 +78,7 @@ def test_rabbithole_upload_batch_multiple_files(client, cheshire_cat):
         file_path = f"tests/mocks/{file_name}"
         files.append(("files", (file_name, open(file_path, "rb"), content_type)))
 
-    response = client.post("/rabbithole/batch", files=files, headers={"agent_id": cheshire_cat.id})
+    response = secure_client.post("/rabbithole/batch", files=files, headers=secure_client_headers)
 
     # check response
     assert response.status_code == 200
@@ -92,11 +92,11 @@ def test_rabbithole_upload_batch_multiple_files(client, cheshire_cat):
 
     # check memory contents
     # check declarative memory is empty
-    declarative_memories = get_declarative_memory_contents(client, cheshire_cat)
+    declarative_memories = get_declarative_memory_contents(secure_client, secure_client_headers)
     assert len(declarative_memories) == 7
 
 
-def test_rabbithole_chunking(client, cheshire_cat):
+def test_rabbithole_chunking(secure_client, secure_client_headers):
     content_type = "application/pdf"
     file_name = "sample.pdf"
     file_path = f"tests/mocks/{file_name}"
@@ -107,17 +107,17 @@ def test_rabbithole_chunking(client, cheshire_cat):
             "chunk_overlap": 32,
         }
 
-        response = client.post("/rabbithole/", files=files, data=payload, headers={"agent_id": cheshire_cat.id})
+        response = secure_client.post("/rabbithole/", files=files, data=payload, headers=secure_client_headers)
 
     # check response
     assert response.status_code == 200
 
     # check memory contents
-    declarative_memories = get_declarative_memory_contents(client, cheshire_cat)
+    declarative_memories = get_declarative_memory_contents(secure_client, secure_client_headers)
     assert len(declarative_memories) == 7
 
 
-def test_rabbithole_upload_doc_with_metadata(client, cheshire_cat):
+def test_rabbithole_upload_doc_with_metadata(secure_client, secure_client_headers):
     content_type = "application/pdf"
     file_name = "sample.pdf"
     file_path = f"tests/mocks/{file_name}"
@@ -131,13 +131,13 @@ def test_rabbithole_upload_doc_with_metadata(client, cheshire_cat):
         }
         # upload file endpoint only accepts form-encoded data
         payload = {"metadata": json.dumps(metadata)}
-        response = client.post("/rabbithole/", files=files, data=payload, headers={"agent_id": cheshire_cat.id})
+        response = secure_client.post("/rabbithole/", files=files, data=payload, headers=secure_client_headers)
 
     # check response
     assert response.status_code == 200
 
     # check memory contents
-    declarative_memories = get_declarative_memory_contents(client, cheshire_cat)
+    declarative_memories = get_declarative_memory_contents(secure_client, secure_client_headers)
     assert len(declarative_memories) == 4
     for dm in declarative_memories:
         for k, v in metadata.items():
@@ -146,7 +146,7 @@ def test_rabbithole_upload_doc_with_metadata(client, cheshire_cat):
             assert dm["metadata"][k] == v
 
 
-def test_rabbithole_upload_docs_batch_with_metadata(client, cheshire_cat):
+def test_rabbithole_upload_docs_batch_with_metadata(secure_client, secure_client_headers):
     files = []
     files_to_upload = {"sample.pdf": "application/pdf", "sample.txt": "application/txt"}
     for file_name in files_to_upload:
@@ -174,13 +174,13 @@ def test_rabbithole_upload_docs_batch_with_metadata(client, cheshire_cat):
         "metadata": json.dumps(metadata)
     }
 
-    response = client.post("/rabbithole/batch", files=files, data=payload, headers={"agent_id": cheshire_cat.id})
+    response = secure_client.post("/rabbithole/batch", files=files, data=payload, headers=secure_client_headers)
 
     # check response
     assert response.status_code == 200
 
     # check memory contents
-    declarative_memories = get_declarative_memory_contents(client, cheshire_cat)
+    declarative_memories = get_declarative_memory_contents(secure_client, secure_client_headers)
     assert len(declarative_memories) == 7
     for dm in declarative_memories:
         assert "when" in dm["metadata"]

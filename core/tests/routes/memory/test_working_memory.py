@@ -1,26 +1,27 @@
 import time
 
 from cat.convo.messages import Role
-from tests.utils import send_websocket_message
+
+from tests.utils import send_websocket_message, agent_id, api_key
 
 
-def test_convo_history_absent(client, cheshire_cat):
+def test_convo_history_absent(secure_client, secure_client_headers):
     # no ws connection, so no convo history available
-    response = client.get("/memory/conversation_history", headers={"agent_id": cheshire_cat.id})
+    response = secure_client.get("/memory/conversation_history", headers=secure_client_headers)
     json = response.json()
     assert response.status_code == 200
     assert "history" in json
     assert len(json["history"]) == 0
 
 
-def test_convo_history_update(client, cheshire_cat):
+def test_convo_history_update(secure_client, secure_client_headers):
     message = "It's late! It's late!"
 
     # send websocket messages
-    send_websocket_message({"text": message}, client, agent_id=cheshire_cat.id)
+    send_websocket_message({"text": message}, secure_client)
 
     # check working memory update
-    response = client.get("/memory/conversation_history", headers={"agent_id": cheshire_cat.id})
+    response = secure_client.get("/memory/conversation_history", headers=secure_client_headers)
     json = response.json()
     assert response.status_code == 200
     assert "history" in json
@@ -34,16 +35,16 @@ def test_convo_history_update(client, cheshire_cat):
     assert isinstance(json["history"][0]["when"], float)  # timestamp
 
 
-def test_convo_history_reset(client, cheshire_cat):
+def test_convo_history_reset(secure_client, secure_client_headers):
     # send websocket messages
-    send_websocket_message({"text": "It's late! It's late!"}, client, agent_id=cheshire_cat.id)
+    send_websocket_message({"text": "It's late! It's late!"}, secure_client)
 
     # delete convo history
-    response = client.delete("/memory/conversation_history", headers={"agent_id": cheshire_cat.id})
+    response = secure_client.delete("/memory/conversation_history", headers=secure_client_headers)
     assert response.status_code == 200
 
     # check working memory update
-    response = client.get("/memory/conversation_history", headers={"agent_id": cheshire_cat.id})
+    response = secure_client.get("/memory/conversation_history", headers=secure_client_headers)
     json = response.json()
     assert response.status_code == 200
     assert "history" in json
@@ -51,7 +52,7 @@ def test_convo_history_reset(client, cheshire_cat):
 
 
 # TODO: should be tested also with concurrency!
-def test_convo_history_by_user(client, cheshire_cat):
+def test_convo_history_by_user(secure_client, secure_client_headers):
     convos = {
         # user_id: n_messages
         "White Rabbit": 2,
@@ -62,14 +63,13 @@ def test_convo_history_by_user(client, cheshire_cat):
     for user_id, n_messages in convos.items():
         for m in range(n_messages):
             time.sleep(0.1)
-            send_websocket_message(
-                {"text": f"Mex n.{m} from {user_id}"}, client, user_id=user_id, agent_id=cheshire_cat.id
-            )
+            send_websocket_message({"text": f"Mex n.{m} from {user_id}"}, secure_client, user_id=user_id)
 
     # check working memories
     for user_id, n_messages in convos.items():
-        response = client.get(
-            "/memory/conversation_history/", headers={"user_id": user_id, "agent_id": cheshire_cat.id}
+        response = secure_client.get(
+            "/memory/conversation_history/",
+            headers={"user_id": user_id, "agent_id": agent_id, "access_token": api_key},
         )
         json = response.json()
         assert response.status_code == 200
@@ -86,21 +86,24 @@ def test_convo_history_by_user(client, cheshire_cat):
                 assert m["who"] == str(Role.AI)
 
     # delete White Rabbit convo
-    response = client.delete(
-        "/memory/conversation_history/", headers={"user_id": "White Rabbit", "agent_id": cheshire_cat.id}
+    response = secure_client.delete(
+        "/memory/conversation_history/",
+        headers={"user_id": "White Rabbit", "agent_id": agent_id, "access_token": api_key},
     )
     assert response.status_code == 200
 
     # check convo deletion per user
     ### White Rabbit convo is empty
-    response = client.get(
-        "/memory/conversation_history/", headers={"user_id": "White Rabbit", "agent_id": cheshire_cat.id}
+    response = secure_client.get(
+        "/memory/conversation_history/",
+        headers={"user_id": "White Rabbit", "agent_id": agent_id, "access_token": api_key},
     )
     json = response.json()
     assert len(json["history"]) == 0
     ### Alice convo still the same
-    response = client.get(
-        "/memory/conversation_history/", headers={"user_id": "Alice", "agent_id": cheshire_cat.id}
+    response = secure_client.get(
+        "/memory/conversation_history/",
+        headers={"user_id": "Alice", "agent_id": agent_id, "access_token": api_key},
     )
     json = response.json()
     assert len(json["history"]) == convos["Alice"] * 2

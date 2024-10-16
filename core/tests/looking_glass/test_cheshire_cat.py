@@ -13,25 +13,25 @@ def test_main_modules_loaded(cheshire_cat):
     assert isinstance(cheshire_cat.embedder, Embeddings)
 
 
-def test_default_llm_loaded(cheshire_cat):
-    assert isinstance(cheshire_cat.llm, LLMDefault)
+def test_default_llm_loaded(llm, cheshire_cat):
+    assert isinstance(llm, LLMDefault)
 
     out = cheshire_cat.llm_response("Hey")
     assert "You did not configure a Language Model" in out
 
 
-def test_default_embedder_loaded(cheshire_cat):
-    assert isinstance(cheshire_cat.embedder, DumbEmbedder)
+def test_default_embedder_loaded(embedder):
+    assert isinstance(embedder, DumbEmbedder)
 
     sentence = "I'm smarter than a random embedder BTW"
     sample_embed = DumbEmbedder().embed_query(sentence)
-    out = cheshire_cat.embedder.embed_query(sentence)
+    out = embedder.embed_query(sentence)
     assert sample_embed == out
 
 
-def test_procedures_embedded(cheshire_cat):
+def test_procedures_embedded(embedder, memory):
     # get embedded tools
-    procedures, _ = cheshire_cat.memory.vectors.procedural.get_all_points()
+    procedures, _ = memory.vectors.procedural.get_all_points()
     assert len(procedures) == 3
 
     for p in procedures:
@@ -51,6 +51,6 @@ def test_procedures_embedded(cheshire_cat):
 
         # some check on the embedding
         assert isinstance(p.vector, list)
-        expected_embed = cheshire_cat.embedder.embed_query(content)
+        expected_embed = embedder.embed_query(content)
         assert len(p.vector) == len(expected_embed)  # same embed
         # assert p.vector == expected_embed TODO: Qdrant does unwanted normalization

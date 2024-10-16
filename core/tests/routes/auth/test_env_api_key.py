@@ -2,12 +2,13 @@ import os
 import pytest
 
 from cat.env import get_env
+
+from tests.conftest import api_key, api_key_ws
 from tests.utils import send_websocket_message
 
 
 # utility to make http requests with some headers
-def http_request(client, cheshire_cat, headers=None):
-    headers = (headers or {}) | {"agent_id": cheshire_cat.id}
+def http_request(client, headers=None):
     response = client.get("/", headers=headers)
     return response.status_code, response.json()
 
@@ -29,8 +30,8 @@ def reset_api_key(key, value: str | None) -> None:
 
 
 @pytest.mark.parametrize("header_name", ["Authorization", "access_token"])
-def test_api_key_http(client, header_name, cheshire_cat):
-    current_api_key = set_api_key("CCAT_API_KEY", "meow_http")
+def test_api_key_http(secure_client, header_name):
+    old_api_key = set_api_key("CCAT_API_KEY", api_key)
 
     # add "Bearer: " when using `Authorization` header
     key_prefix = ""
@@ -40,32 +41,32 @@ def test_api_key_http(client, header_name, cheshire_cat):
     wrong_headers = [
         {}, # no key
         {header_name: f"{key_prefix}wrong"}, # wrong key
-        {header_name: f"{key_prefix}meow_ws"}, # websocket key
+        {header_name: f"{key_prefix}{api_key_ws}"}, # websocket key
     ]
 
     # all the previous headers result in a 403
     for headers in wrong_headers:
-        status_code, json = http_request(client, cheshire_cat, headers)
+        status_code, json = http_request(secure_client, headers)
         assert status_code == 403
         assert json["detail"]["error"] == "Invalid Credentials"
 
     # allow access if CCAT_API_KEY is right
-    headers = {header_name: f"{key_prefix}meow_http"}
-    status_code, json = http_request(client, cheshire_cat, headers)
+    headers = {header_name: f"{key_prefix}{api_key}"}
+    status_code, json = http_request(secure_client, headers)
     assert status_code == 200
     assert json["status"] == "We're all mad here, dear!"
 
     # allow websocket access without any key
     mex = {"text": "Where do I go?"}
-    res = send_websocket_message(mex, client, agent_id=cheshire_cat.id)
+    res = send_websocket_message(mex, secure_client)
     assert "You did not configure" in res["content"]
 
-    reset_api_key("CCAT_API_KEY", current_api_key)
+    reset_api_key("CCAT_API_KEY", old_api_key)
 
 
-def test_api_key_ws(client, cheshire_cat):
+def test_api_key_ws(secure_client, secure_client_headers):
     # set CCAT_API_KEY_WS
-    current_api_key = set_api_key("CCAT_API_KEY_WS", "meow_ws")
+    old_api_key = set_api_key("CCAT_API_KEY_WS", api_key_ws)
 
     mex = {"text": "Where do I go?"}
 
@@ -76,17 +77,17 @@ def test_api_key_ws(client, cheshire_cat):
 
     for params in wrong_query_params:
         with pytest.raises(Exception) as e_info:
-            send_websocket_message(mex, client, agent_id=cheshire_cat.id, query_params=params)
+            send_websocket_message(mex, secure_client, query_params=params)
         assert str(e_info.type.__name__) == "WebSocketDisconnect"
 
     # allow access if CCAT_API_KEY_WS is right
-    query_params = {"token": "meow_ws"}
-    res = send_websocket_message(mex, client, agent_id=cheshire_cat.id, query_params=query_params)
+    query_params = {"token": api_key_ws}
+    res = send_websocket_message(mex, secure_client, query_params=query_params)
     assert "You did not configure" in res["content"]
 
     # allow http access without any key
-    status_code, json = http_request(client, cheshire_cat)
+    status_code, json = http_request(secure_client, secure_client_headers)
     assert status_code == 200
     assert json["status"] == "We're all mad here, dear!"
 
-    reset_api_key("CCAT_API_KEY_WS", current_api_key)
+    reset_api_key("CCAT_API_KEY_WS", old_api_key)

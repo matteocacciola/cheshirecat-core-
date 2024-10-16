@@ -25,8 +25,8 @@ from cat.routes import (
     plugins,
     upload,
     websocket,
+    static,
 )
-from cat.routes.static import admin, static
 from cat.routes.openapi import get_openapi_configuration_function
 
 
@@ -101,8 +101,6 @@ cheshire_cat_api.include_router(websocket.router, tags=["Websocket"])
 # this cannot be done via fastapi.APIRouter:
 # https://github.com/tiangolo/fastapi/discussions/9070
 
-# admin single page app (static build)
-admin.mount(cheshire_cat_api)
 # static files (for plugins and other purposes)
 static.mount(cheshire_cat_api)
 

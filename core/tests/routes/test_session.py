@@ -2,15 +2,15 @@ from cat.convo.messages import Role
 from cat.db import models
 from cat.looking_glass.stray_cat import StrayCat
 
-from tests.utils import send_websocket_message
+from tests.utils import send_websocket_message, api_key, agent_id
 
 
-def test_session_creation_from_websocket(client, cheshire_cat):
+def test_session_creation_from_websocket(secure_client, cheshire_cat):
     user_id = models.generate_uuid()
 
     # send websocket message
     mex = {"text": "Where do I go?"}
-    res = send_websocket_message(mex, client, user_id=user_id, agent_id=cheshire_cat.id)
+    res = send_websocket_message(mex, secure_client, user_id=user_id)
 
     # check response
     assert "You did not configure" in res["content"]
@@ -27,7 +27,7 @@ def test_session_creation_from_websocket(client, cheshire_cat):
     assert convo[0].message == mex["text"]
 
 
-def test_session_creation_from_http(client, cheshire_cat):
+def test_session_creation_from_http(secure_client, cheshire_cat):
     user_id = models.generate_uuid()
 
     content_type = "text/plain"
@@ -37,8 +37,10 @@ def test_session_creation_from_http(client, cheshire_cat):
         files = {"file": (file_name, f, content_type)}
 
         # sending file from Alice
-        response = client.post(
-            "/rabbithole/", files=files, headers={"user_id": user_id, "agent_id": cheshire_cat.id}
+        response = secure_client.post(
+            "/rabbithole/",
+            files=files,
+            headers={"user_id": user_id, "access_token": api_key, "agent_id": agent_id},
         )
 
     # check response

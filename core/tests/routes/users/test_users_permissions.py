@@ -1,5 +1,9 @@
 import pytest
 
+from tests.conftest import api_key
+from tests.utils import agent_id
+
+
 # test endpoints with different user permissions
 # NOTE: we are using here the secure_client:
 # - CCAT_API_KEY, CCAT_API_KEY_WS and CCAT_JWT_SECRET are active
@@ -34,8 +38,7 @@ import pytest
 ])
 
 
-def test_users_permissions(secure_client, cheshire_cat, endpoint):
-    agent_id = cheshire_cat.id
+def test_users_permissions(secure_client, secure_client_headers, endpoint):
     credentials = {"username": "user", "password": "user"}
 
     # create new user that will be edited by calling the endpoints
@@ -47,7 +50,7 @@ def test_users_permissions(secure_client, cheshire_cat, endpoint):
             "password": "U R U"
         },
         headers={
-            "Authorization": f"Bearer meow_http",
+            "Authorization": f"Bearer {api_key}",
             "user_id": "admin",
             "agent_id": agent_id
         }
@@ -57,18 +60,18 @@ def test_users_permissions(secure_client, cheshire_cat, endpoint):
 
     # tests for `admin` and `user` using the endpoints
 
-    # no JWT, no pass
+    # no authentication, no pass
     res = secure_client.request(
         endpoint["method"],
         endpoint["path"].replace("ID_PLACEHOLDER", target_user_id),
         json=endpoint["payload"],
-        headers={"agent_id": cheshire_cat.id}
+        headers={"agent_id": agent_id}
     )
     assert res.status_code == 403
     assert res.json()["detail"]["error"] == "Invalid Credentials"
     
     # obtain JWT
-    res = secure_client.post("/auth/token", json=credentials, headers={"agent_id": cheshire_cat.id})
+    res = secure_client.post("/auth/token", json=credentials, headers=secure_client_headers)
     assert res.status_code == 200
     jwt = res.json()["access_token"]
 
@@ -77,7 +80,7 @@ def test_users_permissions(secure_client, cheshire_cat, endpoint):
         endpoint["method"],
         endpoint["path"].replace("ID_PLACEHOLDER", target_user_id),
         json=endpoint["payload"],
-        headers={"Authorization": f"Bearer {jwt}", "agent_id": cheshire_cat.id} # using credentials
+        headers={"Authorization": f"Bearer {jwt}", "agent_id": agent_id} # using credentials
     )
     # `admin` can now use endpoints, `user` cannot
     if credentials["username"] == "admin":

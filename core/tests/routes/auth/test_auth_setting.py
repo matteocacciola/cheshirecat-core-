@@ -1,12 +1,15 @@
 from json import dumps
+
+import pytest
 from fastapi.encoders import jsonable_encoder
 
 from cat.factory.auth_handler import get_auth_handlers_schemas
+from tests.utils import api_key, api_key_ws
 
 
-def test_get_all_auth_handler_settings(client, cheshire_cat):
-    auth_handler_schemas = get_auth_handlers_schemas(cheshire_cat.mad_hatter)
-    response = client.get("/auth_handler/settings", headers={"agent_id": cheshire_cat.id})
+def test_get_all_auth_handler_settings(secure_client, secure_client_headers, mad_hatter):
+    auth_handler_schemas = get_auth_handlers_schemas(mad_hatter)
+    response = secure_client.get("/auth_handler/settings", headers=secure_client_headers)
     json = response.json()
 
     assert response.status_code == 200
@@ -23,10 +26,10 @@ def test_get_all_auth_handler_settings(client, cheshire_cat):
     assert json["selected_configuration"] == "CoreOnlyAuthConfig"
 
 
-def test_get_auth_handler_settings_non_existent(client, cheshire_cat):
+def test_get_auth_handler_settings_non_existent(secure_client, secure_client_headers):
     non_existent_auth_handler_name = "AuthHandlerNonExistent"
-    response = client.get(
-        f"/auth_handler/settings/{non_existent_auth_handler_name}", headers={"agent_id": cheshire_cat.id}
+    response = secure_client.get(
+        f"/auth_handler/settings/{non_existent_auth_handler_name}", headers=secure_client_headers
     )
     json = response.json()
 
@@ -34,12 +37,10 @@ def test_get_auth_handler_settings_non_existent(client, cheshire_cat):
     assert f"{non_existent_auth_handler_name} not supported" in json["detail"]["error"]
 
 
-# TODOAUTH: have at least another auth_handler class to test
-"""
-def test_get_auth_handler_settings(client):
-
+@pytest.mark.skip("Have at least another auth_handler class to test")
+def test_get_auth_handler_settings(secure_client, secure_client_headers):
     auth_handler_name = "AuthEnvironmentVariablesConfig"
-    response = client.get(f"/auth_handler/settings/{auth_handler_name}")
+    response = secure_client.get(f"/auth_handler/settings/{auth_handler_name}", headers=secure_client_headers)
     json = response.json()
 
     assert response.status_code == 200
@@ -49,15 +50,17 @@ def test_get_auth_handler_settings(client):
     assert json["schema"]["type"] == "object"
 
 
-def test_upsert_auth_handler_settings(client):
-
+@pytest.mark.skip("Have at least another auth_handler class to test")
+def test_upsert_auth_handler_settings(secure_client, secure_client_headers):
     # set a different auth_handler from default one (same class different size # TODO: have another fake/test auth_handler class)
     new_auth_handler = "AuthApiKeyConfig"
     auth_handler_config = {
-        "api_key_http": "meow_http",
-        "api_key_ws": "meow_ws",
+        "api_key_http": api_key,
+        "api_key_ws": api_key_ws,
     }
-    response = client.put(f"/auth_handler/settings/{new_auth_handler}", json=auth_handler_config)
+    response = secure_client.put(
+        f"/auth_handler/settings/{new_auth_handler}", json=auth_handler_config, headers=secure_client_headers
+    )
     json = response.json()
 
     # verify success
@@ -67,25 +70,20 @@ def test_upsert_auth_handler_settings(client):
     # Retrieve all auth_handlers settings to check if it was saved in DB
 
     ## We are now forced to use api_key, otherwise we don't get in
-    response = client.get("/auth_handler/settings")
+    response = secure_client.get("/auth_handler/settings", headers=secure_client_headers)
     json = response.json()
     assert response.status_code == 403
-    assert response.json()["detail"]["error"] == "Invalid Credentials"
+    assert json["detail"]["error"] == "Invalid Credentials"
 
     ## let's use the configured api_key for http
-    headers = {
-        "access_token": "meow_http"
-    }
-    response = client.get("/auth_handler/settings", headers=headers)
+    response = secure_client.get("/auth_handler/settings", headers=secure_client_headers)
     json = response.json()
     assert response.status_code == 200
     assert json["selected_configuration"] == new_auth_handler
-    saved_config = [ c for c in json["settings"] if c["name"] == new_auth_handler ]
 
     ## check also specific auth_handler endpoint
-    response = client.get(f"/auth_handler/settings/{new_auth_handler}", headers=headers)
+    response = secure_client.get(f"/auth_handler/settings/{new_auth_handler}", headers=secure_client_headers)
     assert response.status_code == 200
     json = response.json()
     assert json["name"] == new_auth_handler
     assert json["schema"]["authorizatorName"] == new_auth_handler
-"""

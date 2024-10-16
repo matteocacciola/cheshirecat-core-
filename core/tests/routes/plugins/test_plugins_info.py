@@ -1,5 +1,5 @@
-def test_list_plugins(client, cheshire_cat):
-    response = client.get("/plugins", headers={"agent_id": cheshire_cat.id})
+def test_list_plugins(secure_client, secure_client_headers):
+    response = secure_client.get("/plugins", headers=secure_client_headers)
     json = response.json()
 
     assert response.status_code == 200
@@ -20,8 +20,8 @@ def test_list_plugins(client, cheshire_cat):
     assert len(json["registry"]) > 0
 
 
-def test_get_plugin_id(client, cheshire_cat):
-    response = client.get("/plugins/core_plugin", headers={"agent_id": cheshire_cat.id})
+def test_get_plugin_id(secure_client, secure_client_headers):
+    response = secure_client.get("/plugins/core_plugin", headers=secure_client_headers)
 
     json = response.json()
 
@@ -32,8 +32,8 @@ def test_get_plugin_id(client, cheshire_cat):
     assert json["data"]["active"]
 
 
-def test_get_non_existent_plugin(client, cheshire_cat):
-    response = client.get("/plugins/no_plugin", headers={"agent_id": cheshire_cat.id})
+def test_get_non_existent_plugin(secure_client, secure_client_headers):
+    response = secure_client.get("/plugins/no_plugin", headers=secure_client_headers)
     json = response.json()
 
     assert response.status_code == 404

@@ -9,10 +9,6 @@ RUN apt-get -y update && apt-get install -y curl build-essential fastjar libmagi
     apt-get clean && \
     rm -rf /var/lib/apt/lists/*
 
-### ADMIN (static build) ###
-WORKDIR /admin
-RUN curl -sL https://github.com/cheshire-cat-ai/admin-vue/releases/download/Admin/release.zip | jar -xv
-
 ### PREPARE BUILD WITH NECESSARY FILES AND FOLDERS ###
 COPY ./pyproject.toml /app/pyproject.toml
 

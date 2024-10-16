@@ -1,10 +1,10 @@
-from tests.utils import send_n_websocket_messages
+from tests.utils import send_n_websocket_messages, agent_id
 
 
 # search on default startup memory
-def test_memory_recall_default_success(client, cheshire_cat):
+def test_memory_recall_default_success(secure_client, secure_client_headers):
     params = {"text": "Red Queen"}
-    response = client.get("/memory/recall/", params=params, headers={"agent_id": cheshire_cat.id})
+    response = secure_client.get("/memory/recall/", params=params, headers=secure_client_headers)
     json = response.json()
     assert response.status_code == 200
 
@@ -29,20 +29,20 @@ def test_memory_recall_default_success(client, cheshire_cat):
 
 
 # search without query should throw error
-def test_memory_recall_without_query_error(client, cheshire_cat):
-    response = client.get("/memory/recall", headers={"agent_id": cheshire_cat.id})
+def test_memory_recall_without_query_error(secure_client, secure_client_headers):
+    response = secure_client.get("/memory/recall", headers=secure_client_headers)
     assert response.status_code == 400
 
 
 # search with query
-def test_memory_recall_success(client, cheshire_cat):
+def test_memory_recall_success(secure_client, secure_client_headers):
     # send a few messages via chat
     num_messages = 3
-    send_n_websocket_messages(num_messages, client, agent_id=cheshire_cat.id)
+    send_n_websocket_messages(num_messages, secure_client)
 
     # recall
     params = {"text": "Red Queen"}
-    response = client.get("/memory/recall/", params=params, headers={"agent_id": cheshire_cat.id})
+    response = secure_client.get("/memory/recall/", params=params, headers=secure_client_headers)
     json = response.json()
     assert response.status_code == 200
     episodic_memories = json["vectors"]["collections"]["episodic"]
@@ -50,15 +50,15 @@ def test_memory_recall_success(client, cheshire_cat):
 
 
 # search with query and k
-def test_memory_recall_with_k_success(client, cheshire_cat):
+def test_memory_recall_with_k_success(secure_client, secure_client_headers):
     # send a few messages via chat
     num_messages = 6
-    send_n_websocket_messages(num_messages, client, agent_id=cheshire_cat.id)
+    send_n_websocket_messages(num_messages, secure_client)
 
     # recall at max k memories
     max_k = 2
     params = {"k": max_k, "text": "Red Queen"}
-    response = client.get("/memory/recall/", params=params, headers={"agent_id": cheshire_cat.id})
+    response = secure_client.get("/memory/recall/", params=params, headers=secure_client_headers)
     json = response.json()
     assert response.status_code == 200
     episodic_memories = json["vectors"]["collections"]["episodic"]

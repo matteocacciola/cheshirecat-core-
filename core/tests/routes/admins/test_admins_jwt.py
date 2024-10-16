@@ -8,7 +8,7 @@ from cat.auth.auth_utils import is_jwt
 from cat.utils import DefaultAgentKeys
 
 
-def test_is_jwt(client):
+def test_is_jwt():
     assert not is_jwt("not_a_jwt.not_a_jwt.not_a_jwt")
 
     actual_jwt = jwt.encode(
@@ -30,7 +30,7 @@ def test_refuse_issue_jwt(client):
 
 
 @pytest.mark.asyncio  # to test async functions
-async def test_issue_jwt(client, lizard, cheshire_cat):
+async def test_issue_jwt(client, lizard):
     creds = {
         "username": "admin",
         "password": get_env("CCAT_ADMIN_DEFAULT_PASSWORD"),
@@ -70,12 +70,9 @@ async def test_issue_jwt(client, lizard, cheshire_cat):
 
 
 @pytest.mark.asyncio
-async def test_issue_jwt_for_new_admin(client):
+async def test_issue_jwt_for_new_admin(client, secure_client, secure_client_headers):
     # create new user
-    creds = {
-        "username": "Alice",
-        "password": "Alice",
-    }
+    creds = {"username": "Alice", "password": "Alice"}
 
     # we should not obtain a JWT for this user
     # because it does not exist
@@ -84,7 +81,7 @@ async def test_issue_jwt_for_new_admin(client):
     assert res.json()["detail"]["error"] == "Invalid Credentials"
 
     # let's create the user
-    res = client.post("/admins", json=creds)
+    res = secure_client.post("/admins", json=creds, headers=secure_client_headers)
     assert res.status_code == 200
 
     # now we should get a JWT

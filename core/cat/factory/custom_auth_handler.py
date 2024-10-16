@@ -1,10 +1,17 @@
 from abc import ABC, abstractmethod
 from datetime import datetime, timedelta
-from typing import Literal
+from typing import Literal, Dict, List
 from pytz import utc
 import jwt
 
-from cat.auth.permissions import AuthPermission, AuthResource, AuthUserInfo, get_base_permissions, get_full_permissions
+from cat.auth.permissions import (
+    AdminAuthResource,
+    AuthPermission,
+    AuthResource,
+    AuthUserInfo,
+    get_base_permissions,
+    get_full_permissions,
+)
 from cat.auth.auth_utils import is_jwt
 from cat.db.cruds import users as crud_users
 from cat.env import get_env
@@ -24,7 +31,7 @@ class BaseAuthHandler(ABC):
         self,
         protocol: Literal["http", "websocket"],
         credential: str,
-        auth_resource: AuthResource,
+        auth_resource: AuthResource | AdminAuthResource,
         auth_permission: AuthPermission,
         user_id: str = "user",
         **kwargs,
@@ -41,7 +48,7 @@ class BaseAuthHandler(ABC):
     async def authorize_user_from_jwt(
         self,
         token: str,
-        auth_resource: AuthResource,
+        auth_resource: AuthResource | AdminAuthResource,
         auth_permission: AuthPermission,
         **kwargs,
     ) -> AuthUserInfo | None:
@@ -54,7 +61,7 @@ class BaseAuthHandler(ABC):
         protocol: Literal["http", "websocket"],
         user_id: str,
         api_key: str,
-        auth_resource: AuthResource,
+        auth_resource: AuthResource | AdminAuthResource,
         auth_permission: AuthPermission,
         **kwargs,
     ) -> AuthUserInfo | None:
@@ -67,7 +74,7 @@ class CoreAuthHandler(BaseAuthHandler):
     async def authorize_user_from_jwt(
         self,
         token: str,
-        auth_resource: AuthResource,
+        auth_resource: AuthResource | AdminAuthResource,
         auth_permission: AuthPermission,
         **kwargs,
     ) -> AuthUserInfo | None:
@@ -107,7 +114,7 @@ class CoreAuthHandler(BaseAuthHandler):
         protocol: Literal["http", "websocket"],
         user_id: str,
         api_key: str,
-        auth_resource: AuthResource,
+        auth_resource: AuthResource | AdminAuthResource,
         auth_permission: AuthPermission,
         **kwargs,
     ) -> AuthUserInfo | None:
@@ -128,35 +135,38 @@ class CoreAuthHandler(BaseAuthHandler):
         ws_key = get_env("CCAT_API_KEY_WS")
 
         if not http_key and not ws_key:
-            return AuthUserInfo(
-                id=user_id,
-                name=user_id,
-                permissions=get_full_permissions()
-            )
+            return None
 
         if protocol == "websocket":
-            return self._authorize_websocket_key(user_id, api_key, ws_key)
-        return self._authorize_http_key(user_id, api_key, http_key)
+            permissions = kwargs.get("websocket_permissions", get_base_permissions())
+            return self._authorize_websocket_key(user_id, api_key, ws_key, permissions)
 
-    def _authorize_http_key(self, user_id: str, api_key: str, http_key: str) -> AuthUserInfo | None:
+        permissions = kwargs.get("http_permissions", get_full_permissions())
+        return self._authorize_http_key(user_id, api_key, http_key, permissions)
+
+    def _authorize_http_key(
+        self, user_id: str, api_key: str, http_key: str, permissions: Dict[str, List[str]]
+    ) -> AuthUserInfo | None:
         # HTTP API key match -> allow access with full permissions
         if api_key == http_key:
             return AuthUserInfo(
                 id=user_id,
                 name=user_id,
-                permissions=get_full_permissions()
+                permissions=permissions
             )
 
         # No match -> deny access
         return None
 
-    def _authorize_websocket_key(self, user_id: str, api_key: str, ws_key: str) -> AuthUserInfo | None:
+    def _authorize_websocket_key(
+            self, user_id: str, api_key: str, ws_key: str, permissions: Dict[str, List[str]]
+    ) -> AuthUserInfo | None:
         # WebSocket API key match -> allow access with base permissions
         if api_key == ws_key:
             return AuthUserInfo(
                 id=user_id,
                 name=user_id,
-                permissions=get_base_permissions()
+                permissions=permissions
             )
 
         # No match -> deny access
