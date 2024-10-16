@@ -138,17 +138,14 @@ class CoreAuthHandler(BaseAuthHandler):
             return None
 
         if protocol == "websocket":
-            permissions = kwargs.get("websocket_permissions", get_base_permissions())
-            return self._authorize_websocket_key(user_id, api_key, ws_key, permissions)
+            return self._authorize_websocket_key(user_id, api_key, ws_key, **kwargs)
 
-        permissions = kwargs.get("http_permissions", get_full_permissions())
-        return self._authorize_http_key(user_id, api_key, http_key, permissions)
+        return self._authorize_http_key(user_id, api_key, http_key, **kwargs)
 
-    def _authorize_http_key(
-        self, user_id: str, api_key: str, http_key: str, permissions: Dict[str, List[str]]
-    ) -> AuthUserInfo | None:
+    def _authorize_http_key(self, user_id: str, api_key: str, http_key: str, **kwargs) -> AuthUserInfo | None:
         # HTTP API key match -> allow access with full permissions
         if api_key == http_key:
+            permissions: Dict[str, List[str]] = kwargs.get("http_permissions", get_full_permissions())
             return AuthUserInfo(
                 id=user_id,
                 name=user_id,
@@ -158,11 +155,10 @@ class CoreAuthHandler(BaseAuthHandler):
         # No match -> deny access
         return None
 
-    def _authorize_websocket_key(
-            self, user_id: str, api_key: str, ws_key: str, permissions: Dict[str, List[str]]
-    ) -> AuthUserInfo | None:
+    def _authorize_websocket_key(self, user_id: str, api_key: str, ws_key: str, **kwargs) -> AuthUserInfo | None:
         # WebSocket API key match -> allow access with base permissions
         if api_key == ws_key:
+            permissions: Dict[str, List[str]] = kwargs.get("websocket_permissions", get_base_permissions())
             return AuthUserInfo(
                 id=user_id,
                 name=user_id,
