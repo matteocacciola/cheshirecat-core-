@@ -11,7 +11,7 @@ from cat.env import get_env
 from cat.log import log
 
 
-class BaseAuthHandler(ABC):  # TODOAUTH: pydantic model?
+class BaseAuthHandler(ABC):
     """
     Base class to build custom Auth systems that will live alongside core auth.
     Methods `authorize_user_from_credential`
@@ -26,18 +26,24 @@ class BaseAuthHandler(ABC):  # TODOAUTH: pydantic model?
         credential: str,
         auth_resource: AuthResource,
         auth_permission: AuthPermission,
-        key_id: str,
         user_id: str = "user",
+        **kwargs,
     ) -> AuthUserInfo | None:
         if is_jwt(credential):
             # JSON Web Token auth
-            return await self.authorize_user_from_jwt(credential, auth_resource, auth_permission, key_id)
+            return await self.authorize_user_from_jwt(credential, auth_resource, auth_permission, **kwargs)
         # API_KEY auth
-        return await self.authorize_user_from_key(protocol, user_id, credential, auth_resource, auth_permission, key_id)
+        return await self.authorize_user_from_key(
+            protocol, user_id, credential, auth_resource, auth_permission, **kwargs
+        )
 
     @abstractmethod
     async def authorize_user_from_jwt(
-        self, token: str, auth_resource: AuthResource, auth_permission: AuthPermission, key_id: str
+        self,
+        token: str,
+        auth_resource: AuthResource,
+        auth_permission: AuthPermission,
+        **kwargs,
     ) -> AuthUserInfo | None:
         # will raise: NotImplementedError
         pass
@@ -50,7 +56,7 @@ class BaseAuthHandler(ABC):  # TODOAUTH: pydantic model?
         api_key: str,
         auth_resource: AuthResource,
         auth_permission: AuthPermission,
-        key_id: str,
+        **kwargs,
     ) -> AuthUserInfo | None:
         # will raise: NotImplementedError
         pass
@@ -59,8 +65,14 @@ class BaseAuthHandler(ABC):  # TODOAUTH: pydantic model?
 # Core auth handler, verify token on local idp
 class CoreAuthHandler(BaseAuthHandler):
     async def authorize_user_from_jwt(
-        self, token: str, auth_resource: AuthResource, auth_permission: AuthPermission, key_id: str
+        self,
+        token: str,
+        auth_resource: AuthResource,
+        auth_permission: AuthPermission,
+        **kwargs,
     ) -> AuthUserInfo | None:
+        key_id = kwargs.get("key_id")
+
         try:
             # decode token
             payload = jwt.decode(token, get_env("CCAT_JWT_SECRET"), algorithms=[get_env("CCAT_JWT_ALGORITHM")])
@@ -97,7 +109,7 @@ class CoreAuthHandler(BaseAuthHandler):
         api_key: str,
         auth_resource: AuthResource,
         auth_permission: AuthPermission,
-        key_id: str,
+        **kwargs,
     ) -> AuthUserInfo | None:
         """
         Authorize a user from an API key. This method is used to authorize users when they are not using a JWT token.
@@ -107,7 +119,6 @@ class CoreAuthHandler(BaseAuthHandler):
             api_key: the API key to authorize the user
             auth_resource: the resource to authorize the user on
             auth_permission: the permission to authorize the user on
-            key_id: the agent ID to authorize the user in
 
         Returns:
             An AuthUserInfo object if the user is authorized, None otherwise.
@@ -151,18 +162,19 @@ class CoreAuthHandler(BaseAuthHandler):
         # No match -> deny access
         return None
 
-    async def issue_jwt(self, username: str, password: str, key_id: str) -> str | None:
+    async def issue_jwt(self, username: str, password: str, **kwargs) -> str | None:
         """
         Authenticate local user credentials and return a JWT token.
 
         Args:
             username: the username of the user to authenticate
             password: the password of the user to authenticate
-            key_id: the agent ID to authenticate the user in (default: "agent")
 
         Returns:
             A JWT token if the user is authenticated, None otherwise.
         """
+
+        key_id = kwargs.get("key_id")
 
         # brutal search over users, which are stored in a simple dictionary.
         # waiting to have graph in core to store them properly

@@ -6,5 +6,5 @@ from cat.routes.admins.crud import router as crud_router
 router = APIRouter()
 
 
-router.include_router(auth_router, tags=["Admins - Auth"])
-router.include_router(crud_router, tags=["Admins - CRUD"])
+router.include_router(auth_router, tags=["Admin Auth"], prefix="/auth")
+router.include_router(crud_router, tags=["Admins"])

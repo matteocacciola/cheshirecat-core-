@@ -40,7 +40,7 @@ def test_refuse_issue_jwt(client, cheshire_cat):
 async def test_issue_jwt(client, lizard, cheshire_cat):
     agent_id = cheshire_cat.id
 
-    creds = { "username": "user","password": "user"}
+    creds = {"username": "user", "password": "user"}
 
     res = client.post("/auth/token", json=creds, headers={"agent_id": agent_id})
     assert res.status_code == 200
@@ -55,7 +55,7 @@ async def test_issue_jwt(client, lizard, cheshire_cat):
     # is the JWT correct for core auth handler?
     auth_handler = lizard.core_auth_handler
     user_info = await auth_handler.authorize_user_from_jwt(
-        received_token, AuthResource.STATUS, AuthPermission.READ, agent_id
+        received_token, AuthResource.STATUS, AuthPermission.READ, key_id=agent_id
     )
     assert len(user_info.id) == 36 and len(user_info.id.split("-")) == 5  # uuid4
     assert user_info.name == "user"
@@ -76,10 +76,7 @@ async def test_issue_jwt(client, lizard, cheshire_cat):
 @pytest.mark.asyncio
 async def test_issue_jwt_for_new_user(client, cheshire_cat):
     # create new user
-    creds = {
-        "username": "Alice",
-        "password": "Alice",
-    }
+    creds = {"username": "Alice", "password": "Alice"}
 
     agent_id = cheshire_cat.id
 

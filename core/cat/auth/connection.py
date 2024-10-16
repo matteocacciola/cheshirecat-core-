@@ -14,6 +14,7 @@ from cat.auth.permissions import AdminAuthResource, AuthPermission, AuthResource
 from cat.looking_glass.cheshire_cat import CheshireCat
 from cat.looking_glass.stray_cat import StrayCat
 from cat.log import log
+from cat.utils import DefaultAgentKeys
 
 
 class SuperCredentials(BaseModel):
@@ -52,7 +53,7 @@ class ConnectionSuperAdminAuth:
             token,
             self.resource,
             self.permission,
-            lizard.config_key,
+            key_id=lizard.config_key,
             user_id=user_id,
         )
         if user:
@@ -91,7 +92,7 @@ class ConnectionAuth(ABC):
                 credentials.credential,
                 self.resource,
                 self.permission,
-                credentials.agent_id,
+                key_id=credentials.agent_id,
                 user_id=credentials.user_id,
             )
             if user:
@@ -122,9 +123,6 @@ class HTTPAuth(ConnectionAuth):
 
         # when using CCAT_API_KEY, agent_id and user_id are passed in headers
         agent_id = extract_agent_id_from_request(connection)
-        if not agent_id:
-            raise HTTPException(status_code=404, detail={"error": "Forbidden access"})
-
         user_id = extract_user_id_from_request(connection)
 
         # Proper Authorization header
@@ -154,9 +152,6 @@ class WebSocketAuth(ConnectionAuth):
         Extract token from WebSocket query string
         """
         agent_id = extract_agent_id_from_request(connection)
-        if not agent_id:
-            raise WebSocketException(code=1003, reason="Forbidden access")
-
         user_id = extract_user_id_from_request(connection)
 
         # TODO AUTH: is there a more secure way to pass the token over websocket?
@@ -193,19 +188,17 @@ class CoreFrontendAuth(HTTPAuth):
         """
 
         agent_id = extract_agent_id_from_request(connection)
-        if not agent_id:
-            raise HTTPException(status_code=404, detail={"error": "Forbidden access"})
-
         token = connection.cookies.get("ccat_user_token", None)
 
         # core webapps cannot be accessed without a cookie
-        if token is None or token == "":
-            self.not_allowed(connection, route="/auth/login")
+        if token:
+            return Credentials(agent_id=agent_id, user_id="user", credential=token)
 
-        return Credentials(agent_id=agent_id, user_id="user", credential=token)
+        route = f"/auth/{agent_id}/login" if agent_id == str(DefaultAgentKeys.SYSTEM) else f"/admins/auth/login"
+        self.not_allowed(connection, route=route)
     
     def not_allowed(self, connection: Request, **kwargs):
-        route = kwargs.get("route", "/auth/login")
+        route = kwargs.get("route")
         referer_query = urlencode({"referer": connection.url.path})
         raise HTTPException(
             status_code=307,

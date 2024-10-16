@@ -6,7 +6,7 @@ def test_ping_success(client, cheshire_cat):
     assert response.status_code == 200
     assert response.json()["status"] == "We're all mad here, dear!"
 
-
-def test_ping_error(client):
     response = client.get("/")
-    assert response.status_code == 404
+    assert response.status_code == 200
+    assert response.json()["status"] == "We're all mad here, dear!"
+

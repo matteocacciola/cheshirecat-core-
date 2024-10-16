@@ -28,30 +28,6 @@ def reset_api_key(key, value: str | None) -> None:
         del os.environ[key]
 
 
-def test_api_key_http_no_agent(client):
-    current_api_key = set_api_key("CCAT_API_KEY", "meow_http")
-
-    # forbid access if no Agent id is provided
-    response = client.get("/")
-    assert response.status_code == 404
-    assert response.json()["detail"]["error"] == "Forbidden access"
-
-    reset_api_key("CCAT_API_KEY", current_api_key)
-
-
-def test_api_key_ws_no_agent(client):
-    current_api_key = set_api_key("CCAT_API_KEY", "meow_http")
-
-    mex = {"text": "Where do I go?"}
-
-    # forbid access if no Agent id is provided
-    with pytest.raises(Exception) as e_info:
-        res = send_websocket_message(mex, client)
-    assert str(e_info.type.__name__) == "WebSocketDisconnect"
-
-    reset_api_key("CCAT_API_KEY", current_api_key)
-
-
 @pytest.mark.parametrize("header_name", ["Authorization", "access_token"])
 def test_api_key_http(client, header_name, cheshire_cat):
     current_api_key = set_api_key("CCAT_API_KEY", "meow_http")

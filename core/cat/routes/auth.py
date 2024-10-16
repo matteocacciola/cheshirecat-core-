@@ -49,7 +49,5 @@ async def auth_token(request: Request, credentials: UserCredentials):
     """
 
     agent_id = extract_agent_id_from_request(request)
-    if not agent_id:
-        raise HTTPException(status_code=404, detail={"error": "Forbidden access"})
 
     return await fnc_auth_token(request, credentials, agent_id)

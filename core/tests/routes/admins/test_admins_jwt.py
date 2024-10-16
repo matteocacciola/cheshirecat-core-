@@ -21,7 +21,7 @@ def test_is_jwt(client):
 
 def test_refuse_issue_jwt(client):
     creds = {"username": "admin", "password": "wrong"}
-    res = client.post("/admins/token", json=creds)
+    res = client.post("/admins/auth/token", json=creds)
 
     # wrong credentials
     assert res.status_code == 403
@@ -36,7 +36,7 @@ async def test_issue_jwt(client, lizard, cheshire_cat):
         "password": get_env("CCAT_ADMIN_DEFAULT_PASSWORD"),
     }
 
-    res = client.post("/admins/token", json=creds)
+    res = client.post("/admins/auth/token", json=creds)
     assert res.status_code == 200
 
     res_json = res.json()
@@ -49,7 +49,7 @@ async def test_issue_jwt(client, lizard, cheshire_cat):
     # is the JWT correct for core auth handler?
     auth_handler = lizard.core_auth_handler
     user_info = await auth_handler.authorize_user_from_jwt(
-        received_token, AdminAuthResource.EMBEDDER, AuthPermission.WRITE, str(DefaultAgentKeys.SYSTEM)
+        received_token, AdminAuthResource.EMBEDDER, AuthPermission.WRITE, key_id=str(DefaultAgentKeys.SYSTEM)
     )
     assert len(user_info.id) == 36 and len(user_info.id.split("-")) == 5 # uuid4
     assert user_info.name == "admin"
@@ -79,7 +79,7 @@ async def test_issue_jwt_for_new_admin(client):
 
     # we should not obtain a JWT for this user
     # because it does not exist
-    res = client.post("/admins/token", json=creds)
+    res = client.post("/admins/auth/token", json=creds)
     assert res.status_code == 403
     assert res.json()["detail"]["error"] == "Invalid Credentials"
 
@@ -88,7 +88,7 @@ async def test_issue_jwt_for_new_admin(client):
     assert res.status_code == 200
 
     # now we should get a JWT
-    res = client.post("/admins/token", json=creds)
+    res = client.post("/admins/auth/token", json=creds)
     assert res.status_code == 200
 
     # did we obtain a JWT?

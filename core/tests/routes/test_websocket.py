@@ -59,9 +59,3 @@ def test_websocket_multiple_messages(client, cheshire_cat):
 
     for res in replies:
         check_correct_websocket_reply(res)
-
-
-def test_ping_error(client):
-    with pytest.raises(WebSocketDisconnect):
-        # send websocket message
-        res = send_websocket_message({"text": "It's late! It's late"}, client)
