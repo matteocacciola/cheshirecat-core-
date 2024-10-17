@@ -125,20 +125,20 @@ def check_user_fields(u):
         assert False, "Not a UUID"
 
 
-def run_job_in_thread(job, obj, loop):
+def run_in_thread(fnc, *args):
     """
-    Helper function to run job_on_idle_strays in a separate thread.
+    Helper function to run functions in a separate thread.
     """
     with ThreadPoolExecutor() as executor:
-        future = executor.submit(job, obj, loop)
+        future = executor.submit(fnc, *args)
         return future.result()
 
 
-async def async_run_job(job, obj, loop):
+async def async_run(loop, fnc, *args):
     """
-    Asynchronously run job_on_idle_strays in a separate thread.
+    Asynchronously run a function in a separate thread.
     """
-    return await loop.run_in_executor(None, run_job_in_thread, job, obj, loop)
+    return await loop.run_in_executor(None, run_in_thread, fnc, *args)
 
 
 def create_basic_user(agent_id: str) -> None:

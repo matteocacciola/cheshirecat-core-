@@ -1,4 +1,4 @@
-import asyncio
+import pytest
 
 from cat.mad_hatter.mad_hatter import MadHatter
 from cat.rabbit_hole import RabbitHole
@@ -11,11 +11,11 @@ def test_main_modules_loaded(lizard):
     assert isinstance(lizard.rabbit_hole, get_class_from_decorated_singleton(RabbitHole))
 
 
-def test_shutdown(lizard):
+@pytest.mark.asyncio  # to test async functions
+async def test_shutdown(lizard):
     white_rabbit = lizard.white_rabbit
 
-    loop = asyncio.get_event_loop()
-    loop.run_until_complete(lizard.shutdown())
+    await lizard.shutdown()
 
     assert white_rabbit.get_job(lizard.job_ids[0]) is None
     assert lizard.mad_hatter is None

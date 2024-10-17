@@ -28,6 +28,7 @@ from tests.utils import (
     jwt_secret,
     create_mock_plugin_zip,
     get_class_from_decorated_singleton,
+    async_run,
 )
 
 mock_plugin_path = "tests/mocks/mock_plugin/"
@@ -64,6 +65,7 @@ def mock_classes(monkeypatch):
 
     monkeypatch.setattr(Plugin, "_install_requirements", mock_install_requirements)
 
+    # mock the agent_id in the request
     def get_extract_agent_id_from_request(request):
         return agent_id
 
@@ -200,9 +202,7 @@ def just_installed_plugin(secure_client, secure_client_headers):
     assert response.status_code == 200
     assert response.json()["filename"] == zip_file_name
 
-    ### each test function having `just_installed_plugin` as argument, is run here
     yield
-    ###
 
     # clean up of zip file and mock_plugin_folder is done for every test automatically (see client fixture)
 
@@ -210,13 +210,15 @@ def just_installed_plugin(secure_client, secure_client_headers):
 @pytest.fixture
 def cheshire_cat(lizard):
     cheshire_cat = lizard.get_or_create_cheshire_cat(agent_id)
+
     yield cheshire_cat
-    lizard.remove_cheshire_cat(agent_id)
+
+    loop = asyncio.get_event_loop()
+    loop.run_until_complete(async_run(loop, lizard.remove_cheshire_cat, agent_id))
 
 
 @pytest.fixture
 def mad_hatter(cheshire_cat):
-    # each test is given the mad_hatter instance
     mad_hatter = cheshire_cat.mad_hatter
 
     # install plugin
@@ -228,27 +230,27 @@ def mad_hatter(cheshire_cat):
 
 @pytest.fixture
 def mad_hatter_no_plugins(cheshire_cat):
-    yield cheshire_cat.mad_hatter  # each test is given the mad_hatter instance
+    yield cheshire_cat.mad_hatter
 
 
 @pytest.fixture
 def mad_hatter_lizard(lizard):
-    yield lizard.mad_hatter  # each test is given the mad_hatter instance
+    yield lizard.mad_hatter
 
 
 @pytest.fixture
 def embedder(lizard):
-    yield lizard.embedder  # each test is given the embedder instance
+    yield lizard.embedder
 
 
 @pytest.fixture
 def llm(cheshire_cat):
-    yield cheshire_cat.llm  # each test is given the llm instance
+    yield cheshire_cat.llm
 
 
 @pytest.fixture
 def memory(client, cheshire_cat):
-    yield cheshire_cat.memory  # each test is given the memory instance
+    yield cheshire_cat.memory
 
 
 # fixture to have available an instance of StrayCat

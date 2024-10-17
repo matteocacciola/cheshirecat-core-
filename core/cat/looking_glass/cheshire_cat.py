@@ -150,11 +150,9 @@ class CheshireCat:
         if not stray:
             return
 
-        await stray.close_connection()
+        await stray.shutdown()
 
         self.__strays.remove(stray)
-        crud_users.delete_user(self.id, stray.user_id)
-
         del stray
 
     def get_stray(self, user_id: str) -> "StrayCat":
@@ -167,7 +165,7 @@ class CheshireCat:
 
     async def shutdown(self) -> None:
         for stray in self.__strays:
-            await stray.close_connection()
+            await stray.shutdown()
 
         self.__strays.clear()
 

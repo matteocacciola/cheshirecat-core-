@@ -2,11 +2,11 @@ import asyncio
 import os
 
 from cat.auth.permissions import AuthUserInfo, get_base_permissions
-from cat.bill_the_lizard import job_on_idle_strays
 from cat.db.cruds import users as crud_users
+from cat.jobs import job_on_idle_strays
 from cat.looking_glass.stray_cat import StrayCat
 
-from tests.utils import async_run_job
+from tests.utils import async_run
 
 
 def test_job_on_idle_strays(lizard):
@@ -21,7 +21,7 @@ def test_job_on_idle_strays(lizard):
     stray = StrayCat(user_data=user, main_loop=loop, agent_id=ccat.id)
 
     # Run the job asynchronously
-    loop.run_until_complete(async_run_job(job_on_idle_strays, lizard, loop))
+    loop.run_until_complete(async_run(loop, job_on_idle_strays, lizard, loop))
 
     assert ccat.get_stray(stray.user_id) is None
     assert ccat.has_strays() is False

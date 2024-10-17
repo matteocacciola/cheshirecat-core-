@@ -18,6 +18,7 @@ from cat.factory.embedder import (
     get_embedder_from_name,
     get_allowed_embedder_models,
 )
+from cat.jobs import job_on_idle_strays
 from cat.log import log
 from cat.looking_glass.cheshire_cat import CheshireCat
 from cat.looking_glass.white_rabbit import WhiteRabbit
@@ -197,7 +198,7 @@ class BillTheLizard:
 
         return selected
 
-    def remove_cheshire_cat(self, agent_id: str) -> None:
+    async def remove_cheshire_cat(self, agent_id: str) -> None:
         """
         Removes a Cheshire Cat from the list of active agents.
 
@@ -209,6 +210,9 @@ class BillTheLizard:
         """
         
         if agent_id in self.__cheshire_cats.keys():
+            ccat = self.__cheshire_cats[agent_id]
+            await ccat.shutdown()
+
             del self.__cheshire_cats[agent_id]
 
     def get_cheshire_cat(self, agent_id: str) -> CheshireCat | None:
@@ -282,22 +286,3 @@ class BillTheLizard:
     @property
     def job_ids(self) -> List:
         return [self.__check_idle_strays_job_id]
-
-
-def job_on_idle_strays(lizard: BillTheLizard, loop) -> bool:
-    """
-    Remove the objects StrayCat, if idle, from the CheshireCat objects contained into the BillTheLizard.
-    """
-
-    ccats = list(lizard.cheshire_cats.values())  # Create a list from the values
-
-    for ccat in ccats:
-        for stray in list(ccat.strays):  # Create a copy of strays to iterate over
-            if stray.is_idle:
-                asyncio.run_coroutine_threadsafe(ccat.remove_stray(stray.user_id), loop=loop).result()
-
-        # Check if the CheshireCat has still strays; if not, remove it
-        if not ccat.has_strays():
-            lizard.remove_cheshire_cat(ccat.id)
-
-    return True
