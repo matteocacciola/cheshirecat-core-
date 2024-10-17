@@ -88,6 +88,9 @@ def clean_up_mocks():
 
     redis_client.flushdb()
 
+    # wait for the flushdb to be completed
+    time.sleep(0.1)
+
 
 def should_skip_encapsulation(request):
     return request.node.get_closest_marker("skip_encapsulation") is not None
@@ -246,12 +249,6 @@ def llm(cheshire_cat):
 @pytest.fixture
 def memory(client, cheshire_cat):
     yield cheshire_cat.memory  # each test is given the memory instance
-
-
-# fixtures to test the main agent
-@pytest.fixture
-def main_agent(lizard):
-    yield lizard.main_agent  # each test receives as argument the main agent instance
 
 
 # fixture to have available an instance of StrayCat

@@ -4,15 +4,15 @@ from cat.agents.main_agent import MainAgent
 from cat.agents.base_agent import AgentOutput
 
 
-def test_main_agent_instantiation(main_agent):
-    assert isinstance(main_agent, MainAgent)
-    assert main_agent.verbose in [True, False]
+def test_main_agent_instantiation(stray):
+    assert isinstance(stray.main_agent, MainAgent)
+    assert stray.main_agent.verbose in [True, False]
 
 
 @pytest.mark.asyncio  # to test async functions
-async def test_execute_main_agent(main_agent, stray):
+async def test_execute_main_agent(stray):
     # empty agent execution
-    out = await main_agent.execute(stray)
+    out = await stray.main_agent.execute(stray)
     assert isinstance(out, AgentOutput)
     assert not out.return_direct
     assert out.intermediate_steps == []

@@ -82,7 +82,7 @@ def update_user(
     
     if user.password:
         user.password = hash_password(user.password)
-    updated_info = stored_user | user.model_dump(exclude_unset=True)
+    updated_info = {**stored_user, **user.model_dump(exclude_unset=True)}
 
     crud_users.update_user(agent_id, user_id, updated_info)
     return updated_info
