@@ -1,7 +1,7 @@
 from typing import Dict
 from fastapi import APIRouter, Body, HTTPException, Depends
 
-from cat.auth.connection import ConnectionSuperAdminAuth
+from cat.auth.connection import AdminConnectionAuth
 from cat.auth.permissions import AdminAuthResource, AuthPermission
 from cat.bill_the_lizard import BillTheLizard
 from cat.db.cruds import settings as crud_settings
@@ -14,7 +14,7 @@ router = APIRouter()
 # get configured Embedders and configuration schemas
 @router.get("/settings")
 def get_embedders_settings(
-    lizard: BillTheLizard = Depends(ConnectionSuperAdminAuth(AdminAuthResource.EMBEDDER, AuthPermission.LIST)),
+    lizard: BillTheLizard = Depends(AdminConnectionAuth(AdminAuthResource.EMBEDDER, AuthPermission.LIST)),
 ) -> Dict:
     """Get the list of the Embedders"""
 
@@ -38,7 +38,7 @@ def get_embedders_settings(
 @router.get("/settings/{language_embedder_name}")
 def get_embedder_settings(
     language_embedder_name: str,
-    lizard: BillTheLizard = Depends(ConnectionSuperAdminAuth(AdminAuthResource.EMBEDDER, AuthPermission.READ)),
+    lizard: BillTheLizard = Depends(AdminConnectionAuth(AdminAuthResource.EMBEDDER, AuthPermission.READ)),
 ) -> Dict:
     """Get settings and schema of the specified Embedder"""
 
@@ -65,7 +65,7 @@ def get_embedder_settings(
 def upsert_embedder_setting(
     language_embedder_name: str,
     payload: Dict = Body({"openai_api_key": "your-key-here"}),
-    lizard: BillTheLizard = Depends(ConnectionSuperAdminAuth(AdminAuthResource.EMBEDDER, AuthPermission.EDIT)),
+    lizard: BillTheLizard = Depends(AdminConnectionAuth(AdminAuthResource.EMBEDDER, AuthPermission.EDIT)),
 ) -> Dict:
     """Upsert the Embedder setting"""
 

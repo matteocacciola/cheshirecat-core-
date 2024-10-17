@@ -37,7 +37,7 @@ class ContextualCats(BaseModel):
     model_config = ConfigDict(arbitrary_types_allowed=True)
 
 
-class ConnectionSuperAdminAuth:
+class AdminConnectionAuth:
     def __init__(self, resource: AdminAuthResource, permission: AuthPermission):
         self.resource = resource
         self.permission = permission
@@ -86,10 +86,8 @@ class ConnectionAuth(ABC):
         ccat = lizard.get_or_create_cheshire_cat(credentials.agent_id)
 
         auth_handlers = [
-            # try to get user from local id
-            lizard.core_auth_handler,
-            # try to get user from auth_handler
-            ccat.custom_auth_handler,
+            lizard.core_auth_handler,  # try to get user from local id
+            ccat.custom_auth_handler,  # try to get user from auth_handler
         ]
         for ah in auth_handlers:
             user: AuthUserInfo = await ah.authorize_user_from_credential(
