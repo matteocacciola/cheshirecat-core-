@@ -5,6 +5,7 @@ from asyncio import AbstractEventLoop
 import tiktoken
 from typing import Literal, get_args, List, Dict, Any, Tuple
 from langchain.docstore.document import Document
+from langchain_core.embeddings import Embeddings
 from langchain_core.language_models import BaseLanguageModel
 from langchain_core.messages import AIMessage, HumanMessage, SystemMessage, BaseMessage
 from langchain_core.runnables import RunnableConfig, RunnableLambda
@@ -21,7 +22,6 @@ from cat.auth.permissions import AuthUserInfo
 from cat.convo.messages import CatMessage, UserMessage, MessageWhy, Role, EmbedderModelInteraction
 from cat.db.cruds import users as crud_users
 from cat.env import get_env
-from cat.factory.embedder import EmbedderSettings
 from cat.log import log
 from cat.looking_glass.callbacks import NewTokenHandler, ModelInteractionHandler
 from cat.looking_glass.white_rabbit import WhiteRabbit
@@ -392,7 +392,7 @@ class StrayCat:
 
         return output
 
-    async def __call__(self, message_dict: Dict) -> Dict:
+    async def __call__(self, message_dict: Dict) -> CatMessage:
         """Call the Cat instance.
 
         This method is called on the user's message received from the client.
@@ -402,7 +402,7 @@ class StrayCat:
                 Dictionary received from the Websocket client.
 
         Returns:
-            final_output : Dict
+            final_output : CatMessage
                 Dictionary with the Cat's answer to be sent to the client.
 
         Notes
@@ -686,7 +686,7 @@ Allowed classes are:
         return self.cheshire_cat.llm
 
     @property
-    def embedder(self) -> EmbedderSettings:
+    def embedder(self) -> Embeddings:
         return BillTheLizard().embedder
 
     @property

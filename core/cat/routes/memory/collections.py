@@ -1,5 +1,6 @@
-from typing import Dict
+from typing import Dict, List
 from fastapi import APIRouter, HTTPException, Depends
+from pydantic import BaseModel
 
 from cat.auth.connection import HTTPAuth, ContextualCats
 from cat.auth.permissions import AuthPermission, AuthResource
@@ -8,26 +9,43 @@ from cat.memory.vector_memory_collection import VectoryMemoryCollectionTypes
 router = APIRouter()
 
 
+class GetCollectionsItem(BaseModel):
+    name: str
+    vectors_count: int
+
+
+class GetCollectionsResponse(BaseModel):
+    collections: List[GetCollectionsItem]
+
+
+class WipeCollectionsResponse(BaseModel):
+    deleted: List[Dict[str, bool]]
+
+
+class WipeSingleCollectionResponse(BaseModel):
+    deleted: Dict[str, bool]
+
+
 # GET collection list with some metadata
-@router.get("/collections")
+@router.get("/collections", response_model=GetCollectionsResponse)
 async def get_collections(
     cats: ContextualCats = Depends(HTTPAuth(AuthResource.MEMORY, AuthPermission.READ))
-) -> Dict:
+) -> GetCollectionsResponse:
     """Get list of available collections"""
 
-    collections_metadata = [{
-        "name": str(c),
-        "vectors_count": cats.cheshire_cat.memory.vectors.collections[str(c)].get_vectors_count()
-    } for c in VectoryMemoryCollectionTypes]
+    collections_metadata = [GetCollectionsItem(
+        name=str(c),
+        vectors_count=cats.cheshire_cat.memory.vectors.collections[str(c)].get_vectors_count()
+    ) for c in VectoryMemoryCollectionTypes]
 
-    return {"collections": collections_metadata}
+    return GetCollectionsResponse(collections=collections_metadata)
 
 
 # DELETE all collections
-@router.delete("/collections")
+@router.delete("/collections", response_model=WipeCollectionsResponse)
 async def wipe_collections(
     cats: ContextualCats = Depends(HTTPAuth(AuthResource.MEMORY, AuthPermission.DELETE)),
-) -> Dict:
+) -> WipeCollectionsResponse:
     """Delete and create all collections"""
 
     ccat = cats.cheshire_cat
@@ -37,18 +55,17 @@ async def wipe_collections(
     ccat.load_memory()  # recreate the long term memories
     ccat.mad_hatter.find_plugins()
 
-    return {
-        "deleted": to_return,
-    }
+    return WipeCollectionsResponse(deleted=to_return)
 
 
 # DELETE one collection
-@router.delete("/collections/{collection_id}")
+@router.delete("/collections/{collection_id}", response_model=WipeSingleCollectionResponse)
 async def wipe_single_collection(
     collection_id: str,
     cats: ContextualCats = Depends(HTTPAuth(AuthResource.MEMORY, AuthPermission.DELETE)),
-) -> Dict:
+) -> WipeSingleCollectionResponse:
     """Delete and recreate a collection"""
+
     # check if collection exists
     if collection_id not in VectoryMemoryCollectionTypes:
         raise HTTPException(
@@ -61,6 +78,4 @@ async def wipe_single_collection(
     ccat.load_memory()  # recreate the long term memories
     ccat.mad_hatter.find_plugins()
 
-    return {
-        "deleted": {collection_id: ret},
-    }
+    return WipeSingleCollectionResponse(deleted={collection_id: ret})

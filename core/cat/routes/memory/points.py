@@ -1,10 +1,12 @@
-from typing import Dict, List
+from typing import Dict, List, Any
 from pydantic import BaseModel
 from fastapi import Query, APIRouter, HTTPException, Depends
 import time
+from qdrant_client.http.models import UpdateResult, Record
 
 from cat.auth.connection import HTTPAuth, ContextualCats
 from cat.auth.permissions import AuthPermission, AuthResource
+from cat.factory.embedder import get_embedder_config_class_from_model
 from cat.memory.vector_memory_collection import VectoryMemoryCollectionTypes
 
 router = APIRouter()
@@ -21,13 +23,33 @@ class MemoryPoint(MemoryPointBase):
     vector: List[float]
 
 
+class RecallResponseQuery(BaseModel):
+    text: str
+    vector: List[float]
+
+
+class RecallResponseVectors(BaseModel):
+    embedder: str
+    collections: Dict[str, List[Dict[str, Any]]]
+
+
+class RecallResponse(BaseModel):
+    query: RecallResponseQuery
+    vectors: RecallResponseVectors
+
+
+class GetPointsInCollectionResponse(BaseModel):
+    points: List[Record]
+    next_offset: int | str | None
+
+
 # GET memories from recall
-@router.get("/recall")
+@router.get("/recall", response_model=RecallResponse)
 async def recall_memory_points_from_text(
     text: str = Query(description="Find memories similar to this text."),
     k: int = Query(default=100, description="How many memories to return."),
     cats: ContextualCats = Depends(HTTPAuth(AuthResource.MEMORY, AuthPermission.READ)),
-) -> Dict:
+) -> RecallResponse:
     """Search k memories similar to given text."""
 
     def build_memory_dict(metadata, score, vector, id):
@@ -56,24 +78,21 @@ async def recall_memory_points_from_text(
         build_memory_dict(metadata, score, vector, id) for metadata, score, vector, id in get_memories(c)
     ] for c in VectoryMemoryCollectionTypes}
 
-    return {
-        "query": {
-            "text": text,
-            "vector": query_embedding,
-        },
-        "vectors": {
-            "embedder": str(ccat.embedder.__class__.__name__),  # TODO: should be the config class name
-            "collections": recalled,
-        },
-    }
+    return RecallResponse(
+        query=RecallResponseQuery(text=text, vector=query_embedding),
+        vectors=RecallResponseVectors(
+            embedder=get_embedder_config_class_from_model(ccat.embedder.__class__, ccat.mad_hatter),
+            collections=recalled
+        )
+    )
 
 
 # CREATE a point in memory
 @router.post("/collections/{collection_id}/points", response_model=MemoryPoint)
 async def create_memory_point(
-        collection_id: str,
-        point: MemoryPointBase,
-        cats: ContextualCats = Depends(HTTPAuth(AuthResource.MEMORY, AuthPermission.WRITE)),
+    collection_id: str,
+    point: MemoryPointBase,
+    cats: ContextualCats = Depends(HTTPAuth(AuthResource.MEMORY, AuthPermission.WRITE)),
 ) -> MemoryPoint:
     """Create a point in memory"""
 
@@ -118,7 +137,7 @@ async def create_memory_point(
 
 
 # DELETE memories
-@router.delete("/collections/{collection_id}/points/{point_id}")
+@router.delete("/collections/{collection_id}/points/{point_id}", response_model=Dict[str, str])
 async def delete_memory_point(
     collection_id: str,
     point_id: str,
@@ -145,7 +164,7 @@ async def delete_memory_point(
     return {"deleted": point_id}
 
 
-@router.delete("/collections/{collection_id}/points")
+@router.delete("/collections/{collection_id}/points", response_model=Dict[str, UpdateResult])
 async def delete_memory_points_by_metadata(
     collection_id: str,
     metadata: Dict = None,
@@ -157,13 +176,11 @@ async def delete_memory_points_by_metadata(
     # delete points
     ret = cats.cheshire_cat.memory.vectors.collections[collection_id].delete_points_by_metadata_filter(metadata)
 
-    return {
-        "deleted": ret
-    }
+    return {"deleted": ret}
 
 
 # GET all the points from a single collection
-@router.get("/collections/{collection_id}/points")
+@router.get("/collections/{collection_id}/points", response_model=GetPointsInCollectionResponse)
 async def get_points_in_collection(
     collection_id: str,
     limit: int = Query(
@@ -175,7 +192,7 @@ async def get_points_in_collection(
         description="If provided (or not empty string) - skip points with ids less than given `offset`"
     ),
     cats: ContextualCats = Depends(HTTPAuth(AuthResource.MEMORY, AuthPermission.DELETE)),
-) -> Dict:
+) -> GetPointsInCollectionResponse:
     """Retrieve all the points from a single collection
 
     Example
@@ -247,7 +264,4 @@ async def get_points_in_collection(
     memory_collection = cats.stray_cat.memory.vectors.collections[collection_id]
     points, next_offset = memory_collection.get_all_points(limit=limit, offset=offset)
 
-    return {
-        "points": points,
-        "next_offset": next_offset
-    }
+    return GetPointsInCollectionResponse(points=points, next_offset=next_offset)

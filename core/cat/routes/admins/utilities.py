@@ -1,4 +1,5 @@
 from fastapi import APIRouter, Depends, Request, HTTPException
+from pydantic import BaseModel
 
 from cat import utils
 from cat.auth.connection import AdminConnectionAuth
@@ -8,11 +9,16 @@ from cat.db.cruds import settings as crud_settings
 
 router = APIRouter()
 
-@router.post("/factory-reset")
+class FactoryResetResponse(BaseModel):
+    deleted_settings: bool
+    deleted_memories: bool
+
+
+@router.post("/factory-reset", response_model=FactoryResetResponse)
 def factory_reset(
     request: Request,
     lizard: BillTheLizard = Depends(AdminConnectionAuth(AdminAuthResource.CHESHIRE_CATS, AuthPermission.DELETE)),
-):
+) -> FactoryResetResponse:
     """
     Factory reset the entire application. This will delete all settings, memories, and metadata.
     """
@@ -29,7 +35,7 @@ def factory_reset(
         del request.app.state.lizard
         request.app.state.lizard = BillTheLizard()
 
-        return {"deleted_settings": deleted_settings, "deleted_memories": deleted_memories}
+        return FactoryResetResponse(deleted_settings=deleted_settings, deleted_memories=deleted_memories)
     except Exception as e:
         raise HTTPException(
             status_code=500,

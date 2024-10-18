@@ -1,7 +1,6 @@
 import re
 import os
 import string
-import json
 from typing import List
 from itertools import combinations
 from sklearn.feature_extraction.text import CountVectorizer

@@ -5,6 +5,7 @@ from uuid import uuid4
 from langchain_community.document_loaders.parsers.pdf import PDFMinerParser
 from langchain_community.document_loaders.parsers.html.bs4 import BS4HTMLParser
 from langchain_community.document_loaders.parsers.txt import TextParser
+from langchain_core.embeddings import Embeddings
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 from pydantic import BaseModel
 from typing_extensions import Protocol
@@ -20,9 +21,8 @@ from cat.auth.permissions import get_base_permissions
 from cat.db import models
 from cat.db.cruds import settings as crud_settings
 from cat.db.cruds import users as crud_users
-from cat.factory.embedder import EmbedderSettings
 from cat.factory.llm import LLMDefaultConfig
-from cat.factory.llm import get_llm_from_name
+from cat.factory.llm import get_llm_factory_from_config_name
 from cat.log import log
 from cat.mad_hatter.mad_hatter import MadHatter
 from cat.mad_hatter.registry import registry_search_plugins
@@ -196,7 +196,7 @@ class CheshireCat:
         else:
             # get LLM factory class
             selected_llm_class = selected_llm["value"]["name"]
-            factory_class = get_llm_from_name(selected_llm_class, self.mad_hatter)
+            factory_class = get_llm_factory_from_config_name(selected_llm_class, self.mad_hatter)
 
             # obtain configuration and instantiate LLM
             selected_llm_config = crud_settings.get_setting_by_name(self.id, selected_llm_class)
@@ -237,7 +237,7 @@ class CheshireCat:
 
         # get AuthHandler factory class
         selected_auth_handler_class = selected_auth_handler["value"]["name"]
-        factory_class = auth_handlers.get_auth_handler_from_name(selected_auth_handler_class, self.mad_hatter)
+        factory_class = auth_handlers.get_auth_handler_factory_from_config_name(selected_auth_handler_class, self.mad_hatter)
 
         # obtain configuration and instantiate AuthHandler
         selected_auth_handler_config = crud_settings.get_setting_by_name(self.id, selected_auth_handler_class)
@@ -451,7 +451,7 @@ class CheshireCat:
         return self.__strays
 
     @property
-    def embedder(self) -> EmbedderSettings:
+    def embedder(self) -> Embeddings:
         from cat.bill_the_lizard import BillTheLizard
         return BillTheLizard().embedder
 

@@ -203,7 +203,7 @@ class VectorMemoryCollection:
         vector: Iterable,
         metadata: Dict = None,
         id: str | None = None,
-        **kwargs: Any,
+        **kwargs,
     ) -> PointStruct | None:
         """Add a point (and its metadata) to the vectorstore.
 
@@ -356,7 +356,7 @@ class VectorMemoryCollection:
     # retrieve all the points in the collection
     def get_all_points(
         self, limit: int = 10000, offset: str | None = None
-    ) -> Tuple[List[Record], int | str | None | Any]:
+    ) -> Tuple[List[Record], int | str | None]:
         """Retrieve all the points in the collection with an optional offset and limit."""
 
         tenant_filter = self._qdrant_build_tenant_filter()

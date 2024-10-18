@@ -1,4 +1,5 @@
 from typing import Type, List, Dict
+from langchain_core.embeddings import Embeddings
 from pydantic import BaseModel, ConfigDict, Field
 from langchain_cohere import CohereEmbeddings
 from langchain_community.embeddings import FakeEmbeddings, FastEmbedEmbeddings
@@ -14,7 +15,7 @@ from cat.utils import Enum
 # Base class to manage LLM configuration.
 class EmbedderSettings(BaseModel):
     # class instantiating the embedder
-    _pyclass: Type = None
+    _pyclass: Type[Embeddings] = None
 
     # This is related to pydantic, because "model_*" attributes are protected.
     # We deactivate the protection because langchain relies on several "model_*" named attributes
@@ -22,16 +23,14 @@ class EmbedderSettings(BaseModel):
 
     # instantiate an Embedder from configuration
     @classmethod
-    def get_embedder_from_config(cls, config):
-        if cls._pyclass is None:
-            raise Exception(
-                "Embedder configuration class has self._pyclass==None. Should be a valid Embedder class"
-            )
-        return cls._pyclass.default(**config)
+    def get_embedder_from_config(cls, config) -> Embeddings:
+        if cls._pyclass:
+            return cls._pyclass.default(**config)
+        raise Exception("Embedder configuration class is invalid. It should be a valid Embeddings class")
 
-    @property
-    def pyclass(self) -> Type:
-        return self._pyclass
+    @classmethod
+    def pyclass(cls) -> Type[Embeddings]:
+        return cls._pyclass.default
 
 
 class EmbedderFakeConfig(EmbedderSettings):
@@ -188,7 +187,7 @@ def get_allowed_embedder_models(mad_hatter: MadHatter) -> List[Type[EmbedderSett
     return list_embedder
 
 
-def get_embedder_from_name(name: str, mad_hatter: MadHatter) -> Type[EmbedderSettings] | None:
+def get_embedder_factory_from_config_name(name: str, mad_hatter: MadHatter) -> Type[EmbedderSettings] | None:
     """Find the llm adapter class by name"""
     for cls in get_allowed_embedder_models(mad_hatter):
         if cls.__name__ == name:
@@ -206,3 +205,11 @@ def get_embedders_schemas(mad_hatter: MadHatter) -> Dict:
         embedder_schemas[schema["title"]] = schema
 
     return embedder_schemas
+
+
+def get_embedder_config_class_from_model(cls: Type[Embeddings], mad_hatter: MadHatter) -> str | None:
+    """Find the class name of the embedder adapter"""
+    for config_class in get_allowed_embedder_models(mad_hatter):
+        if config_class.pyclass() == cls:
+            return config_class.__name__
+    return None

@@ -1,6 +1,7 @@
 import asyncio
 from typing import Dict, List
 from uuid import uuid4
+from langchain_core.embeddings import Embeddings
 
 from cat import utils
 from cat.agents.main_agent import MainAgent
@@ -12,12 +13,7 @@ from cat.db.cruds import users as crud_users
 from cat.env import get_env
 from cat.exceptions import LoadMemoryException
 from cat.factory.custom_auth_handler import CoreAuthHandler
-from cat.factory.embedder import (
-    EmbedderSettings,
-    EmbedderDumbConfig,
-    get_embedder_from_name,
-    get_allowed_embedder_models,
-)
+from cat.factory.embedder import EmbedderDumbConfig, get_embedder_factory_from_config_name, get_allowed_embedder_models
 from cat.jobs import job_on_idle_strays
 from cat.log import log
 from cat.looking_glass.cheshire_cat import CheshireCat
@@ -82,7 +78,7 @@ class BillTheLizard:
             }
         })
 
-    def load_language_embedder(self) -> EmbedderSettings:
+    def load_language_embedder(self) -> Embeddings:
         """Hook into the embedder selection.
 
         Allows to modify how the Cats select the embedder at bootstrap time.
@@ -96,7 +92,7 @@ class BillTheLizard:
         if selected_embedder is not None:
             # get Embedder factory class
             selected_embedder_class = selected_embedder["value"]["name"]
-            factory_class = get_embedder_from_name(selected_embedder_class, self.mad_hatter)
+            factory_class = get_embedder_factory_from_config_name(selected_embedder_class, self.mad_hatter)
 
             # obtain configuration and instantiate Embedder
             selected_embedder_config = crud_settings.get_setting_by_name(self.__key, selected_embedder_class)

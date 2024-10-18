@@ -13,19 +13,14 @@ class AuthHandlerConfig(BaseModel):
     _pyclass: Type[BaseAuthHandler] = None
 
     @classmethod
-    def get_auth_handler_from_config(cls, config):
-        if (
-            cls._pyclass is None
-            or issubclass(cls._pyclass.default, BaseAuthHandler) is False
-        ):
-            raise Exception(
-                "AuthHandler configuration class has self._pyclass==None. Should be a valid AuthHandler class"
-            )
-        return cls._pyclass.default(**config)
+    def get_auth_handler_from_config(cls, config) -> BaseAuthHandler:
+        if cls._pyclass and issubclass(cls._pyclass.default, BaseAuthHandler):
+            return cls._pyclass.default(**config)
+        raise Exception("AuthHandler configuration class is invalid. It should be a valid BaseAuthHandler class")
 
-    @property
-    def pyclass(self) -> Type:
-        return self._pyclass
+    @classmethod
+    def pyclass(cls) -> Type[BaseAuthHandler]:
+        return cls._pyclass.default
 
 
 class CoreOnlyAuthConfig(AuthHandlerConfig):
@@ -77,9 +72,17 @@ def get_auth_handlers_schemas(mad_hatter: MadHatter) -> Dict:
     return auth_handler_schemas
 
 
-def get_auth_handler_from_name(name: str, mad_hatter: MadHatter) -> Type[AuthHandlerConfig] | None:
+def get_auth_handler_factory_from_config_name(name: str, mad_hatter: MadHatter) -> Type[AuthHandlerConfig] | None:
     list_auth_handler = get_allowed_auth_handler_strategies(mad_hatter)
     for auth_handler in list_auth_handler:
         if auth_handler.__name__ == name:
             return auth_handler
+    return None
+
+
+def get_auth_handler_config_class_from_strategy(cls: Type[BaseAuthHandler], mad_hatter: MadHatter) -> str | None:
+    """Find the class name of the auth handler strategy"""
+    for config_class in get_allowed_auth_handler_strategies(mad_hatter):
+        if config_class.pyclass() == cls:
+            return config_class.__name__
     return None

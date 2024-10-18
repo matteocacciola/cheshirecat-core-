@@ -1,3 +1,4 @@
+from langchain_core.language_models import BaseLanguageModel
 from langchain_openai import AzureChatOpenAI
 from langchain_openai import AzureOpenAI
 from langchain_community.llms import (
@@ -18,7 +19,7 @@ from cat.mad_hatter.mad_hatter import MadHatter
 # Base class to manage LLM configuration.
 class LLMSettings(BaseModel):
     # class instantiating the model
-    _pyclass: Type = None
+    _pyclass: Type[BaseLanguageModel] = None
 
     # This is related to pydantic, because "model_*" attributes are protected.
     # We deactivate the protection because langchain relies on several "model_*" named attributes
@@ -26,16 +27,14 @@ class LLMSettings(BaseModel):
 
     # instantiate an LLM from configuration
     @classmethod
-    def get_llm_from_config(cls, config):
-        if cls._pyclass is None:
-            raise Exception(
-                "Language model configuration class has self._pyclass==None. Should be a valid LLM class"
-            )
-        return cls._pyclass.default(**config)
+    def get_llm_from_config(cls, config) -> BaseLanguageModel:
+        if cls._pyclass:
+            return cls._pyclass.default(**config)
+        raise Exception("Language model configuration class is invalid. It should be a valid BaseLanguageModel class")
 
-    @property
-    def pyclass(self) -> Type:
-        return self._pyclass
+    @classmethod
+    def pyclass(cls) -> Type[BaseLanguageModel]:
+        return cls._pyclass.default
 
 
 class LLMDefaultConfig(LLMSettings):
@@ -307,7 +306,7 @@ def get_allowed_language_models(mad_hatter: MadHatter) -> List[Type[LLMSettings]
     return list_llms
 
 
-def get_llm_from_name(name: str, mad_hatter: MadHatter) -> Type[LLMSettings] | None:
+def get_llm_factory_from_config_name(name: str, mad_hatter: MadHatter) -> Type[LLMSettings] | None:
     """Find the llm adapter class by name"""
     for cls in get_allowed_language_models(mad_hatter):
         if cls.__name__ == name:
@@ -326,3 +325,11 @@ def get_llms_schemas(mad_hatter: MadHatter) -> Dict:
         llm_schemas[schema["title"]] = schema
 
     return llm_schemas
+
+
+def get_llm_config_class_from_model(cls: Type[BaseLanguageModel], mad_hatter: MadHatter) -> str | None:
+    """Find the class name of the llm adapter"""
+    for config_class in get_allowed_language_models(mad_hatter):
+        if config_class.pyclass() == cls:
+            return config_class.__name__
+    return None
