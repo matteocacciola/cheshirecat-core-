@@ -89,8 +89,22 @@ class ConnectionAuth(ABC):
             lizard.core_auth_handler,  # try to get user from local id
             ccat.custom_auth_handler,  # try to get user from auth_handler
         ]
-        for ah in auth_handlers:
-            user: AuthUserInfo = await ah.authorize_user_from_credential(
+
+        # is that an admin able to manage agents?
+        user: AuthUserInfo = await lizard.core_auth_handler.authorize_user_from_credential(
+            protocol,
+            credentials.credential,
+            AdminAuthResource.CHESHIRE_CATS,
+            self.permission,
+            key_id=lizard.config_key,
+            user_id=credentials.user_id,
+            http_permissions=get_full_admin_permissions(),
+        )
+
+        # no admin was found? try to look for agent's users
+        counter = 0
+        while not user and counter < len(auth_handlers):
+            user = await auth_handlers[counter].authorize_user_from_credential(
                 protocol,
                 credentials.credential,
                 self.resource,
@@ -98,12 +112,14 @@ class ConnectionAuth(ABC):
                 key_id=credentials.agent_id,
                 user_id=credentials.user_id,
             )
-            if user:
-                stray = await self.get_user_stray(ccat, user, connection)
-                return ContextualCats(cheshire_cat=ccat, stray_cat=stray)
+            counter += 1
 
-        # if no stray was obtained, raise exception
-        self.not_allowed(connection)
+        if not user:
+            # if no user was obtained, raise exception
+            self.not_allowed(connection)
+
+        stray = await self.get_user_stray(ccat, user, connection)
+        return ContextualCats(cheshire_cat=ccat, stray_cat=stray)
 
     @abstractmethod
     async def extract_credentials(self, connection: HTTPConnection) -> Credentials:

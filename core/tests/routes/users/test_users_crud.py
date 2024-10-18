@@ -1,6 +1,6 @@
 from cat.auth.permissions import get_base_permissions
 
-from tests.utils import agent_id, api_key, create_new_user, check_user_fields
+from tests.utils import agent_id, api_key, create_new_user, check_user_fields, new_user_password
 
 
 def test_create_user(secure_client, secure_client_headers):
@@ -179,7 +179,7 @@ def test_no_access_if_api_keys_active(secure_client, secure_client_headers):
     # create user (forbidden)
     response = secure_client.post(
         "/users",
-        json={"username": "Alice", "password": "wandering_in_wonderland"},
+        json={"username": "Alice", "password": new_user_password},
         headers={"agent_id": agent_id}
     )
     assert response.status_code == 403

@@ -17,7 +17,6 @@ def test_ping_success_by_admin_with_api_key(secure_client, secure_client_headers
     assert response.json()["status"] == "We're all mad here, dear!"
 
 
-@pytest.mark.skip("Not implemented")
 def test_ping_success_by_admin_with_token(client):
     headers = get_client_admin_headers(client)
 

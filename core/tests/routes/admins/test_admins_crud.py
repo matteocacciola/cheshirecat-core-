@@ -1,7 +1,7 @@
 from cat.auth.permissions import get_full_admin_permissions
 from cat.env import get_env
 
-from tests.utils import create_new_user, check_user_fields, get_client_admin_headers
+from tests.utils import create_new_user, check_user_fields, get_client_admin_headers, new_user_password
 
 
 def test_create_admin(client):
@@ -183,7 +183,7 @@ def test_no_access_if_api_keys_active(secure_client):
     # create admin (forbidden)
     response = secure_client.post(
         "/admins",
-        json={"username": "Alice", "password": "wandering_in_wonderland"},
+        json={"username": "Alice", "password": new_user_password},
     )
     assert response.status_code == 403
 

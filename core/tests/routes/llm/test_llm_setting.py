@@ -2,6 +2,7 @@ from json import dumps
 from fastapi.encoders import jsonable_encoder
 
 from cat.factory.llm import get_llms_schemas
+from tests.utils import create_new_user, new_user_password, agent_id
 
 
 def test_get_all_llm_settings(secure_client, secure_client_headers, mad_hatter):
@@ -72,3 +73,49 @@ def test_upsert_llm_settings_success(secure_client, secure_client_headers):
     assert json["name"] == new_llm
     assert json["value"]["url"] == invented_url
     assert json["schema"]["languageModelName"] == new_llm
+
+
+def test_forbidden_access_no_auth(client):
+    response = client.get("/llm/settings")
+    assert response.status_code == 403
+
+
+def test_granted_access_on_permissions(secure_client, secure_client_headers, client):
+    # create user
+    data = create_new_user(secure_client, "/users", headers=secure_client_headers, permissions={"LLM": ["LIST"]})
+
+    creds = {"username": data["username"], "password": new_user_password}
+
+    res = client.post("/auth/token", json=creds, headers={"agent_id": agent_id})
+    received_token = res.json()["access_token"]
+
+    response = client.get("/llm/settings", headers={"Authorization": f"Bearer {received_token}", "agent_id": agent_id})
+    assert response.status_code == 200
+
+
+def test_forbidden_access_no_permission(secure_client, secure_client_headers, client):
+    # create user
+    data = create_new_user(secure_client, "/users", headers=secure_client_headers)
+
+    creds = {"username": data["username"], "password": new_user_password}
+
+    res = client.post("/auth/token", json=creds, headers={"agent_id": agent_id})
+    received_token = res.json()["access_token"]
+
+    response = client.get("/llm/settings", headers={"Authorization": f"Bearer {received_token}", "agent_id": agent_id})
+    assert response.status_code == 403
+    assert response.json()["detail"]["error"] == "Invalid Credentials"
+
+
+def test_forbidden_access_wrong_permissions(secure_client, secure_client_headers, client):
+    # create user
+    data = create_new_user(secure_client, "/users", headers=secure_client_headers, permissions={"LLM": ["READ"]})
+
+    creds = {"username": data["username"], "password": new_user_password}
+
+    res = client.post("/auth/token", json=creds, headers={"agent_id": agent_id})
+    received_token = res.json()["access_token"]
+
+    response = client.get("/llm/settings", headers={"Authorization": f"Bearer {received_token}", "agent_id": agent_id})
+    assert response.status_code == 403
+    assert response.json()["detail"]["error"] == "Invalid Credentials"

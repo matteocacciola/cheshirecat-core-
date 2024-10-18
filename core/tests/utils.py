@@ -1,3 +1,4 @@
+import asyncio
 import shutil
 import time
 import uuid
@@ -14,6 +15,8 @@ agent_id = "agent_test"
 api_key = "meow_http"
 api_key_ws = "meow_ws"
 jwt_secret = "meow_jwt"
+
+new_user_password = "wandering_in_wonderland"
 
 
 def get_class_from_decorated_singleton(singleton):
@@ -105,8 +108,10 @@ def get_collections_names_and_point_count(client, headers=None):
     return collections_n_points
 
 
-def create_new_user(client, route: str, headers=None):
-    new_user = {"username": "Alice", "password": "wandering_in_wonderland"}
+def create_new_user(client, route: str, headers=None, permissions=None):
+    new_user = {"username": "Alice", "password": new_user_password}
+    if permissions:
+        new_user["permissions"] = permissions
     response = client.post(route, json=new_user, headers=headers)
     assert response.status_code == 200
     return response.json()
@@ -129,6 +134,7 @@ def run_in_thread(fnc, *args):
     """
     Helper function to run functions in a separate thread.
     """
+
     with ThreadPoolExecutor() as executor:
         future = executor.submit(fnc, *args)
         return future.result()
@@ -136,8 +142,12 @@ def run_in_thread(fnc, *args):
 
 async def async_run(loop, fnc, *args):
     """
-    Asynchronously run a function in a separate thread.
+    Asynchronously run a function (sync or async) in a separate thread.
     """
+
+    if asyncio.iscoroutinefunction(fnc):
+        return await fnc(*args)
+
     return await loop.run_in_executor(None, run_in_thread, fnc, *args)
 
 
