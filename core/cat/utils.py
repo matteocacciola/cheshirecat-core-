@@ -5,7 +5,7 @@ import traceback
 import inspect
 from datetime import timedelta
 from urllib.parse import urlparse
-from typing import Dict, Tuple
+from typing import Dict, Tuple, List
 from pydantic import BaseModel, ConfigDict
 import io
 from fastapi import UploadFile
@@ -17,6 +17,26 @@ from enum import Enum as BaseEnum, EnumMeta
 
 from cat.log import log
 from cat.env import get_env
+
+
+DEFAULT_K = 3
+DEFAULT_THRESHOLD = 0.5
+DEFAULT_AGENT_KEY = "agent"  # default agent_id for backward compatibility
+DEFAULT_SYSTEM_KEY = "system"
+
+
+def build_recall_settings(
+    recall_query_embedding: List[float],
+    k: float | None = DEFAULT_K,
+    threshold: float | None = DEFAULT_THRESHOLD,
+    metadata: dict | None = None,
+):
+    return {
+        "embedding": recall_query_embedding,
+        "k": k,
+        "threshold": threshold,
+        "metadata": metadata,
+    }
 
 
 def to_camel_case(text: str) -> str:
@@ -332,8 +352,3 @@ class MetaEnum(EnumMeta):
 class Enum(BaseEnum, metaclass=MetaEnum):
     def __str__(self):
         return self.value
-
-
-class DefaultAgentKeys(Enum):
-    AGENT = "agent"
-    SYSTEM = "system"

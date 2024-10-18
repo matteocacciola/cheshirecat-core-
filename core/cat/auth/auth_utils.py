@@ -4,7 +4,7 @@ from jwt.exceptions import InvalidTokenError
 from fastapi.requests import HTTPConnection
 
 from cat.log import log
-from cat.utils import DefaultAgentKeys
+from cat.utils import DEFAULT_AGENT_KEY
 
 
 def is_jwt(token: str) -> bool:
@@ -44,10 +44,7 @@ def extract_agent_id_from_request(request: HTTPConnection) -> str:
         "agent_id",
         request.path_params.get(
             "agent_id",
-            request.query_params.get(
-                "agent_id",
-                str(DefaultAgentKeys.AGENT)  # default agent_id for backward compatibility
-            )
+            request.query_params.get("agent_id", DEFAULT_AGENT_KEY)
         )
     )
 
@@ -57,10 +54,7 @@ def extract_user_id_from_request(request: HTTPConnection) -> str:
         "user_id",
         request.path_params.get(
             "user_id",
-            request.query_params.get(
-                "user_id",
-                "user"
-            )
+            request.query_params.get("user_id", "user")
         )
     )
 

@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Request
 
 from cat.routes.auth_utils import UserCredentials, JWTResponse, auth_token as fnc_auth_token
-from cat.utils import DefaultAgentKeys
+from cat.utils import DEFAULT_SYSTEM_KEY
 
 router = APIRouter()
 
@@ -12,6 +12,4 @@ async def auth_token(request: Request, credentials: UserCredentials):
     This endpoint receives username and password as form-data, validates credentials and issues a JWT.
     """
 
-    agent_id = str(DefaultAgentKeys.SYSTEM)
-
-    return await fnc_auth_token(request, credentials, agent_id)
+    return await fnc_auth_token(request, credentials, DEFAULT_SYSTEM_KEY)

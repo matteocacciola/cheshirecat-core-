@@ -95,7 +95,9 @@ class WorkingMemory(BaseModelDict):
 
         # TODO: Message should be of type CatMessage or UserMessage. For backward compatibility we put a new key
         # we are sure that who is not change in the current call
-        conversation_history_info = ConversationHistoryInfo(who=who, message=message, why=why, role=role)
+        conversation_history_info = ConversationHistoryInfo(
+            **{"who": who, "message": message, "why": why, "role": role}
+        )
 
         # append latest message in conversation
         history.update_history(self.agent_id, self.user_id, conversation_history_info)

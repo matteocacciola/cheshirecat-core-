@@ -1,16 +1,17 @@
 import uuid
+import pytest
 
 from cat.auth.auth_utils import hash_password
 from cat.auth.permissions import get_full_admin_permissions
 from cat.db import models
 from cat.db.cruds import settings as crud_settings, users as crud_users
-from cat.utils import DefaultAgentKeys
+from cat.utils import DEFAULT_SYSTEM_KEY
 
 from tests.utils import agent_id
 
 
 def test_get_settings(cheshire_cat):
-    values = crud_settings.get_settings(str(DefaultAgentKeys.SYSTEM), "user")
+    values = crud_settings.get_settings(DEFAULT_SYSTEM_KEY, "user")
     assert isinstance(values, list)
     assert len(values) == 0
 
@@ -49,7 +50,7 @@ def test_get_setting_by_category(cheshire_cat):
 
 
 def test_get_setting_by_name(cheshire_cat):
-    value = crud_settings.get_setting_by_name(str(DefaultAgentKeys.SYSTEM), "users")
+    value = crud_settings.get_setting_by_name(DEFAULT_SYSTEM_KEY, "users")
     assert isinstance(value, dict)
     # assert that key name exists in value
     assert value["name"] == "users"
@@ -106,6 +107,19 @@ def test_delete_settings_by_category(cheshire_cat):
     crud_settings.delete_settings_by_category(agent_id, "auth_handler_factory")
     value = crud_settings.get_settings_by_category(agent_id, category)
     assert len(value) == 0
+
+
+def test_create_setting_with_empty_name(cheshire_cat):
+    add = {
+        "name": "",
+        "value": {},
+        "category": "auth_handler_factory",
+        "setting_id": "96f4c9d4-b58d-41c5-88e2-c87b94fe012c",
+        "updated_at": 1729169367
+    }
+
+    with pytest.raises(Exception) as e:
+        crud_settings.create_setting(agent_id, models.Setting(**add))
 
 
 def test_update_setting_by_id(cheshire_cat):

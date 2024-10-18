@@ -30,6 +30,7 @@ from cat.memory.long_term_memory import LongTermMemory
 from cat.memory.models import MemoryCollection
 from cat.memory.working_memory import WorkingMemory
 from cat.rabbit_hole import RabbitHole
+from cat.utils import build_recall_settings
 
 MSG_TYPES = Literal["notification", "chat", "error", "chat_token"]
 
@@ -250,43 +251,21 @@ class StrayCat:
         mad_hatter.execute_hook("before_cat_recalls_memories", cat=self)
 
         # Setting default recall configs for each memory
-        # TODO: can these data structures become instances of a RecallSettings class?
-        default_episodic_recall_config = {
-            "embedding": recall_query_embedding,
-            "k": 3,
-            "threshold": 0.7,
-            "metadata": {"source": self.user_id},
-        }
-
-        default_declarative_recall_config = {
-            "embedding": recall_query_embedding,
-            "k": 3,
-            "threshold": 0.7,
-            "metadata": None,
-        }
-
-        default_procedural_recall_config = {
-            "embedding": recall_query_embedding,
-            "k": 3,
-            "threshold": 0.7,
-            "metadata": None,
-        }
-
         # hooks to change recall configs for each memory
         recall_configs = [
             mad_hatter.execute_hook(
                 "before_cat_recalls_episodic_memories",
-                default_episodic_recall_config,
+                build_recall_settings(recall_query_embedding, metadata={"source": self.user_id}),
                 cat=self,
             ),
             mad_hatter.execute_hook(
                 "before_cat_recalls_declarative_memories",
-                default_declarative_recall_config,
+                build_recall_settings(recall_query_embedding),
                 cat=self,
             ),
             mad_hatter.execute_hook(
                 "before_cat_recalls_procedural_memories",
-                default_procedural_recall_config,
+                build_recall_settings(recall_query_embedding),
                 cat=self,
             ),
         ]
@@ -507,7 +486,7 @@ class StrayCat:
                 self.send_error(e)
             except ConnectionClosedOK as ex:
                 log.warning(ex)
-                self.nullify_connection()
+                # self.nullify_connection()
 
     def classify(self, sentence: str, labels: List[str] | Dict[str, List[str]]) -> str | None:
         """Classify a sentence.
@@ -647,7 +626,7 @@ Allowed classes are:
         return self.__agent_id
 
     @property
-    def cheshire_cat(self):
+    def cheshire_cat(self) -> "CheshireCat":
         ccat = BillTheLizard().get_cheshire_cat(self.__agent_id)
         if not ccat:
             raise ValueError(f"Cheshire Cat not found for the StrayCat {self.user_id}.")

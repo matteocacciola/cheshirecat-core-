@@ -29,17 +29,6 @@ def get_supported_env_variables():
     }
 
 
-# TODO: take away in v2
-def fix_legacy_env_variables():
-    cat_default_env_variables = get_supported_env_variables()
-
-    for new_name, v in cat_default_env_variables.items():
-        legacy_name = new_name.replace("CCAT_", "")
-        legacy_value = os.getenv(legacy_name, False)
-        if legacy_value:
-            os.environ[new_name] = legacy_value
-
-
 def get_env(name):
     """Utility to get an environment variable value. To be used only for supported Cat envs.
     - covers default supported variables and their default value

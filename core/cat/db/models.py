@@ -1,6 +1,6 @@
 from datetime import datetime
 from uuid import uuid4
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 from typing import Dict, List
 
 
@@ -28,6 +28,12 @@ class SettingBody(BaseModel):
     name: str
     value: Dict | List
     category: str | None = None
+
+    @field_validator("name")
+    def non_empty_name(cls, v):
+        if not v:
+            raise ValueError("Setting name cannot be empty")
+        return v
 
 
 # actual setting class, with additional auto generated id and update time

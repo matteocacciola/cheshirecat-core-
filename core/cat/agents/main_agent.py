@@ -27,7 +27,7 @@ class MainAgent(BaseAgent):
         # Note: agent_input works both as a dict and as an object
         mad_hatter = stray.cheshire_cat.mad_hatter
 
-        agent_input: BaseModelDict = self.format_agent_input(stray)
+        agent_input = self.format_agent_input(stray)
         agent_input = mad_hatter.execute_hook(
             "before_agent_starts", agent_input, cat=stray
         )

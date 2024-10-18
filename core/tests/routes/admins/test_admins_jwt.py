@@ -5,7 +5,7 @@ import jwt
 from cat.env import get_env
 from cat.auth.permissions import AdminAuthResource, AuthPermission
 from cat.auth.auth_utils import is_jwt
-from cat.utils import DefaultAgentKeys
+from cat.utils import DEFAULT_SYSTEM_KEY
 
 
 def test_is_jwt():
@@ -49,7 +49,7 @@ async def test_issue_jwt(client, lizard):
     # is the JWT correct for core auth handler?
     auth_handler = lizard.core_auth_handler
     user_info = await auth_handler.authorize_user_from_jwt(
-        received_token, AdminAuthResource.EMBEDDER, AuthPermission.WRITE, key_id=str(DefaultAgentKeys.SYSTEM)
+        received_token, AdminAuthResource.EMBEDDER, AuthPermission.WRITE, key_id=DEFAULT_SYSTEM_KEY
     )
     assert len(user_info.id) == 36 and len(user_info.id.split("-")) == 5 # uuid4
     assert user_info.name == "admin"

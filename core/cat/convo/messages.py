@@ -76,7 +76,17 @@ class UserMessage(BaseModelDict):
     user_id: str
 
 
-class ConversationHistoryInfo(BaseModel):
+class ConversationHistoryInfo(BaseModelDict):
+    """Class for wrapping conversation history info
+
+    Variables:
+        who (Role): role
+        message (str): message
+        why (MessageWhy): message why
+        when (float): when
+        role (Role): role
+    """
+
     who: Role
     message: str
     why: MessageWhy | None = None

@@ -17,7 +17,7 @@ from cat.db.database import Database
 from cat.env import get_env
 from cat.looking_glass.stray_cat import StrayCat
 from cat.mad_hatter.plugin import Plugin
-from cat.main import cheshire_cat_api
+from cat.startup import cheshire_cat_api
 from cat.memory.vector_memory import VectorMemory
 import cat.utils as utils
 

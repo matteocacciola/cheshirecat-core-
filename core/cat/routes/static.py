@@ -1,4 +1,4 @@
-from fastapi import Request, HTTPException
+from fastapi import Request, HTTPException, FastAPI
 from fastapi.staticfiles import StaticFiles
 
 from cat.auth.connection import HTTPAuth
@@ -19,7 +19,7 @@ class AuthStatic(StaticFiles):
             raise HTTPException(status_code=403, detail={"error": "Forbidden."})
         await super().__call__(scope, receive, send)
 
-def mount(cheshire_cat_api):
+def mount(cheshire_cat_api: FastAPI):
     # static files folder available to plugins
     # TODOAUTH: test static files auth
     cheshire_cat_api.mount(

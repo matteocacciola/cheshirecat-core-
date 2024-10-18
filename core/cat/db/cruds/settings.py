@@ -1,14 +1,14 @@
 from typing import Dict, List
 
 from cat.db import crud, models
-from cat.utils import DefaultAgentKeys
+from cat.utils import DEFAULT_AGENT_KEY, DEFAULT_SYSTEM_KEY
 
 
 def format_key(key: str) -> str:
-    if key == str(DefaultAgentKeys.SYSTEM):
+    if key == DEFAULT_SYSTEM_KEY:
         return key
 
-    return f"{DefaultAgentKeys.AGENT}:{key}"
+    return f"{DEFAULT_AGENT_KEY}:{key}"
 
 
 def get_settings(key_id: str, search: str = "") -> List[Dict]:
