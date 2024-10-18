@@ -13,17 +13,14 @@ from cat.mad_hatter.decorators import hook
 def before_agent_starts(agent_input: Dict, cat) -> Dict:
     """Hook to read and edit the agent input
 
-    Parameters
-    --------
-    agent_input: Dict
-        Input that is about to be passed to the agent.
-    cat : CheshireCat
-        Cheshire Cat instance.
+    Args:
+        agent_input: Dict
+            Input that is about to be passed to the agent.
+        cat : CheshireCat
+            Cheshire Cat instance.
 
-    Returns
-    --------
-    response : Dict
-        Agent Input
+    Returns:
+        Agent Input as Dictionary
     """
 
     return agent_input
@@ -34,18 +31,16 @@ def agent_fast_reply(fast_reply: Dict, cat) -> Dict | None:
     """This hook is useful to shortcut the Cat response.
     If you do not want the agent to run, return the final response from here and it will end up in the chat without the agent being executed.
 
-    Parameters
-    --------
-    fast_reply: Dict
-        Input is a dictionary (initially empty), which can be enriched with an "output" key with the shortcut response.
-    cat : CheshireCat
-        Cheshire Cat instance.
+    Args:
+        fast_reply: Dict
+            Input is a dictionary (initially empty), which can be enriched with an "output" key with the shortcut response.
+        cat : CheshireCat
+            Cheshire Cat instance.
 
-    Returns
-    --------
-    response : Dict | None
-        Cat response if you want to avoid using the agent, or None / {} if you want the agent to be executed.
-        See below for examples of Cat response
+    Returns:
+        response : Dict | None
+            Cat response if you want to avoid using the agent, or None / {} if you want the agent to be executed.
+            See below for examples of Cat response
 
     Examples
     --------
@@ -81,17 +76,15 @@ def agent_allowed_tools(allowed_tools: List[str], cat) -> List[str]:
     To decide, you can filter the list of tools' names, but you can also check the context in `cat.working_memory`
     and launch custom chains with `cat.llm`.
 
-    Parameters
-    ---------
-    allowed_tools : List[str]
-        List of tools that are allowed to be used by the *
-    cat : CheshireCat
-        Cheshire Cat instance.
+    Args:
+        allowed_tools : List[str]
+            List of tools that are allowed to be used by the *
+        cat : CheshireCat
+            Cheshire Cat instance.
 
-    Returns
-    -------
-    tools : List[str]
-        List of allowed Langchain tools.
+    Returns:
+        tools : List[str]
+            List of allowed Langchain tools.
     """
 
     return allowed_tools

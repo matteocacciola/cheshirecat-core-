@@ -87,9 +87,7 @@ class BillTheLizard:
 
         Allows to modify how the Cats select the embedder at bootstrap time.
 
-        Returns
-        -------
-        embedder : Embeddings
+        Returns:
             Selected embedder model.
         """
 

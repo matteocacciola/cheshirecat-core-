@@ -94,3 +94,7 @@ def upsert_setting_by_name(key_id: str, payload: models.Setting) -> Dict:
         crud.store(fkey_id, value, path=f'$[?(@.name=="{payload.name}")]')
 
     return value
+
+
+def wipe_settings(key_id: str) -> None:
+    crud.wipe(format_key(key_id))

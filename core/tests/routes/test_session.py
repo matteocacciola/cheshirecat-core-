@@ -21,7 +21,7 @@ def test_session_creation_from_websocket(secure_client, cheshire_cat):
     stray_cat = cheshire_cat.get_stray(user_id)
     assert isinstance(stray_cat, StrayCat)
     assert stray_cat.user_id == user_id
-    convo = stray_cat.working_memory.get_conversation_history()
+    convo = stray_cat.working_memory.history
     assert len(convo) == 2
     assert convo[0].who == Role.HUMAN
     assert convo[0].message == mex["text"]
@@ -52,7 +52,7 @@ def test_session_creation_from_http(secure_client, cheshire_cat):
     stray_cat = cheshire_cat.get_stray(user_id)
     assert isinstance(stray_cat, StrayCat)
     assert stray_cat.user_id == user_id
-    convo = stray_cat.working_memory.get_conversation_history()
+    convo = stray_cat.working_memory.history
     assert len(convo) == 0  # no ws message sent from Alice
 
 

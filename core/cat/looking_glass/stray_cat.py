@@ -3,7 +3,7 @@ import asyncio
 import traceback
 from asyncio import AbstractEventLoop
 import tiktoken
-from typing import Literal, get_args, List, Dict, Any
+from typing import Literal, get_args, List, Dict, Any, Tuple
 from langchain.docstore.document import Document
 from langchain_core.language_models import BaseLanguageModel
 from langchain_core.messages import AIMessage, HumanMessage, SystemMessage, BaseMessage
@@ -27,12 +27,21 @@ from cat.looking_glass.callbacks import NewTokenHandler, ModelInteractionHandler
 from cat.looking_glass.white_rabbit import WhiteRabbit
 from cat.mad_hatter.mad_hatter import MadHatter
 from cat.memory.long_term_memory import LongTermMemory
-from cat.memory.models import MemoryCollection
+from cat.memory.vector_memory_collection import VectoryMemoryCollectionTypes
 from cat.memory.working_memory import WorkingMemory
 from cat.rabbit_hole import RabbitHole
-from cat.utils import build_recall_settings
+from cat.utils import BaseModelDict
 
 MSG_TYPES = Literal["notification", "chat", "error", "chat_token"]
+DEFAULT_K = 3
+DEFAULT_THRESHOLD = 0.5
+
+
+class RecallSettings(BaseModelDict):
+    embedding: List[float]
+    k: float | None = DEFAULT_K
+    threshold: float | None = DEFAULT_THRESHOLD
+    metadata: dict | None = None
 
 
 # The Stray cat goes around tools and hook, making troubles
@@ -43,9 +52,7 @@ class StrayCat:
         self.__agent_id = agent_id
 
         self.__user = user_data
-        self.working_memory = WorkingMemory(
-            **{"agent_id": self.__agent_id, "user_id": self.__user.id}
-        )
+        self.working_memory = WorkingMemory(agent_id=self.__agent_id, user_id=self.__user.id)
 
         # attribute to store ws connection
         self.__ws = ws
@@ -75,26 +82,15 @@ class StrayCat:
         asyncio.run_coroutine_threadsafe(self.__ws.send_json(data), loop=self.__main_loop).result()
 
     def __build_why(self) -> MessageWhy:
-        def build_report(memories):
-            return [
-                dict(d[0]) | {"score": float(d[1]), "id": d[3]}
-                for d in memories
-            ]
-
-        # build data structure for output (response and why with memories)
-        episodic_report = build_report(self.working_memory.episodic_memories)
-        declarative_report = build_report(self.working_memory.declarative_memories)
-        procedural_report = build_report(self.working_memory.procedural_memories)
+        memory = {str(c): [
+            dict(d[0]) | {"score": float(d[1]), "id": d[3]} for d in getattr(self.working_memory, f"{c}_memories")
+        ] for c in VectoryMemoryCollectionTypes}
 
         # why this response?
         why = MessageWhy(
             input=self.working_memory.user_message_json.text,
             intermediate_steps=[],
-            memory={
-                str(MemoryCollection.EPISODIC): episodic_report,
-                str(MemoryCollection.DECLARATIVE): declarative_report,
-                str(MemoryCollection.PROCEDURAL): procedural_report,
-            },
+            memory=memory,
             model_interactions=self.working_memory.model_interactions,
         )
 
@@ -106,12 +102,11 @@ class StrayCat:
         This method is useful for sending a message via websocket directly without passing through the LLM
         In case there is no connection the message is skipped and a warning is logged
 
-        Parameters
-        ----------
-        content : str
-            The content of the message.
-        msg_type : str
-            The type of the message. Should be either `notification`, `chat`, `chat_token` or `error`
+        Args:
+            content : str
+                The content of the message.
+            msg_type : str
+                The type of the message. Should be either `notification`, `chat`, `chat_token` or `error`
         """
 
         if self.__ws is None:
@@ -196,31 +191,95 @@ class StrayCat:
 
         self.__send_ws_json(error_message)
 
-    def recall_relevant_memories_to_working_memory(self, query=None):
+    def recall(
+        self,
+        query: List[float],
+        collection_name: str,
+        k: int | None = 5,
+        threshold: int | None = None,
+        metadata: Dict | None = None,
+        override_working_memory: bool = False
+    ) -> List[Tuple[Document, float | None, List[float], str]]:
+        """This is a proxy method to perform search in a vector memory collection.
+
+        The method allows retrieving information from one specific vector memory collection with custom parameters.
+        The Cat uses this method internally
+        to recall the relevant memories to Working Memory every user's chat interaction.
+        This method is useful also to perform a manual search in hook and tools.
+
+        Args:
+            query: List[float]
+                The search query, passed as embedding vector.
+                Please, first run cheshire_cat.embedder.embed_query(query) if you have a string query to pass here.
+            collection_name: str
+                The name of the collection to perform the search.
+                Available collections are: *episodic*, *declarative*, *procedural*.
+            k: int | None
+                The number of memories to retrieve.
+                If `None` retrieves all the available memories.
+            threshold: float | None
+                The minimum similarity to retrieve a memory.
+                Memories with lower similarity are ignored.
+            metadata: Dict
+                Additional filter to retrieve memories with specific metadata.
+            override_working_memory: bool
+                Store the retrieved memories in the Working Memory and override the previous ones, if any.
+
+        Returns:
+            memories: List[Tuple[Document, float | None, List[float], str]]
+                List of retrieved memories.
+                Memories are tuples of LangChain `Document`, similarity score (when `k` is not None), embedding vector
+                and id of memory.
+
+        See Also:
+            VectorMemoryCollection.recall_memories_from_embedding
+            VectorMemoryCollection.recall_all_memories
+        """
+
+        cheshire_cat = self.cheshire_cat
+
+        if collection_name not in VectoryMemoryCollectionTypes:
+            memory_collections = ', '.join([str(c) for c in VectoryMemoryCollectionTypes])
+            error_message = f"{collection_name} is not a valid collection. Available collections: {memory_collections}"
+
+            log.error(error_message)
+            raise ValueError(error_message)
+
+        vector_memory = cheshire_cat.memory.vectors.collections[collection_name]
+
+        memories = vector_memory.recall_memories_from_embedding(
+            query, metadata, k, threshold
+        ) if k else vector_memory.recall_all_memories()
+
+        if override_working_memory:
+            setattr(self.working_memory, f"{collection_name}_memories", memories)
+            # self.working_memory.procedural_memories = ...
+
+        return memories
+
+    def recall_relevant_memories_to_working_memory(self, query: str | None = None):
         """Retrieve context from memory.
 
         The method retrieves the relevant memories from the vector collections that are given as context to the LLM.
         Recalled memories are stored in the working memory.
 
-        Parameters
-        ----------
-        query : str, optional
-        The query used to make a similarity search in the Cat's vector memories. If not provided, the query
-        will be derived from the user's message.
+        Args:
+            query : str, optional
+                The query used to make a similarity search in the Cat's vector memories. If not provided, the query
+                will be derived from the user's message.
+
+        See Also:
+            cat_recall_query
+            before_cat_recalls_memories
+            before_cat_recalls_episodic_memories
+            before_cat_recalls_declarative_memories
+            before_cat_recalls_procedural_memories
+            after_cat_recalls_memories
 
         Notes
         -----
         The user's message is used as a query to make a similarity search in the Cat's vector memories.
         Five hooks allow to customize the recall pipeline before and after it is done.
-
-        See Also
-        --------
-        cat_recall_query
-        before_cat_recalls_memories
-        before_cat_recalls_episodic_memories
-        before_cat_recalls_declarative_memories
-        before_cat_recalls_procedural_memories
-        after_cat_recalls_memories
         """
         cheshire_cat = self.cheshire_cat
 
@@ -255,33 +314,31 @@ class StrayCat:
         recall_configs = [
             mad_hatter.execute_hook(
                 "before_cat_recalls_episodic_memories",
-                build_recall_settings(recall_query_embedding, metadata={"source": self.user_id}),
+                RecallSettings(embedding=recall_query_embedding, metadata={"source": self.user_id}),
                 cat=self,
             ),
             mad_hatter.execute_hook(
                 "before_cat_recalls_declarative_memories",
-                build_recall_settings(recall_query_embedding),
+                RecallSettings(embedding=recall_query_embedding),
                 cat=self,
             ),
             mad_hatter.execute_hook(
                 "before_cat_recalls_procedural_memories",
-                build_recall_settings(recall_query_embedding),
+                RecallSettings(embedding=recall_query_embedding),
                 cat=self,
             ),
         ]
 
         memory_types = cheshire_cat.memory.vectors.collections.keys()
-
         for config, memory_type in zip(recall_configs, memory_types):
-            memory_key = f"{memory_type}_memories"
-
-            # recall relevant memories for collection
-            vector_memory = getattr(cheshire_cat.memory.vectors, memory_type)
-            memories = vector_memory.recall_memories_from_embedding(**config)
-
-            setattr(
-                self.working_memory, memory_key, memories
-            )  # self.working_memory.procedural_memories = ...
+            _ = self.recall(
+                query=config.embedding,
+                collection_name=memory_type,
+                k=config.k,
+                threshold=config.threshold,
+                metadata=config.metadata,
+                override_working_memory=True
+            )
 
         # hook to modify/enrich retrieved memories
         mad_hatter.execute_hook("after_cat_recalls_memories", cat=self)
@@ -291,18 +348,15 @@ class StrayCat:
 
         This method is useful for generating a response with both a chat and a completion model using the same syntax
 
-        Parameters
-        ----------
-        prompt : str
-            The prompt for generating the response.
-        stream : bool, optional
-            Whether to stream the tokens or not.
+        Args:
+            prompt : str
+                The prompt for generating the response.
+            stream : bool, optional
+                Whether to stream the tokens or not.
 
-        Returns
-        -------
-        str
-            The generated response.
-
+        Returns:
+            str
+                The generated response.
         """
 
         # should we stream the tokens?
@@ -343,22 +397,19 @@ class StrayCat:
 
         This method is called on the user's message received from the client.
 
-        Parameters
-        ----------
-        message_dict : Dict
-            Dictionary received from the Websocket client.
+        Args:
+            message_dict : Dict
+                Dictionary received from the Websocket client.
 
-        Returns
-        -------
-        final_output : Dict
-            Dictionary with the Cat's answer to be sent to the client.
+        Returns:
+            final_output : Dict
+                Dictionary with the Cat's answer to be sent to the client.
 
         Notes
         -----
         Here happens the main pipeline of the Cat. Namely, the Cat receives the user's input and recall the memories.
         The retrieved context is formatted properly and given in input to the Agent that uses the LLM to produce the
         answer. This is formatted in a dictionary to be sent as a JSON via Websocket to the client.
-
         """
 
         # Parse websocket message into UserMessage obj
@@ -491,17 +542,15 @@ class StrayCat:
     def classify(self, sentence: str, labels: List[str] | Dict[str, List[str]]) -> str | None:
         """Classify a sentence.
 
-        Parameters
-        ----------
-        sentence : str
-            Sentence to be classified.
-        labels : List[str] or Dict[str, List[str]]
-            Possible output categories and optional examples.
+        Args:
+            sentence : str
+                Sentence to be classified.
+            labels : List[str] or Dict[str, List[str]]
+                Possible output categories and optional examples.
 
-        Returns
-        -------
-        label : str
-            Sentence category.
+        Returns:
+            label : str
+                Sentence category.
 
         Examples
         -------
@@ -516,7 +565,6 @@ class StrayCat:
         ... }
         ... cat.classify("it is a bad day", labels=example_labels)
         "negative"
-
         """
 
         if isinstance(labels, Dict):
@@ -558,7 +606,7 @@ Allowed classes are:
         Args:
             latest_n (int. optional): How many latest turns to stringify. Defaults to 5.
 
-        Returns
+        Returns:
             str: String with recent conversation turns.
 
         Notes
@@ -570,7 +618,7 @@ Allowed classes are:
             'message': the utterance.
         """
 
-        history = self.working_memory.get_conversation_history()[-latest_n:]
+        history = self.working_memory.history[-latest_n:]
         history = [h.model_dump() for h in history]
 
         history_strings = [f"\n - {str(turn['who'])}: {turn['message']}" for turn in history]
@@ -586,7 +634,7 @@ Allowed classes are:
             List[BaseMessage]: List of Langchain messages.
         """
 
-        chat_history = self.working_memory.get_conversation_history()[-latest_n:]
+        chat_history = self.working_memory.history[-latest_n:]
         chat_history = [ch.model_dump() for ch in chat_history]
 
         langchain_chat_history = [

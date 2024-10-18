@@ -85,11 +85,11 @@ def tool(
         .. code-block:: python
             @tool
             def search_api(query: str, cat) -> str:
-                # Searches the API for the query.
+                \"\"\"Searches the API for the query.\"\"\"
                 return "https://api.com/search?q=" + query
             @tool("search", return_direct=True)
             def search_api(query: str, cat) -> str:
-                # Searches the API for the query.
+                \"\"\"Searches the API for the query.\"\"\"
                 return "https://api.com/search?q=" + query
     """
 

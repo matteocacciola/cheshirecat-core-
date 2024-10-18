@@ -168,20 +168,24 @@ class CheshireCat:
             await stray.shutdown()
 
         self.__strays.clear()
+        self.memory.wipe()
+
+        self.memory = None
+        self.custom_auth_handler = None
+        self.mad_hatter = None
+        self.llm = None
 
     def load_language_model(self) -> BaseLanguageModel:
         """Large Language Model (LLM) selection.
 
-        Returns
-        -------
-        llm : BaseLanguageModel
-            Langchain `BaseLanguageModel` instance of the selected model.
+        Returns:
+            llm : BaseLanguageModel
+                Langchain `BaseLanguageModel` instance of the selected model.
 
         Notes
         -----
         Bootstrapping is the process of loading the plugins, the natural language objects (e.g. the LLM), the memories,
         the *Main Agent*, the *Rabbit Hole* and the *White Rabbit*.
-
         """
 
         selected_llm = crud_settings.get_setting_by_name(self.id, "llm_selected")
@@ -335,15 +339,13 @@ class CheshireCat:
 
         This method is useful for generating a response with both a chat and a completion model using the same syntax
 
-        Parameters
-        ----------
-        prompt : str
-            The prompt for generating the response.
+        Args:
+            prompt : str
+                The prompt for generating the response.
 
-        Returns
-        -------
-        str
-            The generated response.
+        Returns:
+            str
+                The generated response.
 
         """
 

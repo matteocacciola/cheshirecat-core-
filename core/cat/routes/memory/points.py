@@ -5,7 +5,7 @@ import time
 
 from cat.auth.connection import HTTPAuth, ContextualCats
 from cat.auth.permissions import AuthPermission, AuthResource
-from cat.memory.models import MemoryCollection
+from cat.memory.vector_memory_collection import VectoryMemoryCollectionTypes
 
 router = APIRouter()
 
@@ -38,12 +38,12 @@ async def recall_memory_points_from_text(
         memory_dict["vector"] = vector
         return memory_dict
 
-    def get_memories(c: MemoryCollection) -> List:
+    def get_memories(c: VectoryMemoryCollectionTypes) -> List:
         # only episodic collection has users
         return ccat.memory.vectors.collections[str(c)].recall_memories_from_embedding(
             query_embedding,
             k=k,
-            metadata={"source": cats.stray_cat.user_id} if c == MemoryCollection.EPISODIC else None
+            metadata={"source": cats.stray_cat.user_id} if c == VectoryMemoryCollectionTypes.EPISODIC else None
         )
 
     ccat = cats.cheshire_cat
@@ -54,7 +54,7 @@ async def recall_memory_points_from_text(
     # Loop over collections and retrieve nearby memories
     recalled = {str(c): [
         build_memory_dict(metadata, score, vector, id) for metadata, score, vector, id in get_memories(c)
-    ] for c in MemoryCollection}
+    ] for c in VectoryMemoryCollectionTypes}
 
     return {
         "query": {
@@ -78,13 +78,13 @@ async def create_memory_point(
     """Create a point in memory"""
 
     # check if collection exists
-    if collection_id not in MemoryCollection:
+    if collection_id not in VectoryMemoryCollectionTypes:
         raise HTTPException(
             status_code=400, detail={"error": "Collection does not exist."}
         )
 
     # do not touch procedural memory
-    if collection_id == str(MemoryCollection.PROCEDURAL):
+    if collection_id == str(VectoryMemoryCollectionTypes.PROCEDURAL):
         raise HTTPException(
             status_code=400, detail={"error": "Procedural memory is read-only."}
         )
@@ -127,7 +127,7 @@ async def delete_memory_point(
     """Delete a specific point in memory"""
 
     # check if collection exists
-    if collection_id not in MemoryCollection:
+    if collection_id not in VectoryMemoryCollectionTypes:
         raise HTTPException(
             status_code=400, detail={"error": "Collection does not exist."}
         )
@@ -232,7 +232,7 @@ async def get_points_in_collection(
         )
 
     # check if collection exists
-    if collection_id not in MemoryCollection:
+    if collection_id not in VectoryMemoryCollectionTypes:
         raise HTTPException(
             status_code=400,
             detail={

@@ -79,26 +79,22 @@ class MainAgent(BaseAgent):
         Agent and inserted in the prompt.
 
         Args:
-        ----
-        stray : StrayCat
-            StrayCat instance containing the working memory and the chat history.
+            stray : StrayCat
+                StrayCat instance containing the working memory and the chat history.
 
-        Returns
-        -------
-        AgentInput
-            Formatted output to be parsed by the Agent executor. Works both as a dictionary and as an object.
+        Returns:
+            AgentInput
+                Formatted output to be parsed by the Agent executor. Works both as a dictionary and as an object.
+
+        See Also:
+            MainAgent.agent_prompt_episodic_memories
+            MainAgent.agent_prompt_declarative_memories
 
         Notes
         -----
         The context of memories and conversation history is properly formatted before being parsed by the and, hence,
         information are inserted in the main prompt.
         All the formatting pipeline is hookable and memories can be edited.
-
-        See Also
-        --------
-        agent_prompt_episodic_memories
-        agent_prompt_declarative_memories
-        agent_prompt_chat_history
         """
 
         # format memories to be inserted in the prompt
@@ -113,28 +109,27 @@ class MainAgent(BaseAgent):
         # TODOV2: take away
         conversation_history_formatted_content = stray.stringify_chat_history()
 
-        return AgentInput(**{
-            "episodic_memory": episodic_memory_formatted_content,
-            "declarative_memory": declarative_memory_formatted_content,
-            "tools_output": "",
-            "input": stray.working_memory.user_message_json.text,  # TODOV2: take away
-            "chat_history": conversation_history_formatted_content, # TODOV2: take away
-        })
+        return AgentInput(
+            episodic_memory=episodic_memory_formatted_content,
+            declarative_memory=declarative_memory_formatted_content,
+            tools_output="",
+            input=stray.working_memory.user_message_json.text,  # TODOV2: take away
+            chat_history=conversation_history_formatted_content, # TODOV2: take away
+        )
 
     def agent_prompt_episodic_memories(
-        self, memory_docs: List[Tuple[Document, float]]
+        self, memory_docs: List[Tuple[Document, float, List[float], str]]
     ) -> str:
         """Formats episodic memories to be inserted into the prompt.
 
-        Parameters
-        ----------
-        memory_docs : List[Document]
-            List of Langchain `Document` retrieved from the episodic memory.
+        Args:
+            memory_docs : List[Tuple[Document, float, List[float], str]]
+                List of Langchain `Document` retrieved from the episodic memory, with the similarity score, the list of
+                embeddings and the id of the memory.
 
-        Returns
-        -------
-        memory_content : str
-            String of retrieved context from the episodic memory.
+        Returns:
+            memory_content : str
+                String of retrieved context from the episodic memory.
         """
 
         # convert docs to simple text
@@ -166,20 +161,19 @@ class MainAgent(BaseAgent):
         return memory_content
 
     def agent_prompt_declarative_memories(
-        self, memory_docs: List[Tuple[Document, float]]
+        self, memory_docs: List[Tuple[Document, float, List[float], str]]
     ) -> str:
         """Formats the declarative memories for the prompt context.
         Such context is placed in the `agent_prompt_prefix` in the place held by {declarative_memory}.
 
-        Parameters
-        ----------
-        memory_docs : List[Document]
-            list of Langchain `Document` retrieved from the declarative memory.
+        Args:
+            memory_docs : List[Tuple[Document, float, List[float], str]]
+                List of Langchain `Document` retrieved from the episodic memory, with the similarity score, the list of
+                embeddings and the id of the memory.
 
-        Returns
-        -------
-        memory_content : str
-            String of retrieved context from the declarative memory.
+        Returns:
+            memory_content : str
+                String of retrieved context from the declarative memory.
         """
 
         # convert docs to simple text

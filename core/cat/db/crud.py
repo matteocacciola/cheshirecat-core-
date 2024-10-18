@@ -26,3 +26,7 @@ def store(
 
 def delete(key: str, path: str | None = "$") -> None:
     get_db().json().delete(key, path)
+
+
+def wipe(key: str) -> None:
+    get_db().delete(key)

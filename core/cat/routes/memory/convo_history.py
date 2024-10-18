@@ -26,4 +26,4 @@ async def get_conversation_history(
 ) -> Dict:
     """Get the specified user's conversation history from working memory"""
 
-    return {"history": cats.stray_cat.working_memory.get_conversation_history()}
+    return {"history": cats.stray_cat.working_memory.history}

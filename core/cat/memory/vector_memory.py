@@ -1,9 +1,9 @@
 import sys
 import socket
+from typing import Dict
 from qdrant_client import QdrantClient
 
-from cat.memory.models import MemoryCollection
-from cat.memory.vector_memory_collection import VectorMemoryCollection
+from cat.memory.vector_memory_collection import VectorMemoryCollection, VectoryMemoryCollectionTypes
 from cat.log import log
 from cat.env import get_env
 from cat.utils import extract_domain_from_url, is_https
@@ -12,6 +12,7 @@ from cat.utils import extract_domain_from_url, is_https
 # @singleton REFACTOR: worth it to have this (or LongTermMemory) as singleton?
 class VectorMemory:
     local_vector_db = None
+    collections: Dict[str, VectorMemoryCollection] = {}
 
     def __init__(
         self,
@@ -26,8 +27,7 @@ class VectorMemory:
         # - Episodic memory will contain user and eventually cat utterances
         # - Declarative memory will contain uploaded documents' content
         # - Procedural memory will contain tools and knowledge on how to do things
-        self.collections = {}
-        for collection_name in MemoryCollection:
+        for collection_name in VectoryMemoryCollectionTypes:
             # Instantiate collection
             collection = VectorMemoryCollection(
                 agent_id=agent_id,
@@ -84,3 +84,7 @@ class VectorMemory:
             )
 
         return VectorMemory.local_vector_db
+
+    def wipe_collections(self) -> None:
+        for c in VectoryMemoryCollectionTypes:
+            self.collections[str(c)].wipe()

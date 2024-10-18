@@ -30,6 +30,7 @@ class MadHatter:
 
     def __init__(self, config_key: str):
         self.__config_key = config_key
+        self.skip_folders = ["__pycache__", "lost+found"]
 
         self.plugins: Dict[str, Plugin] = {}  # plugins dictionary
 
@@ -100,18 +101,22 @@ class MadHatter:
 
         # discover plugins, folder by folder
         for folder in all_plugin_folders:
+            plugin_id = os.path.basename(os.path.normpath(folder))
+            if plugin_id in self.skip_folders:
+                continue
+
             self.load_plugin(folder)
 
-            plugin_id = os.path.basename(os.path.normpath(folder))
+            if plugin_id not in self.active_plugins:
+                continue
 
-            if plugin_id in self.active_plugins:
-                try:
-                    self.plugins[plugin_id].activate()
-                except Exception as e:
-                    # Couldn't activate the plugin -> Deactivate it
-                    if plugin_id in self.active_plugins:
-                        self.toggle_plugin(plugin_id)
-                    raise e
+            try:
+                self.plugins[plugin_id].activate()
+            except Exception as e:
+                # Couldn't activate the plugin -> Deactivate it
+                if plugin_id in self.active_plugins:
+                    self.toggle_plugin(plugin_id)
+                raise e
 
         self.sync_hooks_tools_and_forms()
 

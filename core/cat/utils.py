@@ -18,25 +18,8 @@ from enum import Enum as BaseEnum, EnumMeta
 from cat.log import log
 from cat.env import get_env
 
-
-DEFAULT_K = 3
-DEFAULT_THRESHOLD = 0.5
 DEFAULT_AGENT_KEY = "agent"  # default agent_id for backward compatibility
 DEFAULT_SYSTEM_KEY = "system"
-
-
-def build_recall_settings(
-    recall_query_embedding: List[float],
-    k: float | None = DEFAULT_K,
-    threshold: float | None = DEFAULT_THRESHOLD,
-    metadata: dict | None = None,
-):
-    return {
-        "embedding": recall_query_embedding,
-        "k": k,
-        "threshold": threshold,
-        "metadata": metadata,
-    }
 
 
 def to_camel_case(text: str) -> str:
@@ -44,15 +27,13 @@ def to_camel_case(text: str) -> str:
 
     Takes a string of words separated by either hyphens or underscores and returns a string of words in camel case.
 
-    Parameters
-    ----------
-    text : str
-        String of hyphens or underscores separated words.
+    Args:
+        text : str
+            String of hyphens or underscores separated words.
 
-    Returns
-    -------
-    str
-        Camel case formatted string.
+    Returns:
+        str
+            Camel case formatted string.
     """
     s = text.replace("-", " ").replace("_", " ").capitalize()
     s = s.split()
@@ -66,15 +47,13 @@ def verbal_timedelta(td: timedelta) -> str:
 
     The function takes a timedelta and converts it to a human-readable string format.
 
-    Parameters
-    ----------
-    td : timedelta
-        Difference between two dates.
+    Args:
+        td : timedelta
+            Difference between two dates.
 
-    Returns
-    -------
-    str
-        Human-readable string of time difference.
+    Returns:
+        str
+            Human-readable string of time difference.
 
     Notes
     -----

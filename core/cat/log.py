@@ -37,7 +37,6 @@ class CatLogEngine:
         - `CRITICAL`
 
     Default to `INFO`.
-
     """
 
     def __init__(self):
@@ -51,23 +50,16 @@ class CatLogEngine:
     def show_log_level(self, record: dict):
         """Allows to show stuff in the log based on the global setting.
 
-        Parameters
-        ----------
-        record : dict
+        Args:
+            record : dict
 
-        Returns
-        -------
-        bool
-
+        Returns:
+            bool
         """
         return record["level"].no >= logger.level(self.LOG_LEVEL).no
 
     def default_log(self):
-        """Set the same debug level to all the project dependencies.
-
-        Returns
-        -------
-        """
+        """Set the same debug level to all the project dependencies."""
 
         time = "<green>[{time:YYYY-MM-DD HH:mm:ss.SSS}]</green>"
         level = "<level>{level: <6}</level>"
@@ -99,23 +91,21 @@ class CatLogEngine:
 
         Copied from: https://gist.github.com/techtonik/2151727
 
-        Parameters
-        ----------
-        skip :  int
-            Specifies how many levels of stack to skip while getting caller name.
+        Args:
+            skip :  int
+                Specifies how many levels of stack to skip while getting caller name.
 
-        Returns
-        -------
-        package : str
-            Caller package.
-        module : str
-            Caller module.
-        klass : str
-            Caller classname if one otherwise None.
-        caller : str
-            Caller function or method (if a class exist).
-        line : int
-            The line of the call.
+        Returns:
+            package : str
+                Caller package.
+            module : str
+                Caller module.
+            klass : str
+                Caller classname if one otherwise None.
+            caller : str
+                Caller function or method (if a class exist).
+            line : int
+                The line of the call.
 
 
         Notes
@@ -187,12 +177,11 @@ class CatLogEngine:
     def log(self, msg, level="DEBUG"):
         """Log a message
 
-        Parameters
-        ----------
-        msg :
-            Message to be logged.
-        level : str
-            Logging level."""
+        Args:
+            msg :
+                Message to be logged.
+            level : str
+                Logging level."""
 
         (package, module, klass, caller, line) = self.get_caller_info()
 

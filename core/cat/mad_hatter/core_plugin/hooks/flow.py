@@ -6,6 +6,7 @@ Here is a collection of methods to hook into the Cat execution pipeline.
 from typing import Dict
 from langchain.docstore.document import Document
 
+from cat.looking_glass.stray_cat import RecallSettings
 from cat.mad_hatter.decorators import hook
 
 
@@ -22,10 +23,9 @@ def before_cat_bootstrap(cat) -> None:
 
     This hook can be used to set or store variables to be propagated to subsequent loaded objects.
 
-    Parameters
-    ----------
-    cat : CheshireCat
-        Cheshire Cat instance.
+    Args:
+        cat : CheshireCat
+            Cheshire Cat instance.
     """
     pass  # do nothing
 
@@ -43,10 +43,9 @@ def after_cat_bootstrap(cat) -> None:
 
     This can be used to set or store variables to be shared further in the pipeline.
 
-    Parameters
-    ----------
-    cat : CheshireCat
-        Cheshire Cat instance.
+    Args:
+        cat : CheshireCat
+            Cheshire Cat instance.
     """
     pass  # do nothing
 
@@ -67,18 +66,15 @@ def before_cat_reads_message(user_message_json: Dict, cat) -> Dict:
             "text": message content
         }
 
-    Parameters
-    ----------
-    user_message_json : Dict
-        JSON dictionary with the message received from the chat.
-    cat : CheshireCat
-        Cheshire Cat instance.
+    Args:
+        user_message_json : Dict
+            JSON dictionary with the message received from the chat.
+        cat : CheshireCat
+            Cheshire Cat instance.
 
-
-    Returns
-    -------
-    user_message_json : Dict
-        Edited JSON dictionary that will be fed to the Cat.
+    Returns:
+        user_message_json : Dict
+            Edited JSON dictionary that will be fed to the Cat.
 
     Notes
     -----
@@ -90,7 +86,6 @@ def before_cat_reads_message(user_message_json: Dict, cat) -> Dict:
         }
 
     where "custom_key" is a newly added key to the dictionary to store any data.
-
     """
     return user_message_json
 
@@ -104,17 +99,15 @@ def cat_recall_query(user_message: str, cat) -> str:
     This hook allows to edit the user's message used as a query for context retrieval from memories.
     As a result, the retrieved context can be conditioned editing the user's message.
 
-    Parameters
-    ----------
-    user_message : str
-        String with the text received from the user.
-    cat : CheshireCat
-        Cheshire Cat instance to exploit the Cat's methods.
+    Args:
+        user_message : str
+            String with the text received from the user.
+        cat : CheshireCat
+            Cheshire Cat instance to exploit the Cat's methods.
 
-    Returns
-    -------
-    Edited string to be used for context retrieval in memory. The returned string is further stored in the
-    Working Memory at `cat.working_memory.recall_query`.
+    Returns:
+        Edited string to be used for context retrieval in memory. The returned string is further stored in the
+        Working Memory at `cat.working_memory.recall_query`.
 
     Notes
     -----
@@ -144,17 +137,16 @@ def before_cat_recalls_memories(cat) -> None:
     The hook is executed just before the Cat searches for the meaningful context in both memories
     and stores it in the *Working Memory*.
 
-    Parameters
-    ----------
-    cat : CheshireCat
-        Cheshire Cat instance.
+    Args:
+        cat : CheshireCat
+            Cheshire Cat instance.
 
     """
     pass  # do nothing
 
 
 @hook(priority=0)
-def before_cat_recalls_episodic_memories(episodic_recall_config: Dict, cat) -> Dict:
+def before_cat_recalls_episodic_memories(episodic_recall_config: RecallSettings, cat) -> RecallSettings:
     """Hook into semantic search in memories.
 
     Allows to intercept when the Cat queries the memories using the embedded user's input.
@@ -166,26 +158,22 @@ def before_cat_recalls_episodic_memories(episodic_recall_config: Dict, cat) -> D
     to the query in the vector memory (items with score under threshold are not retrieved).
     It also returns the embedded query (embedding) and the conditions on recall (metadata).
 
-    Parameters
-    ----------
-    episodic_recall_config : Dict
-        Dictionary with data needed to recall episodic memories
-    cat : CheshireCat
-        Cheshire Cat instance.
+    Args:
+        episodic_recall_config : Dict | RecallSettings
+            Data needed to recall episodic memories
+        cat : CheshireCat
+            Cheshire Cat instance.
 
-    Returns
-    -------
-    episodic_recall_config: Dict
-        Edited dictionary that will be fed to the embedder.
+    Returns:
+        episodic_recall_config: Dict
+            Edited dictionary that will be fed to the embedder.
 
     """
     return episodic_recall_config
 
 
 @hook(priority=0)
-def before_cat_recalls_declarative_memories(
-    declarative_recall_config: Dict, cat
-) -> Dict:
+def before_cat_recalls_declarative_memories(declarative_recall_config: RecallSettings, cat) -> RecallSettings:
     """Hook into semantic search in memories.
 
     Allows to intercept when the Cat queries the memories using the embedded user's input.
@@ -197,24 +185,22 @@ def before_cat_recalls_declarative_memories(
     to the query in the vector memory (items with score under threshold are not retrieved)
     It also returns the embedded query (embedding) and the conditions on recall (metadata).
 
-    Parameters
-    ----------
-    declarative_recall_config: Dict
-        Dictionary with data needed to recall declarative memories
-    cat : CheshireCat
-        Cheshire Cat instance.
+    Args:
+        declarative_recall_config : Dict | RecallSettings
+            Data needed to recall declarative memories
+        cat : CheshireCat
+            Cheshire Cat instance.
 
-    Returns
-    -------
-    declarative_recall_config: Dict
-        Edited dictionary that will be fed to the embedder.
+    Returns:
+        declarative_recall_config: Dict
+            Edited dictionary that will be fed to the embedder.
 
     """
     return declarative_recall_config
 
 
 @hook(priority=0)
-def before_cat_recalls_procedural_memories(procedural_recall_config: Dict, cat) -> Dict:
+def before_cat_recalls_procedural_memories(procedural_recall_config: RecallSettings, cat) -> RecallSettings:
     """Hook into semantic search in memories.
 
     Allows to intercept when the Cat queries the memories using the embedded user's input.
@@ -226,17 +212,15 @@ def before_cat_recalls_procedural_memories(procedural_recall_config: Dict, cat) 
     to the query in the vector memory (items with score under threshold are not retrieved)
     It also returns the embedded query (embedding) and the conditions on recall (metadata).
 
-    Parameters
-    ----------
-    procedural_recall_config: Dict
-        Dictionary with data needed to recall tools from procedural memory
-    cat : CheshireCat
-        Cheshire Cat instance.
+    Args:
+        procedural_recall_config : Dict | RecallSettings
+            Data needed to recall tools from procedural memory
+        cat : CheshireCat
+            Cheshire Cat instance.
 
-    Returns
-    -------
-    procedural_recall_config: Dict
-        Edited dictionary that will be fed to the embedder.
+    Returns:
+        procedural_recall_config: Dict
+            Edited dictionary that will be fed to the embedder.
 
     """
     return procedural_recall_config
@@ -250,10 +234,9 @@ def after_cat_recalls_memories(cat) -> None:
     The hook is executed just after the Cat searches for the meaningful context in memories
     and stores it in the *Working Memory*.
 
-    Parameters
-    ----------
-    cat : CheshireCat
-        Cheshire Cat instance.
+    Args:
+        cat : CheshireCat
+            Cheshire Cat instance.
 
     """
     pass  # do nothing
@@ -268,17 +251,15 @@ def before_cat_sends_message(message: Dict, cat) -> Dict:
 
     This hook can be used to edit the message sent to the user or to add keys to the dictionary.
 
-    Parameters
-    ----------
-    message : Dict
-        JSON dictionary to be sent to the WebSocket client.
-    cat : CheshireCat
-        Cheshire Cat instance.
+    Args:
+        message : Dict
+            JSON dictionary to be sent to the WebSocket client.
+        cat : CheshireCat
+            Cheshire Cat instance.
 
-    Returns
-    -------
-    message : Dict
-        Edited JSON dictionary with the Cat's answer.
+    Returns:
+        message : Dict
+            Edited JSON dictionary with the Cat's answer.
 
     Notes
     -----
@@ -312,17 +293,15 @@ def before_cat_stores_episodic_memory(doc: Document, cat) -> Document:
 
     Allows editing and enhancing a single `Document` before the Cat add it to the episodic vector memory.
 
-    Parameters
-    ----------
-    doc : Document
-        Langchain `Document` to be inserted in memory.
-    cat : CheshireCat
-        Cheshire Cat instance.
+    Args:
+        doc : Document
+            Langchain `Document` to be inserted in memory.
+        cat : CheshireCat
+            Cheshire Cat instance.
 
-    Returns
-    -------
-    doc : Document
-        Langchain `Document` that is added in the episodic vector memory.
+    Returns:
+        doc : Document
+            Langchain `Document` that is added in the episodic vector memory.
 
     Notes
     -----
@@ -332,6 +311,5 @@ def before_cat_stores_episodic_memory(doc: Document, cat) -> Document:
         `metadata`: a dictionary with at least two keys:
             `source`: where the text comes from;
             `when`: timestamp to track when it's been uploaded.
-
     """
     return doc

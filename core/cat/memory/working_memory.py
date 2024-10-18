@@ -1,9 +1,10 @@
-from typing import List
+from typing import List, Any
 
 from cat.agents import AgentInput
 from cat.convo.messages import Role, UserMessage, ModelInteraction, MessageWhy, ConversationHistoryInfo
-from cat.db.cruds import history
+from cat.db.cruds import history as crud_history
 from cat.experimental.form.cat_form import CatForm
+from cat.memory.vector_memory_collection import VectoryMemoryCollectionTypes
 from cat.utils import BaseModelDict
 
 
@@ -12,7 +13,7 @@ class WorkingMemory(BaseModelDict):
 
     Handy class that behaves like a `Dict` to store temporary custom data.
 
-    Returns
+    Returns:
         Dict[str, List]: Default instance is a dictionary with `history` key set to an empty list.
 
     Notes
@@ -29,23 +30,32 @@ class WorkingMemory(BaseModelDict):
 
     # recalled memories attributes
     recall_query: str = ""
-    episodic_memories: List = []
-    declarative_memories: List = []
-    procedural_memories: List = []
 
     agent_input: AgentInput | None = None
 
     # track models usage
     model_interactions: List[ModelInteraction] = []
 
-    def get_conversation_history(self) -> List[ConversationHistoryInfo]:
+    def __init__(self, **data: Any):
+        super().__init__(**data)
+
+        self.__history = self.__get_conversation_history()
+
+        # Have the memories as instance attributes (i.e. do things like stray.working_memory.declarative_memories
+        # or stray.working_memory.declarative_memories[something])
+        # Each element is a List[Tuple[Document, float]] where the first element is the document and the second is the
+        # similarity score
+        for collection_name in VectoryMemoryCollectionTypes:
+            setattr(self, f"{collection_name}_memories".lower(), [])
+
+    def __get_conversation_history(self) -> List[ConversationHistoryInfo]:
         """Get the conversation history.
 
         Returns:
             List[ConversationHistoryInfo]: The conversation history.
         """
 
-        conversation_history = history.get_history(self.agent_id, self.user_id)
+        conversation_history = crud_history.get_history(self.agent_id, self.user_id)
 
         return [ConversationHistoryInfo(**m) for m in conversation_history]
 
@@ -61,7 +71,9 @@ class WorkingMemory(BaseModelDict):
         """
 
         conversation_history = [message.model_dump() for message in conversation_history]
-        history.set_history(self.agent_id, self.user_id, conversation_history)
+        self.__history = conversation_history
+
+        crud_history.set_history(self.agent_id, self.user_id, self.__history)
 
         return self
 
@@ -73,7 +85,8 @@ class WorkingMemory(BaseModelDict):
             The current instance of the WorkingMemory class.
         """
 
-        history.set_history(self.agent_id, self.user_id, [])
+        self.__history = []
+        crud_history.set_history(self.agent_id, self.user_id, self.__history)
 
         return self
 
@@ -95,9 +108,19 @@ class WorkingMemory(BaseModelDict):
 
         # TODO: Message should be of type CatMessage or UserMessage. For backward compatibility we put a new key
         # we are sure that who is not change in the current call
-        conversation_history_info = ConversationHistoryInfo(
-            **{"who": who, "message": message, "why": why, "role": role}
-        )
+        conversation_history_info = ConversationHistoryInfo(who=who, message=message, why=why, role=role)
 
         # append latest message in conversation
-        history.update_history(self.agent_id, self.user_id, conversation_history_info)
+        crud_history.update_history(self.agent_id, self.user_id, conversation_history_info)
+
+        self.__history = self.__get_conversation_history()
+
+    @property
+    def history(self) -> List[ConversationHistoryInfo]:
+        """Get the conversation history.
+
+        Returns:
+            List[ConversationHistoryInfo]: The conversation history.
+        """
+
+        return self.__history

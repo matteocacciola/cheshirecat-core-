@@ -3,7 +3,7 @@ from fastapi import APIRouter, HTTPException, Depends
 
 from cat.auth.connection import HTTPAuth, ContextualCats
 from cat.auth.permissions import AuthPermission, AuthResource
-from cat.memory.models import MemoryCollection
+from cat.memory.vector_memory_collection import VectoryMemoryCollectionTypes
 
 router = APIRouter()
 
@@ -18,7 +18,7 @@ async def get_collections(
     collections_metadata = [{
         "name": str(c),
         "vectors_count": cats.cheshire_cat.memory.vectors.collections[str(c)].get_vectors_count()
-    } for c in MemoryCollection]
+    } for c in VectoryMemoryCollectionTypes]
 
     return {"collections": collections_metadata}
 
@@ -32,7 +32,7 @@ async def wipe_collections(
 
     ccat = cats.cheshire_cat
 
-    to_return = {str(c): ccat.memory.vectors.collections[str(c)].wipe() for c in MemoryCollection}
+    to_return = {str(c): ccat.memory.vectors.collections[str(c)].wipe() for c in VectoryMemoryCollectionTypes}
 
     ccat.load_memory()  # recreate the long term memories
     ccat.mad_hatter.find_plugins()
@@ -50,7 +50,7 @@ async def wipe_single_collection(
 ) -> Dict:
     """Delete and recreate a collection"""
     # check if collection exists
-    if collection_id not in MemoryCollection:
+    if collection_id not in VectoryMemoryCollectionTypes:
         raise HTTPException(
             status_code=400, detail={"error": "Collection does not exist."}
         )

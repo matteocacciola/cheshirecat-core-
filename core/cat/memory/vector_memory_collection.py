@@ -29,6 +29,13 @@ from langchain.docstore.document import Document
 
 from cat.log import log
 from cat.env import get_env
+from cat.utils import Enum as BaseEnum
+
+
+class VectoryMemoryCollectionTypes(BaseEnum):
+    EPISODIC = "episodic"
+    DECLARATIVE = "declarative"
+    PROCEDURAL = "procedural"
 
 
 class VectorMemoryCollection:
@@ -270,8 +277,27 @@ class VectorMemoryCollection:
 
     # retrieve similar memories from embedding
     def recall_memories_from_embedding(
-            self, embedding, metadata: Dict | None = None, k: int | None = 5, threshold: float | None =None
-    ) -> List:
+        self, embedding, metadata: Dict | None = None, k: int | None = 5, threshold: float | None =None
+    ) -> List[Tuple[Document, float, List[float], str]]:
+        """
+        Retrieve memories from the collection based on an embedding vector. The memories are sorted by similarity to the
+        embedding vector. The metadata filter is applied to the memories before retrieving them. The number of memories
+        to retrieve is limited by the k parameter. The threshold parameter is used to filter out memories with a score
+        below the threshold. The memories are returned as a list of tuples, where each tuple contains a Document, the
+        similarity score, and the embedding vector of the memory. The Document contains the page content and metadata of
+        the memory. The similarity score is a float between 0 and 1, where 1 is the highest similarity. The embedding
+        vector is a list of floats. The list of tuples is sorted by similarity score in descending order. If the k
+        parameter is None, all memories are retrieved. If the threshold parameter is None, no memories are filtered out.
+
+        Args:
+            embedding: Embedding vector.
+            metadata: Dictionary containing metadata filter.
+            k: Number of memories to retrieve.
+            threshold: Similarity threshold.
+
+        Returns:
+            List: List of tuples containing a Document, a similarity score, an embedding vector and the id of the memory.
+        """
         combined_filter = self._qdrant_combine_filter_with_tenant(self._qdrant_filter_from_dict(metadata))
 
         # retrieve memories
@@ -293,25 +319,39 @@ class VectorMemoryCollection:
         )
 
         # convert Qdrant points to langchain.Document
-        langchain_documents_from_points = []
-        for m in memories:
-            langchain_documents_from_points.append(
-                (
-                    Document(
-                        page_content=m.payload.get("page_content"),
-                        metadata=m.payload.get("metadata") or {},
-                    ),
-                    m.score,
-                    m.vector,
-                    m.id,
-                )
-            )
+        langchain_documents_from_points = [(
+            Document(
+                page_content=m.payload.get("page_content"),
+                metadata=m.payload.get("metadata") or {},
+            ),
+            m.score,
+            m.vector,
+            m.id,
+        ) for m in memories]
 
         # we'll move out of langchain conventions soon and have our own cat Document
         # for doc, score, vector in langchain_documents_from_points:
         #    doc.lc_kwargs = None
 
         return langchain_documents_from_points
+
+    def recall_all_memories(self) -> List[Tuple[Document, None, List[float], str]]:
+        """
+        Retrieve the entire memories. It is similar to `recall_memories_from_embedding`, but without the embedding
+        vector. Like `get_all_points`, it retrieves all the memories in the collection. The memories are returned in the
+        same format as `recall_memories_from_embedding`.
+
+        Returns:
+            List: List of tuple, like `recall_memories_from_embedding`, but with the nulled 2nd element (the score).
+
+        See Also:
+            VectorMemoryCollection.recall_memories_from_embedding
+            VectorMemoryCollection.get_all_points
+        """
+        all_points, _ = self.get_all_points()
+        memories = [(Document(**p.payload), None, p.vector, p.id) for p in all_points]
+
+        return memories
 
     # retrieve all the points in the collection
     def get_all_points(

@@ -26,10 +26,9 @@ def settings_schema():
     Default behavior is defined in:
        `cat.mad_hatter.plugin.Plugin::settings_schema`
 
-    Returns
-    -------
-    schema : Dict
-        JSON schema of the settings.
+    Returns:
+        schema : Dict
+            JSON schema of the settings.
     """
 
     # In core_plugin we pass an empty JSON schema
@@ -45,10 +44,9 @@ def settings_model():
     Default behavior is defined in:
        `cat.mad_hatter.plugin.Plugin::settings_model`
 
-    Returns
-    -------
-    model : class
-        Pydantic model of the settings.
+    Returns:
+        model : class
+            Pydantic model of the settings.
     """
 
     # In core_plugin we pass an empty model
@@ -64,10 +62,9 @@ def load_settings():
        `cat.mad_hatter.plugin.Plugin::load_settings`
        It loads the settings.json in current folder
 
-    Returns
-    -------
-    settings : Dict
-        Settings.
+    Returns:
+        settings : Dict
+            Settings.
     """
 
     # In core_plugin we do nothing (for now).
@@ -84,15 +81,13 @@ def save_settings(settings):
        `cat.mad_hatter.plugin.Plugin::save_settings`
        It just saves contents in a settings.json in the plugin folder
 
-    Parameters
-    ----------
-    settings : Dict
-        Settings to be saved.
+    Args:
+        settings : Dict
+            Settings to be saved.
 
-    Returns
-    -------
-    settings : Dict
-        Saved settings.
+    Returns:
+        settings : Dict
+            Saved settings.
     """
 
     # In core_plugin we do nothing (for now).
@@ -103,10 +98,9 @@ def save_settings(settings):
 def activated(plugin):
     """This method allows executing custom code right after a plugin is activated.
 
-    Parameters
-    ----------
-    plugin
-        Plugin: Cat object representing the plugin instance in memory.
+    Args:
+        plugin
+            Plugin: Cat object representing the plugin instance in memory.
     """
     return None
 
@@ -115,9 +109,8 @@ def activated(plugin):
 def deactivated(plugin):
     """This method allows executing custom code right after a plugin is deactivated.
 
-    Parameters
-    ----------
-    plugin
-        Plugin: Cat object representing the plugin instance in memory.
+    Args:
+        plugin
+            Plugin: Cat object representing the plugin instance in memory.
     """
     return None
