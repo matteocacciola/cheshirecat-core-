@@ -1,11 +1,12 @@
 from typing import Dict, List, Any
 from pydantic import BaseModel
-from fastapi import Query, APIRouter, HTTPException, Depends
+from fastapi import Query, APIRouter, Depends
 import time
 from qdrant_client.http.models import UpdateResult, Record
 
 from cat.auth.connection import HTTPAuth, ContextualCats
 from cat.auth.permissions import AuthPermission, AuthResource
+from cat.exceptions import CustomNotFoundException, CustomValidationException
 from cat.factory.embedder import get_embedder_config_class_from_model
 from cat.memory.vector_memory_collection import VectoryMemoryCollectionTypes
 
@@ -106,15 +107,11 @@ async def create_memory_point(
 
     # check if collection exists
     if collection_id not in VectoryMemoryCollectionTypes:
-        raise HTTPException(
-            status_code=400, detail={"error": "Collection does not exist."}
-        )
+        raise CustomNotFoundException("Collection does not exist.")
 
     # do not touch procedural memory
     if collection_id == str(VectoryMemoryCollectionTypes.PROCEDURAL):
-        raise HTTPException(
-            status_code=400, detail={"error": "Procedural memory is read-only."}
-        )
+        raise CustomValidationException("Procedural memory is read-only.")
 
     ccat = cats.cheshire_cat
 
@@ -155,16 +152,14 @@ async def delete_memory_point(
 
     # check if collection exists
     if collection_id not in VectoryMemoryCollectionTypes:
-        raise HTTPException(
-            status_code=400, detail={"error": "Collection does not exist."}
-        )
+        raise CustomNotFoundException("Collection does not exist.")
 
     vector_memory = cats.cheshire_cat.memory.vectors
 
     # check if point exists
     points = vector_memory.collections[collection_id].retrieve_points([point_id])
     if not points:
-        raise HTTPException(status_code=400, detail={"error": "Point does not exist."})
+        raise CustomNotFoundException("Point does not exist.")
 
     # delete point
     vector_memory.collections[collection_id].delete_points([point_id])
@@ -249,21 +244,11 @@ async def get_points_in_collection(
 
     # do not allow procedural memory reads via network
     if collection_id == "procedural":
-        raise HTTPException(
-            status_code=400,
-            detail={
-                "error": "Procedural memory is not readable via API"
-            }
-        )
+        raise CustomValidationException("Procedural memory is not readable via API.")
 
     # check if collection exists
     if collection_id not in VectoryMemoryCollectionTypes:
-        raise HTTPException(
-            status_code=400,
-            detail={
-                "error": "Collection does not exist."
-            }
-        )
+        raise CustomNotFoundException("Collection does not exist.")
 
     # if offset is empty string set to null
     if offset == "":

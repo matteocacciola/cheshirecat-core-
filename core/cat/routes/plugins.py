@@ -1,11 +1,12 @@
 import mimetypes
 from copy import deepcopy
 from typing import Dict, List
-from fastapi import Body, APIRouter, HTTPException, UploadFile, Depends
+from fastapi import Body, APIRouter, UploadFile, Depends
 from pydantic import ValidationError, BaseModel
 
 from cat.auth.connection import HTTPAuth, ContextualCats
 from cat.auth.permissions import AuthPermission, AuthResource
+from cat.exceptions import CustomValidationException, CustomNotFoundException
 from cat.log import log
 from cat.looking_glass.cheshire_cat import Plugins
 from cat.mad_hatter.registry import registry_download_plugin
@@ -83,11 +84,8 @@ async def install_plugin(
     admitted_mime_types = ["application/zip", "application/x-tar"]
     content_type = mimetypes.guess_type(file.filename)[0]
     if content_type not in admitted_mime_types:
-        raise HTTPException(
-            status_code=400,
-            detail={
-                "error": f'MIME type `{file.content_type}` not supported. Admitted types: {", ".join(admitted_mime_types)}'
-            },
+        raise CustomValidationException(
+            f'MIME type `{file.content_type}` not supported. Admitted types: {", ".join(admitted_mime_types)}'
         )
 
     log.info(f"Uploading {content_type} plugin {file.filename}")
@@ -118,9 +116,7 @@ async def install_plugin_from_registry(
         tmp_plugin_path = registry_download_plugin(payload["url"])
         ccat.mad_hatter.install_plugin(tmp_plugin_path)
     except Exception as e:
-        log.error("Could not download plugin form registry")
-        log.error(e)
-        raise HTTPException(status_code=500, detail={"error": str(e)})
+        raise CustomValidationException(f"Could not download plugin form registry: {e}")
 
     return InstallPluginFromRegistryResponse(url=payload["url"], info="Plugin is being installed asynchronously")
 
@@ -137,14 +133,11 @@ async def toggle_plugin(
 
     # check if plugin exists
     if not ccat.mad_hatter.plugin_exists(plugin_id):
-        raise HTTPException(status_code=404, detail={"error": "Plugin not found"})
+        raise CustomNotFoundException("Plugin not found")
 
-    try:
-        # toggle plugin
-        ccat.mad_hatter.toggle_plugin(plugin_id)
-        return TogglePluginResponse(info=f"Plugin {plugin_id} toggled")
-    except Exception as e:
-        raise HTTPException(status_code=500, detail={"error": str(e)})
+    # toggle plugin
+    ccat.mad_hatter.toggle_plugin(plugin_id)
+    return TogglePluginResponse(info=f"Plugin {plugin_id} toggled")
 
 
 @router.get("/settings", response_model=PluginsSettingsResponse)
@@ -169,8 +162,9 @@ async def get_plugins_settings(
                 GetSettingResponse(name=plugin.id, value=plugin_settings, scheme=plugin_schema)
             )
         except Exception as e:
-            log.error(
-                f"Error loading {plugin} settings. The result will not contain the settings for this plugin. Error details: {e}"
+            raise CustomValidationException(
+                f"Error loading {plugin} settings. The result will not contain the settings for this plugin. "
+                f"Error details: {e}"
             )
 
     return PluginsSettingsResponse(settings=settings)
@@ -187,13 +181,10 @@ async def get_plugin_settings(
     ccat = cats.cheshire_cat
 
     if not ccat.mad_hatter.plugin_exists(plugin_id):
-        raise HTTPException(status_code=404, detail={"error": "Plugin not found"})
+        raise CustomNotFoundException("Plugin not found")
 
-    try:
-        settings = ccat.mad_hatter.plugins[plugin_id].load_settings()
-        scheme = ccat.mad_hatter.plugins[plugin_id].settings_schema()
-    except Exception as e:
-        raise HTTPException(status_code=500, detail={"error": e})
+    settings = ccat.mad_hatter.plugins[plugin_id].load_settings()
+    scheme = ccat.mad_hatter.plugins[plugin_id].settings_schema()
 
     if scheme["properties"] == {}:
         scheme = {}
@@ -213,7 +204,7 @@ async def upsert_plugin_settings(
     ccat = cats.cheshire_cat
 
     if not ccat.mad_hatter.plugin_exists(plugin_id):
-        raise HTTPException(status_code=404, detail={"error": "Plugin not found"})
+        raise CustomNotFoundException("Plugin not found")
 
     # Get the plugin object
     plugin = ccat.mad_hatter.plugins[plugin_id]
@@ -224,10 +215,7 @@ async def upsert_plugin_settings(
         # Validate the settings
         plugin_settings_model.model_validate(payload)
     except ValidationError as e:
-        raise HTTPException(
-            status_code=400,
-            detail={"error": "\n".join(list(map((lambda x: x["msg"]), e.errors())))},
-        )
+        raise CustomValidationException("\n".join(list(map(lambda x: x["msg"], e.errors()))))
 
     final_settings = plugin.save_settings(payload)
 
@@ -245,7 +233,7 @@ async def get_plugin_details(
     ccat = cats.cheshire_cat
 
     if not ccat.mad_hatter.plugin_exists(plugin_id):
-        raise HTTPException(status_code=404, detail={"error": "Plugin not found"})
+        raise CustomNotFoundException("Plugin not found")
 
     active_plugins = ccat.mad_hatter.load_active_plugins_from_db()
 
@@ -273,7 +261,7 @@ async def delete_plugin(
     ccat = cats.cheshire_cat
 
     if not ccat.mad_hatter.plugin_exists(plugin_id):
-        raise HTTPException(status_code=404, detail={"error": "Item not found"})
+        raise CustomNotFoundException("Plugin not found")
 
     # remove folder, hooks and tools
     ccat.mad_hatter.uninstall_plugin(plugin_id)

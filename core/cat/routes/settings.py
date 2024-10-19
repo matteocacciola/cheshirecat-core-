@@ -1,12 +1,13 @@
 from typing import Dict, List
 
-from fastapi import Depends, APIRouter, HTTPException
+from fastapi import Depends, APIRouter
 from pydantic import BaseModel
 
 from cat.auth.permissions import AuthPermission, AuthResource
 from cat.auth.connection import HTTPAuth, ContextualCats
 from cat.db import models
 from cat.db.cruds import settings as crud_settings
+from cat.exceptions import CustomNotFoundException
 
 router = APIRouter()
 
@@ -60,12 +61,7 @@ def get_setting(
 
     setting = crud_settings.get_setting_by_id(cats.cheshire_cat.id, setting_id)
     if not setting:
-        raise HTTPException(
-            status_code=404,
-            detail={
-                "error": f"No setting with this id: {setting_id}",
-            },
-        )
+        raise CustomNotFoundException(f"No setting with this id: {setting_id}")
     return SettingResponse(setting=setting)
 
 
@@ -82,12 +78,7 @@ def update_setting(
     # does the setting exist?
     setting = crud_settings.get_setting_by_id(agent_id, setting_id)
     if not setting:
-        raise HTTPException(
-            status_code=404,
-            detail={
-                "error": f"No setting with this id: {setting_id}",
-            },
-        )
+        raise CustomNotFoundException(f"No setting with this id: {setting_id}")
 
     # complete the payload with setting_id and updated_at
     payload = models.Setting(**payload.model_dump())
@@ -111,12 +102,7 @@ def delete_setting(
     # does the setting exist?
     setting = crud_settings.get_setting_by_id(agent_id, setting_id)
     if not setting:
-        raise HTTPException(
-            status_code=404,
-            detail={
-                "error": f"No setting with this id: {setting_id}",
-            },
-        )
+        raise CustomNotFoundException(f"No setting with this id: {setting_id}")
 
     # delete
     crud_settings.delete_setting_by_id(agent_id, setting_id)

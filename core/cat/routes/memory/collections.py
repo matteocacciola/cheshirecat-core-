@@ -1,9 +1,10 @@
 from typing import Dict, List
-from fastapi import APIRouter, HTTPException, Depends
+from fastapi import APIRouter, Depends
 from pydantic import BaseModel
 
 from cat.auth.connection import HTTPAuth, ContextualCats
 from cat.auth.permissions import AuthPermission, AuthResource
+from cat.exceptions import CustomNotFoundException
 from cat.memory.vector_memory_collection import VectoryMemoryCollectionTypes
 
 router = APIRouter()
@@ -64,9 +65,7 @@ async def wipe_single_collection(
 
     # check if collection exists
     if collection_id not in VectoryMemoryCollectionTypes:
-        raise HTTPException(
-            status_code=400, detail={"error": "Collection does not exist."}
-        )
+        raise CustomNotFoundException("Collection does not exist.")
 
     ccat = cats.cheshire_cat
     ret = ccat.memory.vectors.collections[collection_id].wipe()

@@ -4,18 +4,11 @@ import json
 from typing import Dict, List
 from copy import deepcopy
 from pydantic import BaseModel, Field, ConfigDict
-from fastapi import (
-    Form,
-    Depends,
-    APIRouter,
-    UploadFile,
-    BackgroundTasks,
-    HTTPException,
-    Request,
-)
+from fastapi import Form, Depends, APIRouter, UploadFile, BackgroundTasks, Request
 
 from cat.auth.connection import HTTPAuth, ContextualCats
 from cat.auth.permissions import AuthPermission, AuthResource
+from cat.exceptions import CustomValidationException
 from cat.log import log
 from cat.utils import format_upload_file
 
@@ -132,11 +125,8 @@ async def upload_file(
 
     # check if MIME type of uploaded file is supported
     if content_type not in admitted_types:
-        raise HTTPException(
-            status_code=400,
-            detail={
-                "error": f'MIME type {content_type} not supported. Admitted types: {" - ".join(admitted_types)}'
-            },
+        CustomValidationException(
+            f'MIME type {content_type} not supported. Admitted types: {" - ".join(admitted_types)}'
         )
 
     # upload file to long term memory, in the background
@@ -246,11 +236,8 @@ async def upload_files(
 
         # check if MIME type of uploaded file is supported
         if content_type not in admitted_types:
-            raise HTTPException(
-                status_code=400,
-                detail={
-                    "error": f'MIME type {content_type} not supported. Admitted types: {" - ".join(admitted_types)}'
-                },
+            raise CustomValidationException(
+                f'MIME type {content_type} not supported. Admitted types: {" - ".join(admitted_types)}'
             )
 
         # upload file to long term memory, in the background
@@ -306,15 +293,10 @@ async def upload_url(
                 **upload_config.model_dump(exclude={"url"})
             )
             return UploadUrlResponse(url=upload_config.url, info="URL is being ingested asynchronously")
-        raise HTTPException(
-            status_code=400,
-            detail={"error": "Invalid URL", "url": upload_config.url},
-        )
+
+        raise CustomValidationException(f"Invalid URL: {upload_config.url}")
     except requests.exceptions.RequestException as _e:
-        raise HTTPException(
-            status_code=400,
-            detail={"error": "Unable to reach the URL", "url": upload_config.url},
-        )
+        raise CustomValidationException(f"Unable to reach the URL: {upload_config.url}")
 
 
 @router.post("/memory", response_model=UploadSingleFileResponse)
@@ -330,11 +312,8 @@ async def upload_memory(
     content_type = mimetypes.guess_type(file.filename)[0]
     log.info(f"Uploaded {content_type} down the rabbit hole")
     if content_type != "application/json":
-        raise HTTPException(
-            status_code=400,
-            detail={
-                "error": f"MIME type {content_type} not supported. Admitted types: 'application/json'"
-            },
+        raise CustomValidationException(
+            f'MIME type {content_type} not supported. Admitted types: "application/json"'
         )
 
     # Ingest memories in background and notify client

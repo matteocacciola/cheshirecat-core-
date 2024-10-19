@@ -165,7 +165,7 @@ class BillTheLizard:
                 if selected is not None:
                     self.replace_embedder(selected["value"]["name"], selected)
 
-                raise LoadMemoryException(utils.explicit_error_message(e))
+                raise LoadMemoryException(f"Load memory exception: {utils.explicit_error_message(e)}")
 
         # recreate tools embeddings
         self.mad_hatter.find_plugins()

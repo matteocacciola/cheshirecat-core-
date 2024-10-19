@@ -13,14 +13,14 @@ def create_point_wrong_collection(secure_client, secure_client_headers):
     res = secure_client.post(
         "/memory/collections/wrongcollection/points", json=req_json, headers=secure_client_headers
     )
-    assert res.status_code == 400
+    assert res.status_code == 404
     assert "Collection does not exist" in res.json()["detail"]["error"]
 
     # cannot write procedural point
     res = secure_client.post(
         "/memory/collections/procedural/points", json=req_json, headers=secure_client_headers
     )
-    assert res.status_code == 400
+    assert res.status_code == 404
     assert "Procedural memory is read-only" in res.json()["detail"]["error"]
 
 
@@ -41,12 +41,12 @@ def test_point_deleted(secure_client, secure_client_headers):
     res = secure_client.delete(
         f"/memory/collections/wrongcollection/points/{mem['id']}", headers=secure_client_headers
     )
-    assert res.status_code == 400
+    assert res.status_code == 404
     assert res.json()["detail"]["error"] == "Collection does not exist."
 
     # delete point (wrong id)
     res = secure_client.delete("/memory/collections/episodic/points/wrong_id", headers=secure_client_headers)
-    assert res.status_code == 400
+    assert res.status_code == 404
     assert res.json()["detail"]["error"] == "Point does not exist."
 
     # delete point (all right)
@@ -63,7 +63,7 @@ def test_point_deleted(secure_client, secure_client_headers):
 
     # delete again the same point (should not be found)
     res = secure_client.delete(f"/memory/collections/episodic/points/{mem['id']}", headers=secure_client_headers)
-    assert res.status_code == 400
+    assert res.status_code == 404
     assert res.json()["detail"]["error"] == "Point does not exist."
 
 
@@ -167,7 +167,7 @@ def test_create_memory_point(secure_client, secure_client_headers, patch_time_no
 def test_get_collection_points_wrong_collection(secure_client, secure_client_headers):
     # unexisting collection
     res = secure_client.get("/memory/collections/unexistent/points", headers=secure_client_headers)
-    assert res.status_code == 400
+    assert res.status_code == 404
     assert "Collection does not exist" in res.json()["detail"]["error"]
 
     # reserved procedural collection

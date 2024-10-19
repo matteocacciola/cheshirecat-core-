@@ -1,8 +1,9 @@
-from fastapi import Request, HTTPException, FastAPI
+from fastapi import Request, FastAPI
 from fastapi.staticfiles import StaticFiles
 
 from cat.auth.connection import HTTPAuth
 from cat.auth.permissions import AuthPermission, AuthResource
+from cat.exceptions import CustomForbiddenException
 
 
 class AuthStatic(StaticFiles):
@@ -16,7 +17,7 @@ class AuthStatic(StaticFiles):
         )
         allowed = await stray_http_auth(request)
         if not allowed:
-            raise HTTPException(status_code=403, detail={"error": "Forbidden."})
+            raise CustomForbiddenException("Forbidden.")
         await super().__call__(scope, receive, send)
 
 def mount(cheshire_cat_api: FastAPI):

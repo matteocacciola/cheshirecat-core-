@@ -1,8 +1,9 @@
 import asyncio
 from typing import Dict, List, Any
 from pydantic import BaseModel
-from fastapi import Request, HTTPException
+from fastapi import Request
 
+from cat.exceptions import CustomForbiddenException
 from cat.utils import ReplacedNLPConfig
 
 
@@ -45,4 +46,4 @@ async def auth_token(request: Request, credentials: UserCredentials, agent_id: s
     # Invalid username or password
     # wait a little to avoid brute force attacks
     await asyncio.sleep(1)
-    raise HTTPException(status_code=403, detail={"error": "Invalid Credentials"})
+    raise CustomForbiddenException("Invalid Credentials")

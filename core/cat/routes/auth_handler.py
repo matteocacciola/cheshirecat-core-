@@ -1,10 +1,11 @@
 from typing import Dict
-from fastapi import APIRouter, Body, HTTPException, Depends
+from fastapi import APIRouter, Body, Depends
 
 from cat.auth.connection import HTTPAuth, ContextualCats
 from cat.auth.permissions import AuthPermission, AuthResource
 from cat.db import models
 from cat.db.cruds import settings as crud_settings
+from cat.exceptions import CustomValidationException
 from cat.factory.auth_handler import get_auth_handlers_schemas
 from cat.routes.routes_utils import GetSettingsResponse, GetSettingResponse, UpsertSettingResponse
 
@@ -47,12 +48,7 @@ def get_auth_handler_setting(
 
     allowed_configurations = list(auth_handler_schemas.keys())
     if auth_handler_name not in allowed_configurations:
-        raise HTTPException(
-            status_code=400,
-            detail={
-                "error": f"{auth_handler_name} not supported. Must be one of {allowed_configurations}"
-            },
-        )
+        raise CustomValidationException(f"{auth_handler_name} not supported. Must be one of {allowed_configurations}")
 
     setting = crud_settings.get_setting_by_name(cats.cheshire_cat.id, auth_handler_name)
     scheme = auth_handler_schemas[auth_handler_name]
@@ -77,12 +73,7 @@ def upsert_authenticator_setting(
 
     allowed_configurations = list(auth_handler_schemas.keys())
     if auth_handler_name not in allowed_configurations:
-        raise HTTPException(
-            status_code=400,
-            detail={
-                "error": f"{auth_handler_name} not supported. Must be one of {allowed_configurations}"
-            },
-        )
+        raise CustomValidationException(f"{auth_handler_name} not supported. Must be one of {allowed_configurations}")
 
     crud_settings.upsert_setting_by_name(
         agent_id,

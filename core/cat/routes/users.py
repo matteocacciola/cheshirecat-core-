@@ -1,11 +1,12 @@
 from pydantic import BaseModel, Field, ConfigDict
 from typing import List, Dict
-from fastapi import Depends, APIRouter, HTTPException
+from fastapi import Depends, APIRouter
 
 from cat.auth.permissions import AuthPermission, AuthResource, get_base_permissions
 from cat.auth.auth_utils import hash_password
 from cat.auth.connection import HTTPAuth, ContextualCats
 from cat.db.cruds import users as crud_users
+from cat.exceptions import CustomNotFoundException, CustomForbiddenException
 
 router = APIRouter()
 
@@ -40,7 +41,7 @@ def create_user(
     agent_id = cats.cheshire_cat.id
     created_user = crud_users.create_user(agent_id, new_user.model_dump())
     if not created_user:
-        raise HTTPException(status_code=403, detail={"error": "Cannot duplicate user"})
+        raise CustomForbiddenException("Cannot duplicate user")
 
     return UserResponse(**created_user)
 
@@ -65,7 +66,7 @@ def read_user(
     users_db = crud_users.get_users(cats.cheshire_cat.id)
 
     if user_id not in users_db:
-        raise HTTPException(status_code=404, detail={"error": "User not found"})
+        raise CustomNotFoundException("User not found")
     return UserResponse(**users_db[user_id])
 
 
@@ -78,7 +79,7 @@ def update_user(
     agent_id = cats.cheshire_cat.id
     stored_user = crud_users.get_user(agent_id, user_id)
     if not stored_user:
-        raise HTTPException(status_code=404, detail={"error": "User not found"})
+        raise CustomNotFoundException("User not found")
     
     if user.password:
         user.password = hash_password(user.password)
@@ -96,6 +97,6 @@ def delete_user(
     agent_id = cats.cheshire_cat.id
     deleted_user = crud_users.delete_user(agent_id, user_id)
     if not deleted_user:
-        raise HTTPException(status_code=404, detail={"error": "User not found"})
+        raise CustomNotFoundException("User not found")
 
     return UserResponse(**deleted_user)

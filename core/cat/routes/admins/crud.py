@@ -1,12 +1,13 @@
 from pydantic import BaseModel, Field, ConfigDict
 from typing import List, Dict
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends
 
 from cat.auth.permissions import AdminAuthResource, AuthPermission, get_full_admin_permissions
 from cat.auth.auth_utils import hash_password
 from cat.auth.connection import AdminConnectionAuth
 from cat.bill_the_lizard import BillTheLizard
 from cat.db.cruds import users as crud_users
+from cat.exceptions import CustomNotFoundException, CustomForbiddenException
 
 router = APIRouter()
 
@@ -40,7 +41,7 @@ def create_admin(
 ):
     created_user = crud_users.create_user(lizard.config_key, new_user.model_dump())
     if not created_user:
-        raise HTTPException(status_code=403, detail={"error": "Cannot duplicate admin"})
+        raise CustomForbiddenException("Cannot duplicate admin")
 
     return created_user
 
@@ -65,7 +66,7 @@ def read_admin(
     users_db = crud_users.get_users(lizard.config_key)
 
     if user_id not in users_db:
-        raise HTTPException(status_code=404, detail={"error": "User not found"})
+        raise CustomNotFoundException("User not found")
     return users_db[user_id]
 
 
@@ -77,7 +78,7 @@ def update_admin(
 ):
     stored_user = crud_users.get_user(lizard.config_key, user_id)
     if not stored_user:
-        raise HTTPException(status_code=404, detail={"error": "User not found"})
+        raise CustomNotFoundException("User not found")
     
     if user.password:
         user.password = hash_password(user.password)
@@ -94,6 +95,6 @@ def delete_admin(
 ):
     deleted_user = crud_users.delete_user(lizard.config_key, user_id)
     if not deleted_user:
-        raise HTTPException(status_code=404, detail={"error": "User not found"})
+        raise CustomNotFoundException("User not found")
 
     return deleted_user

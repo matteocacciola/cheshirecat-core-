@@ -1,12 +1,13 @@
 from typing import Dict
-from fastapi import APIRouter, Body, HTTPException, Depends
+from fastapi import APIRouter, Body, Depends
 
 from cat.auth.connection import HTTPAuth, ContextualCats
 from cat.auth.permissions import AuthPermission, AuthResource
-from cat.exceptions import LoadMemoryException
+from cat.exceptions import CustomValidationException
 from cat.factory.llm import get_llms_schemas
 from cat.db.cruds import settings as crud_settings
 from cat.routes.routes_utils import GetSettingsResponse, GetSettingResponse, UpsertSettingResponse
+from cat.utils import ReplacedNLPConfig
 
 router = APIRouter()
 
@@ -54,12 +55,7 @@ def get_llm_settings(
     # check that language_model_name is a valid name
     allowed_configurations = list(llm_schemas.keys())
     if language_model_name not in allowed_configurations:
-        raise HTTPException(
-            status_code=400,
-            detail={
-                "error": f"{language_model_name} not supported. Must be one of {allowed_configurations}"
-            },
-        )
+        raise CustomValidationException(f"{language_model_name} not supported. Must be one of {allowed_configurations}")
 
     setting = crud_settings.get_setting_by_name(ccat.id, language_model_name)
     scheme = llm_schemas[language_model_name]
@@ -74,7 +70,7 @@ def upsert_llm_setting(
     language_model_name: str,
     payload: Dict = Body({"openai_api_key": "your-key-here"}),
     cats: ContextualCats = Depends(HTTPAuth(AuthResource.LLM, AuthPermission.EDIT)),
-) -> UpsertSettingResponse:
+) -> ReplacedNLPConfig:
     """Upsert the Large Language Model setting"""
 
     ccat = cats.cheshire_cat
@@ -83,16 +79,6 @@ def upsert_llm_setting(
     # check that language_model_name is a valid name
     allowed_configurations = list(llm_schemas.keys())
     if language_model_name not in allowed_configurations:
-        raise HTTPException(
-            status_code=400,
-            detail={
-                "error": f"{language_model_name} not supported. Must be one of {allowed_configurations}"
-            },
-        )
+        raise CustomValidationException(f"{language_model_name} not supported. Must be one of {allowed_configurations}")
 
-    try:
-        status = ccat.replace_llm(language_model_name, payload)
-    except LoadMemoryException as e:
-        raise HTTPException(status_code=400, detail={"error": str(e)})
-
-    return status
+    return ccat.replace_llm(language_model_name, payload)

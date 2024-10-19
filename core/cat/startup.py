@@ -10,6 +10,12 @@ from fastapi.middleware.cors import CORSMiddleware
 from cat.bill_the_lizard import BillTheLizard
 from cat.db.database import get_db
 from cat.env import get_env
+from cat.exceptions import (
+    LoadMemoryException,
+    CustomValidationException,
+    CustomNotFoundException,
+    CustomForbiddenException
+)
 from cat.log import log
 from cat.routes import (
     admins_router as admins,
@@ -100,13 +106,45 @@ cheshire_cat_api.include_router(websocket.router, tags=["Websocket"])
 static.mount(cheshire_cat_api)
 
 
-# error handling
+@cheshire_cat_api.exception_handler(Exception)
+async def generic_exception_handler(request, exc):
+    log.error(f"An unexpected error occurred: {exc}")
+    return JSONResponse(status_code=500, content={"detail": {"error": str(exc)}})
+
+
+@cheshire_cat_api.exception_handler(ValueError)
+async def value_error_exception_handler(request, exc):
+    log.error(f"An unexpected value error occurred: {exc}")
+    return JSONResponse(status_code=500, content={"detail": {"error": str(exc)}})
+
+
 @cheshire_cat_api.exception_handler(RequestValidationError)
 async def validation_exception_handler(request, exc):
-    return JSONResponse(
-        status_code=400,
-        content={"error": exc.errors()},
-    )
+    return JSONResponse(status_code=400, content={"detail": {"error": exc.errors()}})
+
+
+@cheshire_cat_api.exception_handler(LoadMemoryException)
+async def load_memory_exception_handler(request, exc):
+    log.error(exc)
+    return JSONResponse(status_code=500, content={"detail": {"error": str(exc)}})
+
+
+@cheshire_cat_api.exception_handler(CustomValidationException)
+async def custom_validation_exception_handler(request, exc):
+    log.error(exc)
+    return JSONResponse(status_code=400, content={"detail": {"error": str(exc)}})
+
+
+@cheshire_cat_api.exception_handler(CustomNotFoundException)
+async def custom_not_found_exception_handler(request, exc):
+    log.error(exc)
+    return JSONResponse(status_code=404, content={"detail": {"error": str(exc)}})
+
+
+@cheshire_cat_api.exception_handler(CustomForbiddenException)
+async def custom_forbidden_exception_handler(request, exc):
+    log.error(exc)
+    return JSONResponse(status_code=403, content={"detail": {"error": str(exc)}})
 
 
 # openapi customization

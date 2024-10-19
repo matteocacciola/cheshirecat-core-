@@ -139,9 +139,8 @@ class Plugin:
         #   in a JSON file called settings.json
         settings_file_path = os.path.join(self._path, "settings.json")
 
-        if not os.path.isfile(settings_file_path):
-            if not self._create_settings_from_model():
-                return {}
+        if not os.path.isfile(settings_file_path) and not self._create_settings_from_model():
+            return {}
 
         # load settings.json if exists
         if os.path.isfile(settings_file_path):
@@ -149,7 +148,6 @@ class Plugin:
                 with open(settings_file_path, "r") as json_file:
                     settings = json.load(json_file)
                     return settings
-
             except Exception as e:
                 log.error(f"Unable to load plugin {self._id} settings: {e}")
                 log.warning(self.plugin_specific_error_message())
@@ -194,7 +192,7 @@ class Plugin:
             settings = model().model_dump_json(indent=4)
 
             # If each field have a default value and the model is correct,
-            # create the settings.json wiht default values
+            # create the settings.json with default values
             with open(settings_file_path, "x") as json_file:
                 json_file.write(settings)
                 log.debug(
@@ -202,7 +200,6 @@ class Plugin:
                 )
 
             return True
-
         except ValidationError:
             log.debug(
                 f"{self.id} settings model have missing defaut values, no settings.json created"
@@ -247,50 +244,49 @@ class Plugin:
 
     def _install_requirements(self):
         req_file = os.path.join(self.path, "requirements.txt")
-        filtered_requirements = []
+        if not os.path.exists(req_file):
+            return
 
-        if os.path.exists(req_file):
-            installed_packages = {x.name for x in importlib.metadata.distributions()}
+        installed_packages = {x.name for x in importlib.metadata.distributions()}
+        filtered_requirements = []
+        try:
+            with open(req_file, "r") as read_file:
+                requirements = read_file.readlines()
+
+            for req in requirements:
+                log.info(f"Installing requirements for: {self.id}")
+
+                # get package name
+                package_name = Requirement(req).name
+
+                # check if package is installed
+                if package_name not in installed_packages:
+                    filtered_requirements.append(req)
+                else:
+                    log.debug(f"{package_name} is alredy installed")
+        except Exception as e:
+            log.error(f"Error during requirements check: {e}, for {self.id}")
+
+        if len(filtered_requirements) == 0:
+            return
+
+        with tempfile.NamedTemporaryFile(mode="w") as tmp:
+            tmp.write("".join(filtered_requirements))
+            # If flush is not performed, when pip reads the file it is empty
+            tmp.flush()
 
             try:
-                with open(req_file, "r") as read_file:
-                    requirements = read_file.readlines()
+                subprocess.run(
+                    ["pip", "install", "--no-cache-dir", "-r", tmp.name], check=True
+                )
+            except subprocess.CalledProcessError as e:
+                log.error(f"Error during installing {self.id} requirements: {e}")
 
-                for req in requirements:
-                    log.info(f"Installing requirements for: {self.id}")
+                # Uninstall the previously installed packages
+                log.info(f"Uninstalling requirements for: {self.id}")
+                subprocess.run(["pip", "uninstall", "-r", tmp.name], check=True)
 
-                    # get package name
-                    package_name = Requirement(req).name
-
-                    # check if package is installed
-                    if package_name not in installed_packages:
-                        filtered_requirements.append(req)
-                    else:
-                        log.debug(f"{package_name} is alredy installed")
-
-            except Exception as e:
-                log.error(f"Error during requirements check: {e}, for {self.id}")
-
-            if len(filtered_requirements) == 0:
-                return
-
-            with tempfile.NamedTemporaryFile(mode="w") as tmp:
-                tmp.write("".join(filtered_requirements))
-                # If flush is not performed, when pip reads the file it is empty
-                tmp.flush()
-
-                try:
-                    subprocess.run(
-                        ["pip", "install", "--no-cache-dir", "-r", tmp.name], check=True
-                    )
-                except subprocess.CalledProcessError as e:
-                    log.error(f"Error during installing {self.id} requirements: {e}")
-
-                    # Uninstall the previously installed packages
-                    log.info(f"Uninstalling requirements for: {self.id}")
-                    subprocess.run(["pip", "uninstall", "-r", tmp.name], check=True)
-
-                    raise Exception(f"Error during {self.id} requirements installation")
+                raise Exception(f"Error during {self.id} requirements installation")
 
     # lists of hooks and tools
     def _load_decorated_functions(self):

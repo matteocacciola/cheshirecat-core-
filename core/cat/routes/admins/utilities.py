@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, Request, HTTPException
+from fastapi import APIRouter, Depends, Request
 from pydantic import BaseModel
 
 from cat import utils
@@ -23,23 +23,15 @@ def factory_reset(
     Factory reset the entire application. This will delete all settings, memories, and metadata.
     """
 
-    try:
-        lizard.shutdown()
-        deleted_memories = True
+    lizard.shutdown()
+    deleted_memories = True
 
-        crud_settings.wipe_settings(lizard.config_key)
-        deleted_settings = True
+    crud_settings.wipe_settings(lizard.config_key)
+    deleted_settings = True
 
-        utils.singleton.instances.clear()
+    utils.singleton.instances.clear()
 
-        del request.app.state.lizard
-        request.app.state.lizard = BillTheLizard()
+    del request.app.state.lizard
+    request.app.state.lizard = BillTheLizard()
 
-        return FactoryResetResponse(deleted_settings=deleted_settings, deleted_memories=deleted_memories)
-    except Exception as e:
-        raise HTTPException(
-            status_code=500,
-            detail={
-                "error": f"An unexpected error occurred during factory reset: {str(e)}",
-            },
-        )
+    return FactoryResetResponse(deleted_settings=deleted_settings, deleted_memories=deleted_memories)

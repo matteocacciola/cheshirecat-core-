@@ -8,7 +8,7 @@ def test_rabbithole_upload_invalid_url(secure_client, secure_client_headers):
     # check response
     assert response.status_code == 400
     json = response.json()
-    assert json["detail"]["error"] == "Unable to reach the URL"
+    assert json["detail"]["error"] == "Unable to reach the URL: https://www.example.sbadabim"
 
     # check declarative memory is still empty
     declarative_memories = get_declarative_memory_contents(secure_client, secure_client_headers)
