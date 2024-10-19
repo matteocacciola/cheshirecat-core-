@@ -55,5 +55,4 @@ def factory_allowed_auth_handlers(allowed: List[AuthHandlerConfig], cat) -> List
             list of allowed auth_handlers
     """
 
-    # TODOAUTH: documentation links to language.py must be moved to factory.py
     return allowed

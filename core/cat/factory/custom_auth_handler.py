@@ -188,12 +188,12 @@ class CoreAuthHandler(BaseAuthHandler):
         if not user:
             return None
 
-        # TODOAUTH: expiration with timezone needs to be tested
+        # TODO AUTH: expiration with timezone needs to be tested
         # using seconds for easier testing
         expire_delta_in_seconds = float(get_env("CCAT_JWT_EXPIRE_MINUTES")) * 60
         expires = datetime.now(utc) + timedelta(seconds=expire_delta_in_seconds)
 
-        # TODOAUTH: add issuer and redirect_uri (and verify them when a token is validated)
+        # TODO AUTH: add issuer and redirect_uri (and verify them when a token is validated)
         jwt_content = {
             "sub": user["id"],                   # Subject (the user ID)
             "username": username,                # Username

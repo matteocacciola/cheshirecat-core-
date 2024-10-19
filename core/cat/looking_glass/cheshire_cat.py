@@ -216,7 +216,7 @@ class CheshireCat:
         return llm
 
     def load_auth(self):
-        # Custom auth_handler # TODOAUTH: change the name to custom_auth
+        # Custom auth_handler
         selected_auth_handler = crud_settings.get_setting_by_name(self.id, "auth_handler_selected")
 
         # if no auth_handler is saved, use default one and save to db

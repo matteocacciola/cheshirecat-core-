@@ -36,7 +36,7 @@ class CoreOnlyAuthConfig(AuthHandlerConfig):
     )
 
 
-# TODOAUTH: have at least another auth_handler class to test
+# TODO AUTH: have at least another auth_handler class to test
 # class ApiKeyAuthConfig(AuthHandlerConfig):
 #     _pyclass: Type = ApiKeyAuthHandler
 
