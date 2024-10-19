@@ -1,6 +1,10 @@
 import asyncio
+from typing import Dict, List, Any
 from pydantic import BaseModel
 from fastapi import Request, HTTPException
+
+from cat.utils import ReplacedNLPConfig
+
 
 class UserCredentials(BaseModel):
     username: str
@@ -10,6 +14,19 @@ class UserCredentials(BaseModel):
 class JWTResponse(BaseModel):
     access_token: str
     token_type: str = "bearer"
+
+
+class UpsertSettingResponse(ReplacedNLPConfig):
+    pass
+
+
+class GetSettingResponse(UpsertSettingResponse):
+    scheme: Dict[str, Any] | None = None
+
+
+class GetSettingsResponse(BaseModel):
+    settings: List[GetSettingResponse]
+    selected_configuration: str | None
 
 
 async def auth_token(request: Request, credentials: UserCredentials, agent_id: str):

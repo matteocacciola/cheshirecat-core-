@@ -11,6 +11,7 @@ class LLMAction(BaseModel):
     action: Any = None
     action_input: Any = None
 
+
 class ChooseProcedureOutputParser(BaseCumulativeTransformOutputParser):
     def parse(self, llm_output: str) -> LLMAction:
         try:

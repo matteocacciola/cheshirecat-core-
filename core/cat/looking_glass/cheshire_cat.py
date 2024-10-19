@@ -27,7 +27,7 @@ from cat.log import log
 from cat.mad_hatter.mad_hatter import MadHatter
 from cat.mad_hatter.registry import registry_search_plugins
 from cat.memory.long_term_memory import LongTermMemory
-from cat import utils
+from cat.utils import ReplacedNLPConfig, langchain_log_prompt, langchain_log_output, get_caller_info
 
 
 class Procedure(Protocol):
@@ -42,6 +42,11 @@ class Procedure(Protocol):
 
 
 class Plugins(BaseModel):
+    installed: List[Dict]
+    registry: List[Dict]
+
+
+class ReplacedLLM(BaseModel):
     installed: List[Dict]
     registry: List[Dict]
 
@@ -350,7 +355,7 @@ class CheshireCat:
         """
 
         # Add a token counter to the callbacks
-        caller = utils.get_caller_info()
+        caller = get_caller_info()
 
         # here we deal with motherfucking langchain
         prompt = ChatPromptTemplate(
@@ -361,9 +366,9 @@ class CheshireCat:
 
         chain = (
             prompt
-            | RunnableLambda(lambda x: utils.langchain_log_prompt(x, f"{caller} prompt"))
+            | RunnableLambda(lambda x: langchain_log_prompt(x, f"{caller} prompt"))
             | self.llm
-            | RunnableLambda(lambda x: utils.langchain_log_output(x, f"{caller} prompt output"))
+            | RunnableLambda(lambda x: langchain_log_output(x, f"{caller} prompt output"))
             | StrOutputParser()
         )
 
@@ -414,7 +419,7 @@ class CheshireCat:
 
         return Plugins(installed=installed_plugins, registry=list(registry_plugins_index.values()))
 
-    def replace_llm(self, language_model_name: str, settings: Dict) -> Dict:
+    def replace_llm(self, language_model_name: str, settings: Dict) -> ReplacedNLPConfig:
         """
         Replace the current LLM with a new one. This method is used to change the LLM of the cat.
         Args:
@@ -436,15 +441,13 @@ class CheshireCat:
             models.Setting(name="llm_selected", category="llm", value={"name": language_model_name}),
         )
 
-        status = {"name": language_model_name, "value": final_setting["value"]}
-
         # reload the llm of the cat
         self.llm = self.load_language_model()
 
         # recreate tools embeddings
         self.mad_hatter.find_plugins()
 
-        return status
+        return ReplacedNLPConfig(name=language_model_name, value=final_setting["value"])
 
     @property
     def strays(self):

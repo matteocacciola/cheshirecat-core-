@@ -1,45 +1,80 @@
 import mimetypes
 from copy import deepcopy
-from typing import Dict
+from typing import Dict, List
 from fastapi import Body, APIRouter, HTTPException, UploadFile, Depends
-from pydantic import ValidationError
+from pydantic import ValidationError, BaseModel
 
 from cat.auth.connection import HTTPAuth, ContextualCats
 from cat.auth.permissions import AuthPermission, AuthResource
 from cat.log import log
+from cat.looking_glass.cheshire_cat import Plugins
 from cat.mad_hatter.registry import registry_download_plugin
+from cat.routes.routes_utils import GetSettingResponse
 
 router = APIRouter()
 
 
+class GetAvailablePluginsFilter(BaseModel):
+    query: str | None
+
+
+class GetAvailablePluginsResponse(Plugins):
+    filters: GetAvailablePluginsFilter
+
+
+class TogglePluginResponse(BaseModel):
+    info: str
+
+
+class InstallPluginResponse(TogglePluginResponse):
+    filename: str
+    content_type: str
+
+
+class InstallPluginFromRegistryResponse(TogglePluginResponse):
+    url: str
+
+
+class PluginsSettingsResponse(BaseModel):
+    settings: List[GetSettingResponse]
+
+
+class GetPluginDetailsResponse(BaseModel):
+    data: Dict
+
+
+class DeletePluginResponse(BaseModel):
+    deleted: str
+
+
 # GET plugins
-@router.get("/")
+@router.get("/", response_model=GetAvailablePluginsResponse)
 async def get_available_plugins(
     query: str = None,
     cats: ContextualCats = Depends(HTTPAuth(AuthResource.PLUGINS, AuthPermission.LIST)),
     # author: str = None, to be activated in case of more granular search
     # tag: str = None, to be activated in case of more granular search
-) -> Dict:
+) -> GetAvailablePluginsResponse:
     """List available plugins"""
 
     plugins = await cats.cheshire_cat.get_plugins(query)
 
-    return {
-        "filters": {
+    return GetAvailablePluginsResponse(
+        filters={
             "query": query,
             # "author": author, to be activated in case of more granular search
             # "tag": tag, to be activated in case of more granular search
         },
-        "installed": plugins.installed,
-        "registry": plugins.registry,
-    }
+        installed=plugins.installed,
+        registry=plugins.registry,
+    )
 
 
-@router.post("/upload")
+@router.post("/upload", response_model=InstallPluginResponse)
 async def install_plugin(
     file: UploadFile,
     cats: ContextualCats = Depends(HTTPAuth(AuthResource.PLUGINS, AuthPermission.WRITE)),
-) -> Dict:
+) -> InstallPluginResponse:
     """Install a new plugin from a zip file"""
 
     # access cat instance
@@ -61,18 +96,18 @@ async def install_plugin(
         f.write(file.file.read())
     ccat.mad_hatter.install_plugin(plugin_archive_path)
 
-    return {
-        "filename": file.filename,
-        "content_type": file.content_type,
-        "info": "Plugin is being installed asynchronously",
-    }
+    return InstallPluginResponse(
+        filename=file.filename,
+        content_type=file.content_type,
+        info="Plugin is being installed asynchronously",
+    )
 
 
-@router.post("/upload/registry")
+@router.post("/upload/registry", response_model=InstallPluginFromRegistryResponse)
 async def install_plugin_from_registry(
     payload: Dict = Body({"url": "https://github.com/plugin-dev-account/plugin-repo"}),
     cats: ContextualCats = Depends(HTTPAuth(AuthResource.PLUGINS, AuthPermission.WRITE)),
-) -> Dict:
+) -> InstallPluginFromRegistryResponse:
     """Install a new plugin from registry"""
 
     # access cat instance
@@ -87,14 +122,14 @@ async def install_plugin_from_registry(
         log.error(e)
         raise HTTPException(status_code=500, detail={"error": str(e)})
 
-    return {"url": payload["url"], "info": "Plugin is being installed asynchronously"}
+    return InstallPluginFromRegistryResponse(url=payload["url"], info="Plugin is being installed asynchronously")
 
 
-@router.put("/toggle/{plugin_id}", status_code=200)
+@router.put("/toggle/{plugin_id}", status_code=200, response_model=TogglePluginResponse)
 async def toggle_plugin(
     plugin_id: str,
     cats: ContextualCats = Depends(HTTPAuth(AuthResource.PLUGINS, AuthPermission.WRITE)),
-) -> Dict:
+) -> TogglePluginResponse:
     """Enable or disable a single plugin"""
 
     # access cat instance
@@ -107,15 +142,15 @@ async def toggle_plugin(
     try:
         # toggle plugin
         ccat.mad_hatter.toggle_plugin(plugin_id)
-        return {"info": f"Plugin {plugin_id} toggled"}
+        return TogglePluginResponse(info=f"Plugin {plugin_id} toggled")
     except Exception as e:
         raise HTTPException(status_code=500, detail={"error": str(e)})
 
 
-@router.get("/settings")
+@router.get("/settings", response_model=PluginsSettingsResponse)
 async def get_plugins_settings(
     cats: ContextualCats = Depends(HTTPAuth(AuthResource.PLUGINS, AuthPermission.READ)),
-) -> Dict:
+) -> PluginsSettingsResponse:
     """Returns the settings of all the plugins"""
 
     # access cat instance
@@ -131,23 +166,21 @@ async def get_plugins_settings(
             if plugin_schema["properties"] == {}:
                 plugin_schema = {}
             settings.append(
-                {"name": plugin.id, "value": plugin_settings, "schema": plugin_schema}
+                GetSettingResponse(name=plugin.id, value=plugin_settings, scheme=plugin_schema)
             )
         except Exception as e:
             log.error(
                 f"Error loading {plugin} settings. The result will not contain the settings for this plugin. Error details: {e}"
             )
 
-    return {
-        "settings": settings,
-    }
+    return PluginsSettingsResponse(settings=settings)
 
 
-@router.get("/settings/{plugin_id}")
+@router.get("/settings/{plugin_id}", response_model=GetSettingResponse)
 async def get_plugin_settings(
     plugin_id: str,
     cats: ContextualCats = Depends(HTTPAuth(AuthResource.PLUGINS, AuthPermission.READ)),
-) -> Dict:
+) -> GetSettingResponse:
     """Returns the settings of a specific plugin"""
 
     # access cat instance
@@ -158,22 +191,22 @@ async def get_plugin_settings(
 
     try:
         settings = ccat.mad_hatter.plugins[plugin_id].load_settings()
-        schema = ccat.mad_hatter.plugins[plugin_id].settings_schema()
+        scheme = ccat.mad_hatter.plugins[plugin_id].settings_schema()
     except Exception as e:
         raise HTTPException(status_code=500, detail={"error": e})
 
-    if schema["properties"] == {}:
-        schema = {}
+    if scheme["properties"] == {}:
+        scheme = {}
 
-    return {"name": plugin_id, "value": settings, "schema": schema}
+    return GetSettingResponse(name=plugin_id, value=settings, scheme=scheme)
 
 
-@router.put("/settings/{plugin_id}")
+@router.put("/settings/{plugin_id}", response_model=GetSettingResponse)
 async def upsert_plugin_settings(
     plugin_id: str,
     payload: Dict = Body({"setting_a": "some value", "setting_b": "another value"}),
     cats: ContextualCats = Depends(HTTPAuth(AuthResource.PLUGINS, AuthPermission.EDIT)),
-) -> Dict:
+) -> GetSettingResponse:
     """Updates the settings of a specific plugin"""
 
     # access cat instance
@@ -198,14 +231,14 @@ async def upsert_plugin_settings(
 
     final_settings = plugin.save_settings(payload)
 
-    return {"name": plugin_id, "value": final_settings}
+    return GetSettingResponse(name=plugin_id, value=final_settings)
 
 
-@router.get("/{plugin_id}")
+@router.get("/{plugin_id}", response_model=GetPluginDetailsResponse)
 async def get_plugin_details(
     plugin_id: str,
     cats: ContextualCats = Depends(HTTPAuth(AuthResource.PLUGINS, AuthPermission.READ)),
-) -> Dict:
+) -> GetPluginDetailsResponse:
     """Returns information on a single plugin"""
 
     # access cat instance
@@ -226,14 +259,14 @@ async def get_plugin_details(
     ]
     plugin_info["tools"] = [{"name": tool.name} for tool in plugin.tools]
 
-    return {"data": plugin_info}
+    return GetPluginDetailsResponse(data=plugin_info)
 
 
-@router.delete("/{plugin_id}")
+@router.delete("/{plugin_id}", response_model=DeletePluginResponse)
 async def delete_plugin(
     plugin_id: str,
     cats: ContextualCats = Depends(HTTPAuth(AuthResource.PLUGINS, AuthPermission.DELETE)),
-) -> Dict:
+) -> DeletePluginResponse:
     """Physically remove plugin."""
 
     # access cat instance
@@ -245,4 +278,4 @@ async def delete_plugin(
     # remove folder, hooks and tools
     ccat.mad_hatter.uninstall_plugin(plugin_id)
 
-    return {"deleted": plugin_id}
+    return DeletePluginResponse(deleted=plugin_id)

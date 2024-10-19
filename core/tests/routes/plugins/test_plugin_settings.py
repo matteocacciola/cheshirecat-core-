@@ -12,7 +12,7 @@ def test_get_all_plugin_settings(secure_client, secure_client_headers, just_inst
     for setting in json["settings"]:
         assert setting["name"] in installed_plugins
         assert setting["value"] == {}
-        assert setting["schema"] == {}
+        assert setting["scheme"] == {}
 
 
 def test_get_plugin_settings_non_existent(secure_client, secure_client_headers, just_installed_plugin):
@@ -32,7 +32,7 @@ def test_get_plugin_settings(secure_client, secure_client_headers, just_installe
     assert response.status_code == 200
     assert response_json["name"] == "mock_plugin"
     assert response_json["value"] == {}
-    assert response_json["schema"] == {}
+    assert response_json["scheme"] == {}
 
 
 # endpoint to save settings
@@ -84,4 +84,4 @@ def test_core_plugin_settings(secure_client, secure_client_headers):
         assert response.status_code == 200
         assert json["name"] == "core_plugin"
         assert json["value"] == {}
-        assert json["schema"] == {}
+        assert json["scheme"] == {}

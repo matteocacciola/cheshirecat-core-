@@ -6,14 +6,15 @@ from cat.auth.permissions import AuthPermission, AuthResource
 from cat.db import models
 from cat.db.cruds import settings as crud_settings
 from cat.factory.auth_handler import get_auth_handlers_schemas
+from cat.routes.routes_utils import GetSettingsResponse, GetSettingResponse, UpsertSettingResponse
 
 router = APIRouter()
 
 
-@router.get("/settings")
+@router.get("/settings", response_model=GetSettingsResponse)
 def get_auth_handler_settings(
     cats: ContextualCats = Depends(HTTPAuth(AuthResource.AUTH_HANDLER, AuthPermission.LIST))
-) -> Dict:
+) -> GetSettingsResponse:
     """Get the list of the AuthHandlers"""
 
     agent_id = cats.cheshire_cat.id
@@ -26,23 +27,20 @@ def get_auth_handler_settings(
     saved_settings = crud_settings.get_settings_by_category(agent_id, "auth_handler_factory")
     saved_settings = {s["name"]: s for s in saved_settings}
 
-    settings = [{
-        "name": class_name,
-        "value": saved_settings[class_name]["value"] if class_name in saved_settings else {},
-        "schema": schema,
-    } for class_name, schema in get_auth_handlers_schemas(cats.cheshire_cat.mad_hatter).items()]
+    settings = [GetSettingResponse(
+        name=class_name,
+        value=saved_settings[class_name]["value"] if class_name in saved_settings else {},
+        scheme=scheme
+    ) for class_name, scheme in get_auth_handlers_schemas(cats.cheshire_cat.mad_hatter).items()]
 
-    return {
-        "settings": settings,
-        "selected_configuration": selected,
-    }
+    return GetSettingsResponse(settings=settings, selected_configuration=selected)
 
 
-@router.get("/settings/{auth_handler_name}")
+@router.get("/settings/{auth_handler_name}", response_model=GetSettingResponse)
 def get_auth_handler_setting(
     auth_handler_name: str,
     cats: ContextualCats = Depends(HTTPAuth(AuthResource.AUTH_HANDLER, AuthPermission.LIST))
-) -> Dict:
+) -> GetSettingResponse:
     """Get the settings of a specific AuthHandler"""
 
     auth_handler_schemas = get_auth_handlers_schemas(cats.cheshire_cat.mad_hatter)
@@ -57,19 +55,19 @@ def get_auth_handler_setting(
         )
 
     setting = crud_settings.get_setting_by_name(cats.cheshire_cat.id, auth_handler_name)
-    schema = auth_handler_schemas[auth_handler_name]
+    scheme = auth_handler_schemas[auth_handler_name]
 
     setting = {} if setting is None else setting["value"]
 
-    return {"name": auth_handler_name, "value": setting, "schema": schema}
+    return GetSettingResponse(name=auth_handler_name, value=setting, scheme=scheme)
 
 
-@router.put("/settings/{auth_handler_name}")
+@router.put("/settings/{auth_handler_name}", response_model=UpsertSettingResponse)
 def upsert_authenticator_setting(
     auth_handler_name: str,
     cats: ContextualCats = Depends(HTTPAuth(AuthResource.AUTH_HANDLER, AuthPermission.LIST)),
     payload: Dict = Body(...),
-) -> Dict:
+) -> UpsertSettingResponse:
     """Upsert the settings of a specific AuthHandler"""
 
     ccat = cats.cheshire_cat
@@ -104,7 +102,4 @@ def upsert_authenticator_setting(
 
     ccat.load_auth()
 
-    return {
-        "name": auth_handler_name,
-        "value": payload,
-    }
+    return UpsertSettingResponse(name=auth_handler_name, value=payload)

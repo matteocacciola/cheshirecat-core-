@@ -20,7 +20,7 @@ from cat.looking_glass.cheshire_cat import CheshireCat
 from cat.looking_glass.white_rabbit import WhiteRabbit
 from cat.mad_hatter.mad_hatter import MadHatter
 from cat.rabbit_hole import RabbitHole
-from cat.utils import singleton, DEFAULT_SYSTEM_KEY
+from cat.utils import singleton, DEFAULT_SYSTEM_KEY, ReplacedNLPConfig
 
 
 @singleton
@@ -111,7 +111,7 @@ class BillTheLizard:
         #    "but it does not know this and embeds anyway".` - cit. Nicola Corbellini
         return EmbedderDumbConfig.get_embedder_from_config({})
 
-    def replace_embedder(self, language_embedder_name: str, settings: Dict) -> Dict:
+    def replace_embedder(self, language_embedder_name: str, settings: Dict) -> ReplacedNLPConfig:
         """
         Replace the current embedder with a new one. This method is used to change the embedder of the cats.
 
@@ -146,8 +146,6 @@ class BillTheLizard:
             ),
         )
 
-        status = {"name": language_embedder_name, "value": final_setting["value"]}
-
         # reload the embedder of the cat
         self.embedder = self.load_language_embedder()
         # create new collections (different embedder!)
@@ -172,9 +170,9 @@ class BillTheLizard:
         # recreate tools embeddings
         self.mad_hatter.find_plugins()
 
-        return status
+        return ReplacedNLPConfig(name=language_embedder_name, value=final_setting["value"])
 
-    def get_selected_embedder_settings(self) -> Dict | None:
+    def get_selected_embedder_settings(self) -> str | None:
         # get selected Embedder settings, if any
         # embedder selected configuration is saved under "embedder_selected" name
         selected = crud_settings.get_setting_by_name(self.__key, "embedder_selected")

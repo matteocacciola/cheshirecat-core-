@@ -17,7 +17,7 @@ def test_get_all_embedder_settings(secure_client, secure_client_headers, mad_hat
         assert setting["name"] in embedder_schemas.keys()
         assert setting["value"] == {}
         expected_schema = embedder_schemas[setting["name"]]
-        assert dumps(jsonable_encoder(expected_schema)) == dumps(setting["schema"])
+        assert dumps(jsonable_encoder(expected_schema)) == dumps(setting["scheme"])
 
     # automatically selected embedder
     assert json["selected_configuration"] == "EmbedderDumbConfig"
@@ -40,8 +40,8 @@ def test_get_embedder_settings(secure_client, secure_client_headers):
     assert response.status_code == 200
     assert json["name"] == embedder_name
     assert json["value"] == {}  # Dumb Embedder has indeed an empty config (no options)
-    assert json["schema"]["languageEmbedderName"] == embedder_name
-    assert json["schema"]["type"] == "object"
+    assert json["scheme"]["languageEmbedderName"] == embedder_name
+    assert json["scheme"]["type"] == "object"
 
 
 def test_upsert_embedder_settings(secure_client, secure_client_headers):
@@ -72,7 +72,7 @@ def test_upsert_embedder_settings(secure_client, secure_client_headers):
     json = response.json()
     assert json["name"] == new_embedder
     assert json["value"]["size"] == embedder_config["size"]
-    assert json["schema"]["languageEmbedderName"] == new_embedder
+    assert json["scheme"]["languageEmbedderName"] == new_embedder
 
 
 def test_upsert_embedder_settings_updates_collections(secure_client, secure_client_headers):

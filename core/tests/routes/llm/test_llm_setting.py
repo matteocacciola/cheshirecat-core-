@@ -19,7 +19,7 @@ def test_get_all_llm_settings(secure_client, secure_client_headers, mad_hatter):
         assert setting["name"] in llms_schemas.keys()
         assert setting["value"] == {}
         expected_schema = llms_schemas[setting["name"]]
-        assert dumps(jsonable_encoder(expected_schema)) == dumps(setting["schema"])
+        assert dumps(jsonable_encoder(expected_schema)) == dumps(setting["scheme"])
 
     assert json["selected_configuration"] is None  # no llm configured at startup
 
@@ -41,8 +41,8 @@ def test_get_llm_settings(secure_client, secure_client_headers):
     assert response.status_code == 200
     assert json["name"] == llm_name
     assert json["value"] == {}
-    assert json["schema"]["languageModelName"] == llm_name
-    assert json["schema"]["type"] == "object"
+    assert json["scheme"]["languageModelName"] == llm_name
+    assert json["scheme"]["type"] == "object"
 
 
 def test_upsert_llm_settings_success(secure_client, secure_client_headers):
@@ -72,7 +72,7 @@ def test_upsert_llm_settings_success(secure_client, secure_client_headers):
     json = response.json()
     assert json["name"] == new_llm
     assert json["value"]["url"] == invented_url
-    assert json["schema"]["languageModelName"] == new_llm
+    assert json["scheme"]["languageModelName"] == new_llm
 
 
 def test_forbidden_access_no_auth(client):

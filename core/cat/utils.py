@@ -331,3 +331,8 @@ class MetaEnum(EnumMeta):
 class Enum(BaseEnum, metaclass=MetaEnum):
     def __str__(self):
         return self.value
+
+
+class ReplacedNLPConfig(BaseModel):
+    name: str
+    value: Dict

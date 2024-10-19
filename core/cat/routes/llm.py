@@ -1,20 +1,21 @@
 from typing import Dict
-from cat.auth.connection import HTTPAuth, ContextualCats
-from cat.auth.permissions import AuthPermission, AuthResource
 from fastapi import APIRouter, Body, HTTPException, Depends
 
+from cat.auth.connection import HTTPAuth, ContextualCats
+from cat.auth.permissions import AuthPermission, AuthResource
 from cat.exceptions import LoadMemoryException
 from cat.factory.llm import get_llms_schemas
 from cat.db.cruds import settings as crud_settings
+from cat.routes.routes_utils import GetSettingsResponse, GetSettingResponse, UpsertSettingResponse
 
 router = APIRouter()
 
 
 # get configured LLMs and configuration schemas
-@router.get("/settings")
+@router.get("/settings", response_model=GetSettingsResponse)
 def get_llms_settings(
     cats: ContextualCats = Depends(HTTPAuth(AuthResource.LLM, AuthPermission.LIST)),
-) -> Dict:
+) -> GetSettingsResponse:
     """Get the list of the Large Language Models"""
 
     ccat = cats.cheshire_cat
@@ -30,25 +31,22 @@ def get_llms_settings(
     saved_settings = crud_settings.get_settings_by_category(ccat.id, "llm_factory")
     saved_settings = {s["name"]: s for s in saved_settings}
 
-    settings = [{
-        "name": class_name,
-        "value": saved_settings[class_name]["value"] if class_name in saved_settings else {},
-        "schema": schema,
-    } for class_name, schema in llm_schemas.items()]
+    settings = [GetSettingResponse(
+        name=class_name,
+        value=saved_settings[class_name]["value"] if class_name in saved_settings else {},
+        scheme=scheme
+    ) for class_name, scheme in llm_schemas.items()]
 
-    return {
-        "settings": settings,
-        "selected_configuration": selected,
-    }
+    return GetSettingsResponse(settings=settings, selected_configuration=selected)
 
 
-# get LLM settings and its schema
-@router.get("/settings/{language_model_name}")
+# get LLM settings and its scheme
+@router.get("/settings/{language_model_name}", response_model=GetSettingResponse)
 def get_llm_settings(
     language_model_name: str,
     cats: ContextualCats = Depends(HTTPAuth(AuthResource.LLM, AuthPermission.READ)),
-) -> Dict:
-    """Get settings and schema of the specified Large Language Model"""
+) -> GetSettingResponse:
+    """Get settings and scheme of the specified Large Language Model"""
 
     ccat = cats.cheshire_cat
     llm_schemas = get_llms_schemas(ccat.mad_hatter)
@@ -64,19 +62,19 @@ def get_llm_settings(
         )
 
     setting = crud_settings.get_setting_by_name(ccat.id, language_model_name)
-    schema = llm_schemas[language_model_name]
+    scheme = llm_schemas[language_model_name]
 
     setting = {} if setting is None else setting["value"]
 
-    return {"name": language_model_name, "value": setting, "schema": schema}
+    return GetSettingResponse(name=language_model_name, value=setting, scheme=scheme)
 
 
-@router.put("/settings/{language_model_name}")
+@router.put("/settings/{language_model_name}", response_model=UpsertSettingResponse)
 def upsert_llm_setting(
     language_model_name: str,
     payload: Dict = Body({"openai_api_key": "your-key-here"}),
     cats: ContextualCats = Depends(HTTPAuth(AuthResource.LLM, AuthPermission.EDIT)),
-) -> Dict:
+) -> UpsertSettingResponse:
     """Upsert the Large Language Model setting"""
 
     ccat = cats.cheshire_cat

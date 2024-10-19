@@ -19,10 +19,6 @@ class GetCollectionsResponse(BaseModel):
 
 
 class WipeCollectionsResponse(BaseModel):
-    deleted: List[Dict[str, bool]]
-
-
-class WipeSingleCollectionResponse(BaseModel):
     deleted: Dict[str, bool]
 
 
@@ -59,11 +55,11 @@ async def wipe_collections(
 
 
 # DELETE one collection
-@router.delete("/collections/{collection_id}", response_model=WipeSingleCollectionResponse)
+@router.delete("/collections/{collection_id}", response_model=WipeCollectionsResponse)
 async def wipe_single_collection(
     collection_id: str,
     cats: ContextualCats = Depends(HTTPAuth(AuthResource.MEMORY, AuthPermission.DELETE)),
-) -> WipeSingleCollectionResponse:
+) -> WipeCollectionsResponse:
     """Delete and recreate a collection"""
 
     # check if collection exists
@@ -78,4 +74,4 @@ async def wipe_single_collection(
     ccat.load_memory()  # recreate the long term memories
     ccat.mad_hatter.find_plugins()
 
-    return WipeSingleCollectionResponse(deleted={collection_id: ret})
+    return WipeCollectionsResponse(deleted={collection_id: ret})

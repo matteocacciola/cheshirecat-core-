@@ -43,6 +43,14 @@ class GetPointsInCollectionResponse(BaseModel):
     next_offset: int | str | None
 
 
+class DeleteMemoryPointResponse(BaseModel):
+    deleted: str
+
+
+class DeleteMemoryPointsByMetadataResponse(BaseModel):
+    deleted: UpdateResult
+
+
 # GET memories from recall
 @router.get("/recall", response_model=RecallResponse)
 async def recall_memory_points_from_text(
@@ -137,12 +145,12 @@ async def create_memory_point(
 
 
 # DELETE memories
-@router.delete("/collections/{collection_id}/points/{point_id}", response_model=Dict[str, str])
+@router.delete("/collections/{collection_id}/points/{point_id}", response_model=DeleteMemoryPointResponse)
 async def delete_memory_point(
     collection_id: str,
     point_id: str,
     cats: ContextualCats = Depends(HTTPAuth(AuthResource.MEMORY, AuthPermission.DELETE)),
-) -> Dict:
+) -> DeleteMemoryPointResponse:
     """Delete a specific point in memory"""
 
     # check if collection exists
@@ -161,22 +169,22 @@ async def delete_memory_point(
     # delete point
     vector_memory.collections[collection_id].delete_points([point_id])
 
-    return {"deleted": point_id}
+    return DeleteMemoryPointResponse(deleted=point_id)
 
 
-@router.delete("/collections/{collection_id}/points", response_model=Dict[str, UpdateResult])
+@router.delete("/collections/{collection_id}/points", response_model=DeleteMemoryPointsByMetadataResponse)
 async def delete_memory_points_by_metadata(
     collection_id: str,
     metadata: Dict = None,
     cats: ContextualCats = Depends(HTTPAuth(AuthResource.MEMORY, AuthPermission.DELETE)),
-) -> Dict:
+) -> DeleteMemoryPointsByMetadataResponse:
     """Delete points in memory by filter"""
     metadata = metadata or {}
 
     # delete points
     ret = cats.cheshire_cat.memory.vectors.collections[collection_id].delete_points_by_metadata_filter(metadata)
 
-    return {"deleted": ret}
+    return DeleteMemoryPointsByMetadataResponse(deleted=ret)
 
 
 # GET all the points from a single collection

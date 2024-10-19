@@ -1,4 +1,6 @@
 from typing import Dict, List
+
+from pydantic import BaseModel
 from pytz import utc
 from datetime import datetime, timedelta
 from apscheduler.schedulers.background import BackgroundScheduler
@@ -8,6 +10,12 @@ from apscheduler.events import EVENT_JOB_EXECUTED, EVENT_JOB_ERROR
 
 from cat.log import log
 from cat.utils import singleton
+
+
+class Job(BaseModel):
+    id: str
+    name: str
+    next_run: int | float
 
 
 # I'm late, I'm late, for a very important date!
@@ -86,11 +94,7 @@ class WhiteRabbit:
                 A dictionary with id, name and next_run if the job exists, otherwise None.
         """
         job = self.scheduler.get_job(job_id)
-        return (
-            {"id": job.id, "name": job.name, "next_run": job.next_run_time}
-            if job
-            else None
-        )
+        return Job(id=job.id, name=job.name, next_run=job.next_run_time) if job else None
 
     def get_jobs(self) -> List[Dict[str, str]]:
         """

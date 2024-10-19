@@ -47,8 +47,23 @@ class UploadURLConfig(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
 
+class UploadSingleFileResponse(BaseModel):
+    filename: str
+    content_type: str
+    info: str
+
+
+class UploadUrlResponse(BaseModel):
+    url: str
+    info: str
+
+
+class AllowedMimeTypesResponse(BaseModel):
+    allowed: List[str]
+
+
 # receive files via http endpoint
-@router.post("/")
+@router.post("/", response_model=UploadSingleFileResponse)
 async def upload_file(
     request: Request,
     file: UploadFile,
@@ -67,7 +82,7 @@ async def upload_file(
                     "Since we are passing this along side form data, must be a JSON string (use `json.dumps(metadata)`)."
     ),
     cats: ContextualCats = Depends(HTTPAuth(AuthResource.UPLOAD, AuthPermission.WRITE)),
-) -> Dict:
+) -> UploadSingleFileResponse:
     """Upload a file containing text (.txt, .md, .pdf, etc.). File content will be extracted and segmented into chunks.
     Chunks will be then vectorized and stored into documents memory.
 
@@ -139,15 +154,13 @@ async def upload_file(
     )
 
     # reply to client
-    return {
-        "filename": file.filename,
-        "content_type": file.content_type,
-        "info": "File is being ingested asynchronously",
-    }
+    return UploadSingleFileResponse(
+        filename=file.filename, content_type=file.content_type, info="File is being ingested asynchronously"
+    )
 
 
 # receive files via http endpoint
-@router.post("/batch")
+@router.post("/batch", response_model=Dict[str, UploadSingleFileResponse])
 async def upload_files(
     request: Request,
     files: List[UploadFile],
@@ -166,7 +179,7 @@ async def upload_files(
                     "Since we are passing this along side form data, metadata must be a JSON string (use `json.dumps(metadata)`)."
     ),
     cats: ContextualCats = Depends(HTTPAuth(AuthResource.UPLOAD, AuthPermission.WRITE)),
-) -> Dict:
+) -> Dict[str, UploadSingleFileResponse]:
     """Batch upload multiple files containing text (.txt, .md, .pdf, etc.). File content will be extracted and segmented into chunks.
     Chunks will be then vectorized and stored into documents memory.
 
@@ -256,22 +269,20 @@ async def upload_files(
         )
 
         # reply to client
-        response[file.filename] = {
-            "filename": file.filename,
-            "content_type": file.content_type,
-            "info": "File is being ingested asynchronously",
-        }
+        response[file.filename] = UploadSingleFileResponse(
+            filename=file.filename, content_type=file.content_type, info="File is being ingested asynchronously"
+        )
 
     return response
 
 
-@router.post("/web")
+@router.post("/web", response_model=UploadUrlResponse)
 async def upload_url(
     request: Request,
     background_tasks: BackgroundTasks,
     upload_config: UploadURLConfig,
     cats: ContextualCats = Depends(HTTPAuth(AuthResource.UPLOAD, AuthPermission.WRITE)),
-):
+) -> UploadUrlResponse:
     """Upload an url. Website content will be extracted and segmented into chunks.
     Chunks will be then vectorized and stored into documents memory."""
 
@@ -294,12 +305,11 @@ async def upload_url(
                 upload_config.url,
                 **upload_config.model_dump(exclude={"url"})
             )
-            return {"url": upload_config.url, "info": "URL is being ingested asynchronously"}
-        else:
-            raise HTTPException(
-                status_code=400,
-                detail={"error": "Invalid URL", "url": upload_config.url},
-            )
+            return UploadUrlResponse(url=upload_config.url, info="URL is being ingested asynchronously")
+        raise HTTPException(
+            status_code=400,
+            detail={"error": "Invalid URL", "url": upload_config.url},
+        )
     except requests.exceptions.RequestException as _e:
         raise HTTPException(
             status_code=400,
@@ -307,13 +317,13 @@ async def upload_url(
         )
 
 
-@router.post("/memory")
+@router.post("/memory", response_model=UploadSingleFileResponse)
 async def upload_memory(
     request: Request,
     file: UploadFile,
     background_tasks: BackgroundTasks,
     cats: ContextualCats = Depends(HTTPAuth(AuthResource.MEMORY, AuthPermission.WRITE)),
-) -> Dict:
+) -> UploadSingleFileResponse:
     """Upload a memory json file to the cat memory"""
 
     # Get file mime type
@@ -335,17 +345,15 @@ async def upload_memory(
     )
 
     # reply to client
-    return {
-        "filename": file.filename,
-        "content_type": file.content_type,
-        "info": "Memory is being ingested asynchronously",
-    }
+    return UploadSingleFileResponse(
+        filename=file.filename, content_type=file.content_type, info="Memory is being ingested asynchronously",
+    )
 
 
-@router.get("/allowed-mimetypes")
+@router.get("/allowed-mimetypes", response_model=AllowedMimeTypesResponse)
 async def get_allowed_mimetypes(
     cats: ContextualCats = Depends(HTTPAuth(AuthResource.UPLOAD, AuthPermission.WRITE)),
-) -> Dict:
+) -> AllowedMimeTypesResponse:
     """Retrieve the allowed mimetypes that can be ingested by the Rabbit Hole"""
 
-    return {"allowed": list(cats.cheshire_cat.file_handlers.keys())}
+    return AllowedMimeTypesResponse(allowed=list(cats.cheshire_cat.file_handlers.keys()))

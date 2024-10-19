@@ -20,7 +20,7 @@ def test_get_all_auth_handler_settings(secure_client, secure_client_headers, mad
         assert setting["name"] in auth_handler_schemas.keys()
         assert setting["value"] == {}
         expected_schema = auth_handler_schemas[setting["name"]]
-        assert dumps(jsonable_encoder(expected_schema)) == dumps(setting["schema"])
+        assert dumps(jsonable_encoder(expected_schema)) == dumps(setting["scheme"])
 
     # automatically selected auth_handler
     assert json["selected_configuration"] == "CoreOnlyAuthConfig"
@@ -46,8 +46,8 @@ def test_get_auth_handler_settings(secure_client, secure_client_headers):
     assert response.status_code == 200
     assert json["name"] == auth_handler_name
     assert json["value"] == {}
-    assert json["schema"]["authorizatorName"] == auth_handler_name
-    assert json["schema"]["type"] == "object"
+    assert json["scheme"]["authorizatorName"] == auth_handler_name
+    assert json["scheme"]["type"] == "object"
 
 
 @pytest.mark.skip("Have at least another auth_handler class to test")
@@ -86,4 +86,4 @@ def test_upsert_auth_handler_settings(secure_client, secure_client_headers):
     assert response.status_code == 200
     json = response.json()
     assert json["name"] == new_auth_handler
-    assert json["schema"]["authorizatorName"] == new_auth_handler
+    assert json["scheme"]["authorizatorName"] == new_auth_handler
