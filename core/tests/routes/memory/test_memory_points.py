@@ -1,7 +1,6 @@
 import pytest
 
-from tests.utils import send_websocket_message, get_declarative_memory_contents, agent_id
-from tests.conftest import FAKE_TIMESTAMP
+from tests.utils import send_websocket_message, get_declarative_memory_contents, agent_id, fake_timestamp
 
 
 def create_point_wrong_collection(secure_client, secure_client_headers):
@@ -146,7 +145,7 @@ def test_create_memory_point(secure_client, secure_client_headers, patch_time_no
     assert res.status_code == 200
     json = res.json()
     assert json["content"] == content
-    expected_metadata = {"when": FAKE_TIMESTAMP, "source": "user", **metadata}
+    expected_metadata = {"when": fake_timestamp, "source": "user", **metadata}
     assert json["metadata"] == expected_metadata
     assert "id" in json
     assert "vector" in json
@@ -203,7 +202,7 @@ def test_get_collection_points(secure_client, secure_client_headers, patch_time_
         {
             "page_content": p["content"],
             "metadata": {
-                "when": FAKE_TIMESTAMP,
+                "when": fake_timestamp,
                 "source": "user",
                 **p["metadata"]
             },
@@ -265,7 +264,7 @@ def test_get_collection_points_offset(secure_client, secure_client_headers, patc
         {
             "page_content": p["content"],
             "metadata": {
-                "when": FAKE_TIMESTAMP,
+                "when": fake_timestamp,
                 "source": "user",
                 **p["metadata"]
             },

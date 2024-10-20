@@ -3,6 +3,9 @@ import redis
 from cat.utils import singleton
 from cat.env import get_env
 
+DEFAULT_AGENT_KEY = "agent"  # default agent_id for backward compatibility
+DEFAULT_SYSTEM_KEY = "system"
+
 
 @singleton
 class Database:

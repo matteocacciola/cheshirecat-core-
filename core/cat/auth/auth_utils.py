@@ -4,7 +4,7 @@ from jwt.exceptions import InvalidTokenError
 from fastapi.requests import HTTPConnection
 
 from cat.log import log
-from cat.utils import DEFAULT_AGENT_KEY
+from cat.db.database import DEFAULT_AGENT_KEY
 
 
 def is_jwt(token: str) -> bool:

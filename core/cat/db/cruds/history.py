@@ -14,7 +14,7 @@ def get_history(agent_id: str, user_id: str) -> List[Dict[str, Any]]:
 
 
 def set_history(agent_id: str, user_id: str, history: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
-    history = crud.store(format_key(agent_id, user_id), history)
+    crud.store(format_key(agent_id, user_id), history)
     return history
 
 

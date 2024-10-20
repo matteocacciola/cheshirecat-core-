@@ -8,7 +8,8 @@ from cat.mad_hatter.mad_hatter import Plugin
 from cat.mad_hatter.decorators.hook import CatHook
 from cat.mad_hatter.decorators.tool import CatTool
 
-from tests.conftest import clean_up_mocks, mock_plugin_path
+from tests.conftest import clean_up
+from tests.utils import mock_plugin_path
 
 
 def test_create_plugin_wrong_folder():
@@ -124,7 +125,7 @@ def test_save_settings(plugin):
 @pytest.mark.skip_encapsulation
 def test_install_plugin_dependencies():
     # manual cleanup
-    clean_up_mocks()
+    clean_up()
     # Uninstall mock plugin requirements
     os.system("pip uninstall -y pip-install-test")
 
@@ -140,6 +141,6 @@ def test_install_plugin_dependencies():
     assert fnmatch.fnmatch(result, "*pip-install-test*")
 
     # manual cleanup
-    clean_up_mocks()
+    clean_up()
     # Uninstall mock plugin requirements
     os.system("pip uninstall -y pip-install-test")

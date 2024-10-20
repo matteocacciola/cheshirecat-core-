@@ -18,9 +18,6 @@ from enum import Enum as BaseEnum, EnumMeta
 from cat.log import log
 from cat.env import get_env
 
-DEFAULT_AGENT_KEY = "agent"  # default agent_id for backward compatibility
-DEFAULT_SYSTEM_KEY = "system"
-
 
 def to_camel_case(text: str) -> str:
     """Format string to camel case.

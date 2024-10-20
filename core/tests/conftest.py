@@ -14,11 +14,11 @@ from cat.auth import auth_utils
 from cat.auth.permissions import AuthUserInfo, get_base_permissions
 from cat.bill_the_lizard import BillTheLizard
 from cat.db.database import Database
+from cat.db.vector_database import VectorDatabase, LOCAL_FOLDER_PATH
 from cat.env import get_env
 from cat.looking_glass.stray_cat import StrayCat
 from cat.mad_hatter.plugin import Plugin
 from cat.startup import cheshire_cat_api
-from cat.memory.vector_memory import VectorMemory
 import cat.utils as utils
 
 from tests.utils import (
@@ -29,12 +29,11 @@ from tests.utils import (
     create_mock_plugin_zip,
     get_class_from_decorated_singleton,
     async_run,
+    mock_plugin_path,
+    fake_timestamp,
 )
 
-mock_plugin_path = "tests/mocks/mock_plugin/"
 redis_client = redis.Redis(host=get_env("CCAT_REDIS_HOST"), db="1", encoding="utf-8", decode_responses=True)
-
-FAKE_TIMESTAMP = 1705855981
 
 
 # substitute classes' methods where necessary for testing purposes
@@ -44,7 +43,7 @@ def mock_classes(monkeypatch):
         return QdrantClient(":memory:")
 
     monkeypatch.setattr(
-        VectorMemory, "connect_to_vector_memory", mock_connect_to_vector_memory
+        get_class_from_decorated_singleton(VectorDatabase), "connect_to_vector_memory", mock_connect_to_vector_memory
     )
 
     # Use a different redis client
@@ -72,8 +71,7 @@ def mock_classes(monkeypatch):
     auth_utils.extract_agent_id_from_request = get_extract_agent_id_from_request
 
 
-# get rid of tmp files and folders used for testing
-def clean_up_mocks():
+def clean_up():
     # clean up service files and mocks
     to_be_removed = [
         "tests/mocks/mock_plugin.zip",
@@ -94,6 +92,13 @@ def clean_up_mocks():
     time.sleep(0.1)
 
 
+# remove the local Qdrant memory
+def clean_up_qdrant():
+    # remove the local Qdrant memory
+    if os.path.exists(LOCAL_FOLDER_PATH):
+        shutil.rmtree(LOCAL_FOLDER_PATH)
+
+
 def should_skip_encapsulation(request):
     return request.node.get_closest_marker("skip_encapsulation") is not None
 
@@ -106,6 +111,8 @@ def encapsulate_each_test(request, monkeypatch):
 
         return
 
+    clean_up_qdrant()
+
     # monkeypatch classes
     mock_classes(monkeypatch)
 
@@ -114,7 +121,7 @@ def encapsulate_each_test(request, monkeypatch):
     os.environ["CCAT_DEBUG"] = "false"  # do not autoreload
 
     # clean up tmp files, folders and redis database
-    clean_up_mocks()
+    clean_up()
 
     # delete all singletons!!!
     utils.singleton.instances = {}
@@ -122,10 +129,12 @@ def encapsulate_each_test(request, monkeypatch):
     yield
 
     # clean up tmp files, folders and redis database
-    clean_up_mocks()
+    clean_up()
 
     if current_ccat_debug:
         os.environ["CCAT_DEBUG"] = current_ccat_debug
+
+    clean_up_qdrant()
 
 
 @pytest.fixture(scope="function")
@@ -285,7 +294,7 @@ def apply_warning_filters():
 @pytest.fixture
 def patch_time_now(monkeypatch):
     def mytime():
-        return FAKE_TIMESTAMP
+        return fake_timestamp
 
     monkeypatch.setattr(time, 'time', mytime)
 

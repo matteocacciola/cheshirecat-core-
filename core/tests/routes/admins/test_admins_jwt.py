@@ -5,7 +5,7 @@ import jwt
 from cat.env import get_env
 from cat.auth.permissions import AdminAuthResource, AuthPermission
 from cat.auth.auth_utils import is_jwt
-from cat.utils import DEFAULT_SYSTEM_KEY
+from cat.db.database import DEFAULT_SYSTEM_KEY
 
 
 def test_is_jwt():

@@ -1,7 +1,7 @@
 from typing import Dict, List
 
 from cat.db import crud, models
-from cat.utils import DEFAULT_AGENT_KEY, DEFAULT_SYSTEM_KEY
+from cat.db.database import DEFAULT_AGENT_KEY, DEFAULT_SYSTEM_KEY
 
 
 def format_key(key: str) -> str:

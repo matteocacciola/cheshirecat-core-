@@ -5,7 +5,7 @@ from cat.auth.auth_utils import hash_password
 from cat.auth.permissions import get_full_admin_permissions
 from cat.db import models
 from cat.db.cruds import settings as crud_settings, users as crud_users
-from cat.utils import DEFAULT_SYSTEM_KEY
+from cat.db.database import DEFAULT_SYSTEM_KEY
 
 from tests.utils import agent_id
 

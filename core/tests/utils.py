@@ -17,6 +17,9 @@ api_key_ws = "meow_ws"
 jwt_secret = "meow_jwt"
 
 new_user_password = "wandering_in_wonderland"
+mock_plugin_path = "tests/mocks/mock_plugin/"
+
+fake_timestamp = 1705855981
 
 
 def get_class_from_decorated_singleton(singleton):

@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Request
 
+from cat.db.database import DEFAULT_SYSTEM_KEY
 from cat.routes.routes_utils import UserCredentials, JWTResponse, auth_token as fnc_auth_token
-from cat.utils import DEFAULT_SYSTEM_KEY
 
 router = APIRouter()
 

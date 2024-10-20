@@ -10,6 +10,7 @@ from cat.auth.permissions import get_full_admin_permissions
 from cat.db import models
 from cat.db.cruds import settings as crud_settings
 from cat.db.cruds import users as crud_users
+from cat.db.database import DEFAULT_SYSTEM_KEY
 from cat.env import get_env
 from cat.exceptions import LoadMemoryException
 from cat.factory.custom_auth_handler import CoreAuthHandler
@@ -20,7 +21,7 @@ from cat.looking_glass.cheshire_cat import CheshireCat
 from cat.looking_glass.white_rabbit import WhiteRabbit
 from cat.mad_hatter.mad_hatter import MadHatter
 from cat.rabbit_hole import RabbitHole
-from cat.utils import singleton, DEFAULT_SYSTEM_KEY, ReplacedNLPConfig
+from cat.utils import singleton, ReplacedNLPConfig
 
 
 @singleton
