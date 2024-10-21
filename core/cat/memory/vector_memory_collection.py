@@ -1,7 +1,9 @@
 import os
 import uuid
 from typing import Any, List, Iterable, Dict, Tuple
-import requests
+import aiofiles
+import httpx
+from concurrent.futures import ThreadPoolExecutor
 from qdrant_client.qdrant_remote import QdrantRemote
 from qdrant_client.http.models import (
     Batch,
@@ -89,7 +91,8 @@ class VectorMemoryCollection:
         # SAVE_MEMORY_SNAPSHOTS=false
         if get_env("CCAT_SAVE_MEMORY_SNAPSHOTS") == "true":
             # dump collection on disk before deleting
-            self.save_dump()
+            with ThreadPoolExecutor() as executor:
+                executor.submit(self.save_dump)
 
         self.wipe()
         log.warning(f"Collection \"{self.collection_name}\" deleted")
@@ -369,7 +372,7 @@ class VectorMemoryCollection:
         return isinstance(self.client._client, QdrantRemote)
 
     # dump collection on disk before deleting
-    def save_dump(self, folder="dormouse/"):
+    async def save_dump(self, folder="dormouse/"):
         # only do snapshotting if using remote Qdrant
         if not self.db_is_remote():
             return
@@ -397,8 +400,11 @@ class VectorMemoryCollection:
         snapshot_url_out = os.path.join(folder, self.snapshot_info.name)
         # rename snapshots for an easier restore in the future
         alias = self.client.get_collection_aliases(self.collection_name).aliases[0].alias_name
-        response = requests.get(snapshot_url_in)
-        open(snapshot_url_out, "wb").write(response.content)
+
+        async with httpx.AsyncClient() as client:
+            response = await client.get(snapshot_url_in)
+            async with aiofiles.open(snapshot_url_out, "wb") as f:
+                await f.write(response.content)  # Write the content asynchronously
 
         new_name = os.path.join(folder, alias.replace("/", "-") + ".snapshot")
         os.rename(snapshot_url_out, new_name)

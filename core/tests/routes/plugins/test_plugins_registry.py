@@ -6,6 +6,9 @@ from tests.utils import create_mock_plugin_zip
 
 # TODO: registry responses here should be mocked, at the moment we are actually calling the service
 
+async def mock_registry_download_plugin(url: str):
+    return create_mock_plugin_zip(True)
+
 
 def test_list_registry_plugins(secure_client, secure_client_headers):
     response = secure_client.get("/plugins", headers=secure_client_headers)
@@ -41,7 +44,7 @@ def test_list_registry_plugins_by_query(secure_client, secure_client_headers):
 def test_plugin_install_from_registry(secure_client, secure_client_headers, monkeypatch):
     # Mock the download from the registry creating a zip on-the-fly
     monkeypatch.setattr(
-        "cat.routes.plugins.registry_download_plugin", create_mock_plugin_zip
+        "cat.routes.plugins.registry_download_plugin", mock_registry_download_plugin
     )
 
     # during tests, the cat uses a different folder for plugins

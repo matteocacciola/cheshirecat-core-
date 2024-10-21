@@ -1,11 +1,10 @@
 from typing import List, Any, Mapping, Dict
-import requests
+import httpx
 from langchain_core.callbacks import CallbackManagerForLLMRun, AsyncCallbackManagerForLLMRun
 
 from langchain_core.language_models.llms import LLM
 from langchain_openai.chat_models import ChatOpenAI
 from langchain_community.chat_models.ollama import ChatOllama
-
 
 
 class LLMDefault(LLM):
@@ -48,7 +47,7 @@ class LLMCustom(LLM):
     def _llm_type(self) -> str:
         return "custom"
 
-    def _call(
+    async def _acall(
         self,
         prompt: str,
         stop: List[str] | None = None,
@@ -62,11 +61,10 @@ class LLMCustom(LLM):
         }
 
         try:
-            response_json = requests.post(self.url, json=request_body).json()
+            async with httpx.AsyncClient() as client:
+                response_json = (await client.post(self.url, json=request_body)).json()
         except Exception as exc:
-            raise ValueError(
-                "Custom LLM endpoint error " "during http POST request"
-            ) from exc
+            raise ValueError("Custom LLM endpoint error " "during http POST request") from exc
 
         generated_text = response_json["text"]
 

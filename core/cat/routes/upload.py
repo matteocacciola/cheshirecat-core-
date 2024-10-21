@@ -1,5 +1,5 @@
 import mimetypes
-import requests
+import httpx
 import json
 from typing import Dict, List
 from copy import deepcopy
@@ -278,9 +278,10 @@ async def upload_url(
     # check that URL is valid
     try:
         # Send a HEAD request to the specified URL
-        response = requests.head(
-            upload_config.url, headers={"User-Agent": "Magic Browser"}, allow_redirects=True
-        )
+        async with httpx.AsyncClient() as client:
+            response = await client.head(
+                upload_config.url, headers={"User-Agent": "Magic Browser"}, follow_redirects=True
+            )
 
         if response.status_code == 200:
             # upload file to long term memory, in the background
@@ -295,7 +296,7 @@ async def upload_url(
             return UploadUrlResponse(url=upload_config.url, info="URL is being ingested asynchronously")
 
         raise CustomValidationException(f"Invalid URL: {upload_config.url}")
-    except requests.exceptions.RequestException as _e:
+    except httpx.RequestError as _e:
         raise CustomValidationException(f"Unable to reach the URL: {upload_config.url}")
 
 
