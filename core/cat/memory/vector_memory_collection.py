@@ -1,9 +1,9 @@
+import asyncio
 import os
 import uuid
 from typing import Any, List, Iterable, Dict, Tuple
 import aiofiles
 import httpx
-from concurrent.futures import ThreadPoolExecutor
 from qdrant_client.qdrant_remote import QdrantRemote
 from qdrant_client.http.models import (
     Batch,
@@ -91,8 +91,7 @@ class VectorMemoryCollection:
         # SAVE_MEMORY_SNAPSHOTS=false
         if get_env("CCAT_SAVE_MEMORY_SNAPSHOTS") == "true":
             # dump collection on disk before deleting
-            with ThreadPoolExecutor() as executor:
-                executor.submit(self.save_dump)
+            asyncio.get_event_loop().run_until_complete(self.save_dump())
 
         self.wipe()
         log.warning(f"Collection \"{self.collection_name}\" deleted")

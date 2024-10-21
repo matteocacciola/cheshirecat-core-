@@ -1,5 +1,6 @@
 from langchain.base_language import BaseLanguageModel
 from langchain_core.embeddings import Embeddings
+
 from cat.mad_hatter.mad_hatter import MadHatter
 from cat.memory.long_term_memory import LongTermMemory
 from cat.factory.custom_embedder import DumbEmbedder
