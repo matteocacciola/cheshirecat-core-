@@ -40,7 +40,7 @@ class MemoryAgent(BaseAgent):
             # convert to dict before passing to langchain
             prompt_variables,
             config=RunnableConfig(
-                callbacks=[NewTokenHandler(stray), ModelInteractionHandler(stray, self.__class__.__name__)]
+                callbacks=[NewTokenHandler(stray), ModelInteractionHandler(stray, self.name)]
             )
         )
 

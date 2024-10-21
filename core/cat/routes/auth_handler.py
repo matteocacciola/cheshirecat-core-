@@ -18,21 +18,21 @@ def get_auth_handler_settings(
 ) -> GetSettingsResponse:
     """Get the list of the AuthHandlers"""
 
-    agent_id = cats.cheshire_cat.id
+    ccat = cats.cheshire_cat
 
     # get selected AuthHandler
-    selected = crud_settings.get_setting_by_name(agent_id, "auth_handler_selected")
+    selected = crud_settings.get_setting_by_name(ccat.id, "auth_handler_selected")
     if selected is not None:
         selected = selected["value"]["name"]
 
-    saved_settings = crud_settings.get_settings_by_category(agent_id, "auth_handler_factory")
+    saved_settings = crud_settings.get_settings_by_category(ccat.id, "auth_handler_factory")
     saved_settings = {s["name"]: s for s in saved_settings}
 
     settings = [GetSettingResponse(
         name=class_name,
         value=saved_settings[class_name]["value"] if class_name in saved_settings else {},
         scheme=scheme
-    ) for class_name, scheme in get_auth_handlers_schemas(cats.cheshire_cat.mad_hatter).items()]
+    ) for class_name, scheme in get_auth_handlers_schemas(ccat.mad_hatter).items()]
 
     return GetSettingsResponse(settings=settings, selected_configuration=selected)
 
@@ -51,9 +51,9 @@ def get_auth_handler_setting(
         raise CustomValidationException(f"{auth_handler_name} not supported. Must be one of {allowed_configurations}")
 
     setting = crud_settings.get_setting_by_name(cats.cheshire_cat.id, auth_handler_name)
-    scheme = auth_handler_schemas[auth_handler_name]
-
     setting = {} if setting is None else setting["value"]
+
+    scheme = auth_handler_schemas[auth_handler_name]
 
     return GetSettingResponse(name=auth_handler_name, value=setting, scheme=scheme)
 

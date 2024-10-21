@@ -9,20 +9,19 @@ from langchain_core.embeddings import Embeddings
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 from pydantic import BaseModel
 from typing_extensions import Protocol
-from langchain.base_language import BaseLanguageModel
 from langchain_core.messages import SystemMessage
 from langchain_core.runnables import RunnableLambda
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.output_parsers.string import StrOutputParser
 
-import cat.factory.auth_handler as auth_handlers
 from cat.auth.auth_utils import hash_password
 from cat.auth.permissions import get_base_permissions
 from cat.db import models
 from cat.db.cruds import settings as crud_settings
 from cat.db.cruds import users as crud_users
-from cat.factory.llm import LLMDefaultConfig
-from cat.factory.llm import get_llm_factory_from_config_name
+from cat.factory.auth_handler import CoreOnlyAuthConfig, get_auth_handler_from_config_name, get_config_class_name
+from cat.factory.embedder import get_embedder_config_class_from_model
+from cat.factory.llm import LLMDefaultConfig, get_llm_from_config_name, get_llm_config_class_from_model
 from cat.log import log
 from cat.mad_hatter.mad_hatter import MadHatter
 from cat.mad_hatter.registry import registry_search_plugins
@@ -59,14 +58,18 @@ class CheshireCat:
     """
 
     def __init__(self, agent_id: str):
-        """Cat initialization.
+        """
+        Cat initialization. At init time, the Cat executes the bootstrap.
 
-        At init time the Cat executes the bootstrap.
+        Notes
+        -----
+        Bootstrapping is the process of loading the plugins, the LLM, the memories.
         """
 
         # bootstrap the Cat! ^._.^
         self.id = agent_id
 
+        self.llm = None
         self.memory = None
         self.custom_auth_handler = None
 
@@ -82,7 +85,7 @@ class CheshireCat:
         self.mad_hatter.execute_hook("before_cat_bootstrap", cat=self)
 
         # load LLM
-        self.llm = self.load_language_model()
+        self.load_language_model()
 
         # Load memories (vector collections and working_memory)
         self.load_memory()
@@ -187,18 +190,8 @@ class CheshireCat:
 
         # self.memory = None
 
-    def load_language_model(self) -> BaseLanguageModel:
-        """Large Language Model (LLM) selection.
-
-        Returns:
-            llm : BaseLanguageModel
-                Langchain `BaseLanguageModel` instance of the selected model.
-
-        Notes
-        -----
-        Bootstrapping is the process of loading the plugins, the natural language objects (e.g. the LLM), the memories,
-        the *Main Agent*, the *Rabbit Hole* and the *White Rabbit*.
-        """
+    def load_language_model(self):
+        """Large Language Model (LLM) selection."""
 
         selected_llm = crud_settings.get_setting_by_name(self.id, "llm_selected")
 
@@ -206,21 +199,17 @@ class CheshireCat:
             # return default LLM
             llm = LLMDefaultConfig.get_llm_from_config({})
         else:
-            # get LLM factory class
-            selected_llm_class = selected_llm["value"]["name"]
-            factory_class = get_llm_factory_from_config_name(selected_llm_class, self.mad_hatter)
+            llm = get_llm_from_config_name(self.id, selected_llm["value"]["name"], self.mad_hatter)
 
-            # obtain configuration and instantiate LLM
-            selected_llm_config = crud_settings.get_setting_by_name(self.id, selected_llm_class)
-            try:
-                llm = factory_class.get_llm_from_config(selected_llm_config["value"])
-            except Exception:
-                import traceback
+        embedder_config = get_embedder_config_class_from_model(self.embedder.__class__, self.mad_hatter)
+        llm_config = get_llm_config_class_from_model(llm.__class__, self.mad_hatter)
+        if embedder_config.is_multimodal() != llm_config.is_multimodal():
+            raise ValueError(
+                f"Embedder and LLM must be both multimodal or both single modal."
+                f" Embedder: {embedder_config.is_multimodal()}, LLM: {llm_config.is_multimodal()}"
+            )
 
-                traceback.print_exc()
-                llm = LLMDefaultConfig.get_llm_from_config({})
-
-        return llm
+        self.llm = llm
 
     def load_auth(self):
         # Custom auth_handler
@@ -228,40 +217,28 @@ class CheshireCat:
 
         # if no auth_handler is saved, use default one and save to db
         if selected_auth_handler is None:
+            class_config_name = get_config_class_name(CoreOnlyAuthConfig)
+
             # create the auth settings
             crud_settings.upsert_setting_by_name(
                 self.id,
-                models.Setting(
-                    name="CoreOnlyAuthConfig", category="auth_handler_factory", value={}
-                ),
+                models.Setting(name=class_config_name, category="auth_handler_factory", value={}),
             )
             crud_settings.upsert_setting_by_name(
                 self.id,
                 models.Setting(
                     name="auth_handler_selected",
                     category="auth_handler_factory",
-                    value={"name": "CoreOnlyAuthConfig"},
+                    value={"name": class_config_name},
                 ),
             )
 
             # reload from db
             selected_auth_handler = crud_settings.get_setting_by_name(self.id, "auth_handler_selected")
 
-        # get AuthHandler factory class
-        selected_auth_handler_class = selected_auth_handler["value"]["name"]
-        factory_class = auth_handlers.get_auth_handler_factory_from_config_name(selected_auth_handler_class, self.mad_hatter)
-
-        # obtain configuration and instantiate AuthHandler
-        selected_auth_handler_config = crud_settings.get_setting_by_name(self.id, selected_auth_handler_class)
-        try:
-            auth_handler = factory_class.get_auth_handler_from_config(selected_auth_handler_config["value"])
-        except Exception:
-            import traceback
-            traceback.print_exc()
-
-            auth_handler = auth_handlers.CoreOnlyAuthConfig.get_auth_handler_from_config({})
-
-        self.custom_auth_handler = auth_handler
+        self.custom_auth_handler = get_auth_handler_from_config_name(
+            self.id, selected_auth_handler["value"]["name"], self.mad_hatter
+        )
 
     def load_memory(self):
         """Load LongTerMemory and WorkingMemory."""
@@ -436,6 +413,16 @@ class CheshireCat:
         Returns:
             The dictionary resuming the new name and settings of the LLM
         """
+
+        current_llm = crud_settings.get_setting_by_name(self.id, "llm_selected")
+        current_factory = (
+            crud_settings.get_setting_by_name(self.id, current_llm["value"]["name"]) if current_llm else None
+        )
+
+        if current_llm is not None and current_llm["value"]["name"] == language_model_name:
+            # do nothing
+            return ReplacedNLPConfig(name=language_model_name, value=current_factory["value"])
+
         # create the setting and upsert it
         final_setting = crud_settings.upsert_setting_by_name(
             self.id,
@@ -448,8 +435,19 @@ class CheshireCat:
             models.Setting(name="llm_selected", category="llm", value={"name": language_model_name}),
         )
 
-        # reload the llm of the cat
-        self.llm = self.load_language_model()
+        try:
+            # try to reload the llm of the cat
+            self.load_language_model()
+        except ValueError as e:
+            log.error(f"Error while loading the new LLM: {e}")
+
+            # something went wrong: rollback
+            crud_settings.delete_settings_by_category(self.id, "llm")
+            crud_settings.delete_settings_by_category(self.id, "llm_factory")
+            if current_llm is not None:
+                self.replace_llm(current_llm["value"]["name"], current_factory["value"])
+
+            raise e
 
         # recreate tools embeddings
         self.mad_hatter.find_plugins()

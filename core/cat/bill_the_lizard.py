@@ -1,7 +1,6 @@
 import asyncio
 from typing import Dict, List
 from uuid import uuid4
-from langchain_core.embeddings import Embeddings
 
 from cat import utils
 from cat.agents.main_agent import MainAgent
@@ -14,7 +13,7 @@ from cat.db.database import DEFAULT_SYSTEM_KEY
 from cat.env import get_env
 from cat.exceptions import LoadMemoryException
 from cat.factory.custom_auth_handler import CoreAuthHandler
-from cat.factory.embedder import EmbedderDumbConfig, get_embedder_factory_from_config_name, get_allowed_embedder_models
+from cat.factory.embedder import EmbedderDumbConfig, get_embedder_from_config_name, get_config_class_name
 from cat.jobs import job_on_idle_strays
 from cat.log import log
 from cat.looking_glass.cheshire_cat import CheshireCat
@@ -40,8 +39,21 @@ class BillTheLizard:
     """
 
     def __init__(self):
+        """
+        Bill the Lizard initialization.
+        At init time the Lizard executes the bootstrap.
+
+        Notes
+        -----
+        Bootstrapping is the process of loading the plugins, the Embedder, the *Main Agent*, the *Rabbit Hole* and
+        the *White Rabbit*.
+        """
+
+
         self.__cheshire_cats: Dict[str, CheshireCat] = {}
         self.__key = DEFAULT_SYSTEM_KEY
+
+        self.embedder = None
 
         # Start scheduling system
         self.white_rabbit = WhiteRabbit()
@@ -51,8 +63,8 @@ class BillTheLizard:
 
         self.mad_hatter = MadHatter(self.__key)
 
-        # load LLM and embedder
-        self.embedder = self.load_language_embedder()
+        # load embedder
+        self.load_language_embedder()
 
         # Rabbit Hole Instance
         self.rabbit_hole = RabbitHole()
@@ -79,38 +91,35 @@ class BillTheLizard:
             }
         })
 
-    def load_language_embedder(self) -> Embeddings:
-        """Hook into the embedder selection.
-
-        Allows to modify how the Cats select the embedder at bootstrap time.
-
-        Returns:
-            Selected embedder model.
+    def load_language_embedder(self):
+        """
+        Hook into the embedder selection. Allows to modify how the Cats select the embedder at bootstrap time.
         """
 
         selected_embedder = crud_settings.get_setting_by_name(self.__key, "embedder_selected")
 
-        if selected_embedder is not None:
-            # get Embedder factory class
-            selected_embedder_class = selected_embedder["value"]["name"]
-            factory_class = get_embedder_factory_from_config_name(selected_embedder_class, self.mad_hatter)
+        # if no llm is saved, use default one and save to db
+        if selected_embedder is None:
+            class_config_name = get_config_class_name(EmbedderDumbConfig)
 
-            # obtain configuration and instantiate Embedder
-            selected_embedder_config = crud_settings.get_setting_by_name(self.__key, selected_embedder_class)
-            try:
-                embedder = factory_class.get_embedder_from_config(selected_embedder_config["value"])
-            except AttributeError:
-                import traceback
+            # selected_embedder the auth settings
+            crud_settings.upsert_setting_by_name(
+                self.__key,
+                models.Setting(name=class_config_name, category="embedder_factory", value={}),
+            )
+            crud_settings.upsert_setting_by_name(
+                self.__key,
+                models.Setting(
+                    name="embedder_selected",
+                    category="embedder_factory",
+                    value={"name": class_config_name},
+                ),
+            )
 
-                traceback.print_exc()
-                embedder = EmbedderDumbConfig.get_embedder_from_config({})
-            return embedder
+            # reload from db
+            selected_embedder = crud_settings.get_setting_by_name(self.__key, "embedder_selected")
 
-        # If no embedder matches vendor, and no external embedder is configured, we use the DumbEmbedder.
-        #   `This embedder is not a model properly trained
-        #    and this makes it not suitable to effectively embed text,
-        #    "but it does not know this and embeds anyway".` - cit. Nicola Corbellini
-        return EmbedderDumbConfig.get_embedder_from_config({})
+        self.embedder = get_embedder_from_config_name(self.__key, selected_embedder["value"]["name"], self.mad_hatter)
 
     def replace_embedder(self, language_embedder_name: str, settings: Dict) -> ReplacedNLPConfig:
         """
@@ -126,7 +135,17 @@ class BillTheLizard:
 
         # get selected config if any
         # embedder selected configuration is saved under "embedder_selected" name
-        selected = crud_settings.get_setting_by_name(self.__key, "embedder_selected")
+        current_embedder = crud_settings.get_setting_by_name(self.__key, "embedder_selected")
+        # embedder type and config are saved in settings table under "embedder_factory" category
+        current_factory = (
+            crud_settings.get_setting_by_name(self.__key, current_embedder["value"]["name"])
+            if current_embedder
+            else None
+        )
+
+        if current_embedder is not None and current_embedder["value"]["name"] == language_embedder_name:
+            # do nothing
+            return ReplacedNLPConfig(name=language_embedder_name, value=current_factory["value"])
 
         # create the setting and upsert it
         # embedder type and config are saved in settings table under "embedder_factory" category
@@ -149,22 +168,19 @@ class BillTheLizard:
 
         # reload the embedder of the cat
         self.embedder = self.load_language_embedder()
-        # create new collections (different embedder!)
 
         for ccat in self.__cheshire_cats.values():
             try:
+                # create new collections (different embedder!)
                 ccat.load_memory()
             except Exception as e:  # restore the original Embedder
                 log.error(e)
 
+                # something went wrong: rollback
                 crud_settings.delete_settings_by_category(self.__key, "embedder")
-
-                # embedder type and config are saved in settings table under "embedder_factory" category
                 crud_settings.delete_settings_by_category(self.__key, "embedder_factory")
-
-                # if a selected config is present, restore it
-                if selected is not None:
-                    self.replace_embedder(selected["value"]["name"], selected)
+                if current_embedder is not None:
+                    self.replace_embedder(current_embedder["value"]["name"], current_factory["value"])
 
                 raise LoadMemoryException(f"Load memory exception: {utils.explicit_error_message(e)}")
 
@@ -172,25 +188,6 @@ class BillTheLizard:
         self.mad_hatter.find_plugins()
 
         return ReplacedNLPConfig(name=language_embedder_name, value=final_setting["value"])
-
-    def get_selected_embedder_settings(self) -> str | None:
-        # get selected Embedder settings, if any
-        # embedder selected configuration is saved under "embedder_selected" name
-        selected = crud_settings.get_setting_by_name(self.__key, "embedder_selected")
-        if selected is not None:
-            return selected["value"]["name"]
-
-        supported_embedding_models = get_allowed_embedder_models(self.mad_hatter)
-
-        # TODO: take away automatic embedder settings in v2
-        # If DB does not contain a selected embedder, it means an embedder was automatically selected.
-        # Deduce selected embedder:
-        return next((
-            embedder_config_class.__name__
-            for embedder_config_class in reversed(supported_embedding_models)
-            if isinstance(self.embedder, embedder_config_class._pyclass.default)),
-            None
-        )
 
     async def remove_cheshire_cat(self, agent_id: str) -> None:
         """

@@ -90,7 +90,7 @@ async def recall_memory_points_from_text(
     return RecallResponse(
         query=RecallResponseQuery(text=text, vector=query_embedding),
         vectors=RecallResponseVectors(
-            embedder=get_embedder_config_class_from_model(ccat.embedder.__class__, ccat.mad_hatter),
+            embedder=get_embedder_config_class_from_model(ccat.embedder.__class__, ccat.mad_hatter).__name__,
             collections=recalled
         )
     )

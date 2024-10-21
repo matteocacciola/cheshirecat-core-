@@ -4,8 +4,8 @@ from fastapi.encoders import jsonable_encoder
 from cat.factory.embedder import get_embedders_schemas
 
 
-def test_get_all_embedder_settings(secure_client, secure_client_headers, mad_hatter):
-    embedder_schemas = get_embedders_schemas(mad_hatter)
+def test_get_all_embedder_settings(secure_client, secure_client_headers, lizard):
+    embedder_schemas = get_embedders_schemas(lizard.mad_hatter)
     response = secure_client.get("/embedder/settings", headers=secure_client_headers)
     json = response.json()
 

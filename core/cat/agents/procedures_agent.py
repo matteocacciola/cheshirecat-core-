@@ -141,7 +141,7 @@ class ProceduresAgent(BaseAgent):
 
         llm_action: LLMAction = chain.invoke(
             prompt_variables,
-            config=RunnableConfig(callbacks=[ModelInteractionHandler(stray, self.__class__.__name__)])
+            config=RunnableConfig(callbacks=[ModelInteractionHandler(stray, self.name)])
         )
 
         return llm_action

@@ -20,7 +20,6 @@ def get_llms_settings(
     """Get the list of the Large Language Models"""
 
     ccat = cats.cheshire_cat
-    llm_schemas = get_llms_schemas(ccat.mad_hatter)
 
     # get selected LLM, if any
     # llm selected configuration is saved under "llm_selected" name
@@ -36,7 +35,7 @@ def get_llms_settings(
         name=class_name,
         value=saved_settings[class_name]["value"] if class_name in saved_settings else {},
         scheme=scheme
-    ) for class_name, scheme in llm_schemas.items()]
+    ) for class_name, scheme in get_llms_schemas(ccat.mad_hatter).items()]
 
     return GetSettingsResponse(settings=settings, selected_configuration=selected)
 
@@ -58,9 +57,9 @@ def get_llm_settings(
         raise CustomValidationException(f"{language_model_name} not supported. Must be one of {allowed_configurations}")
 
     setting = crud_settings.get_setting_by_name(ccat.id, language_model_name)
-    scheme = llm_schemas[language_model_name]
-
     setting = {} if setting is None else setting["value"]
+
+    scheme = llm_schemas[language_model_name]
 
     return GetSettingResponse(name=language_model_name, value=setting, scheme=scheme)
 

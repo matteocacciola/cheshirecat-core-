@@ -1,11 +1,13 @@
 from typing import Type, Dict
 from pydantic import BaseModel, ConfigDict
 
+from cat.db.cruds import settings as crud_settings
 from cat.factory.custom_auth_handler import (
     # ApiKeyAuthHandler,
     BaseAuthHandler,
     CoreOnlyAuthHandler,
 )
+from cat.log import log
 from cat.mad_hatter.mad_hatter import MadHatter
 
 
@@ -72,17 +74,28 @@ def get_auth_handlers_schemas(mad_hatter: MadHatter) -> Dict:
     return auth_handler_schemas
 
 
-def get_auth_handler_factory_from_config_name(name: str, mad_hatter: MadHatter) -> Type[AuthHandlerConfig] | None:
-    list_auth_handler = get_allowed_auth_handler_strategies(mad_hatter)
-    return next((auth_handler for auth_handler in list_auth_handler if auth_handler.__name__ == name), None)
-
-
-def get_auth_handler_config_class_from_strategy(cls: Type[BaseAuthHandler], mad_hatter: MadHatter) -> str | None:
-    """Find the class name of the auth handler strategy"""
-
-    return next((
-        config_class.__name__
-        for config_class in get_allowed_auth_handler_strategies(mad_hatter)
-        if config_class.pyclass() == cls),
-        None
+def get_auth_handler_from_config_name(agent_id: str, config_name: str, mad_hatter: MadHatter) -> BaseAuthHandler:
+    # get AuthHandler factory class
+    list_auth_handlers = get_allowed_auth_handler_strategies(mad_hatter)
+    factory_class = next(
+        (auth_handler for auth_handler in list_auth_handlers if auth_handler.__name__ == config_name), None
     )
+    if factory_class is None:
+        log.warning(f"Auth Handler class {config_name} not found in the list of allowed auth handlers")
+        return CoreOnlyAuthConfig.get_auth_handler_from_config({})
+
+    # obtain configuration and instantiate AuthHandler
+    selected_auth_handler_config = crud_settings.get_setting_by_name(agent_id, config_name)
+    try:
+        auth_handler = factory_class.get_auth_handler_from_config(selected_auth_handler_config["value"])
+    except Exception:
+        import traceback
+        traceback.print_exc()
+
+        auth_handler = CoreOnlyAuthConfig.get_auth_handler_from_config({})
+
+    return auth_handler
+
+
+def get_config_class_name(cls: Type[AuthHandlerConfig]) -> str:
+    return cls.__name__

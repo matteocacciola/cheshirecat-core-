@@ -20,6 +20,10 @@ def get_embedders_settings(
 ) -> GetSettingsResponse:
     """Get the list of the Embedders"""
 
+    selected = crud_settings.get_setting_by_name(lizard.config_key, "embedder_selected")
+    if selected is not None:
+        selected = selected["value"]["name"]
+
     # embedder type and config are saved in settings table under "embedder_factory" category
     saved_settings = crud_settings.get_settings_by_category(lizard.config_key, "embedder_factory")
     saved_settings = {s["name"]: s for s in saved_settings}
@@ -30,9 +34,7 @@ def get_embedders_settings(
         scheme=scheme
     ) for class_name, scheme in get_embedders_schemas(lizard.mad_hatter).items()]
 
-    return GetSettingsResponse(
-        settings=settings, selected_configuration=lizard.get_selected_embedder_settings()
-    )
+    return GetSettingsResponse(settings=settings, selected_configuration=selected)
 
 
 # get Embedder settings and its scheme
@@ -50,9 +52,9 @@ def get_embedder_settings(
         raise CustomValidationException(f"{embedder_name} not supported. Must be one of {allowed_configurations}")
 
     setting = crud_settings.get_setting_by_name(lizard.config_key, embedder_name)
-    scheme = embedder_schemas[embedder_name]
-
     setting = {} if setting is None else setting["value"]
+
+    scheme = embedder_schemas[embedder_name]
 
     return GetSettingResponse(name=embedder_name, value=setting, scheme=scheme)
 

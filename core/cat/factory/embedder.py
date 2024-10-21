@@ -7,13 +7,17 @@ from langchain_openai import OpenAIEmbeddings, AzureOpenAIEmbeddings
 from langchain_google_genai import GoogleGenerativeAIEmbeddings
 from fastembed import TextEmbedding
 
+from cat.db.cruds import settings as crud_settings
 from cat.factory.custom_embedder import DumbEmbedder, CustomOpenAIEmbeddings
+from cat.log import log
 from cat.mad_hatter.mad_hatter import MadHatter
 from cat.utils import Enum
 
 
 # Base class to manage LLM configuration.
 class EmbedderSettings(BaseModel):
+    _is_multimodal: bool = False
+
     # class instantiating the embedder
     _pyclass: Type[Embeddings] = None
 
@@ -32,9 +36,14 @@ class EmbedderSettings(BaseModel):
     def pyclass(cls) -> Type[Embeddings]:
         return cls._pyclass.default
 
+    @classmethod
+    def is_multimodal(cls) -> bool:
+        return cls._is_multimodal.default
+
 
 class EmbedderFakeConfig(EmbedderSettings):
     size: int = 128
+
     _pyclass: Type = FakeEmbeddings
 
     model_config = ConfigDict(
@@ -60,6 +69,7 @@ class EmbedderDumbConfig(EmbedderSettings):
 
 class EmbedderOpenAICompatibleConfig(EmbedderSettings):
     url: str
+
     _pyclass: Type = CustomOpenAIEmbeddings
 
     model_config = ConfigDict(
@@ -74,6 +84,7 @@ class EmbedderOpenAICompatibleConfig(EmbedderSettings):
 class EmbedderOpenAIConfig(EmbedderSettings):
     openai_api_key: str
     model: str = "text-embedding-ada-002"
+
     _pyclass: Type = OpenAIEmbeddings
 
     model_config = ConfigDict(
@@ -108,6 +119,7 @@ class EmbedderAzureOpenAIConfig(EmbedderSettings):
 class EmbedderCohereConfig(EmbedderSettings):
     cohere_api_key: str
     model: str = "embed-multilingual-v2.0"
+
     _pyclass: Type = CohereEmbeddings
 
     model_config = ConfigDict(
@@ -187,12 +199,6 @@ def get_allowed_embedder_models(mad_hatter: MadHatter) -> List[Type[EmbedderSett
     return list_embedder
 
 
-def get_embedder_factory_from_config_name(name: str, mad_hatter: MadHatter) -> Type[EmbedderSettings] | None:
-    """Find the llm adapter class by name"""
-
-    return next((cls for cls in get_allowed_embedder_models(mad_hatter) if cls.__name__ == name), None)
-
-
 def get_embedders_schemas(mad_hatter: MadHatter) -> Dict:
     # embedder_schemas contains metadata to let any client know which fields are required to create the language embedder.
     embedder_schemas = {}
@@ -205,12 +211,47 @@ def get_embedders_schemas(mad_hatter: MadHatter) -> Dict:
     return embedder_schemas
 
 
-def get_embedder_config_class_from_model(cls: Type[Embeddings], mad_hatter: MadHatter) -> str | None:
-    """Find the class name of the embedder adapter"""
+def get_embedder_config_class_from_model(cls: Type[Embeddings], mad_hatter: MadHatter) -> Type[EmbedderSettings] | None:
+    """Find the class of the embedder adapter"""
 
-    return next((
-        config_class.__name__
-        for config_class in get_allowed_embedder_models(mad_hatter)
-        if config_class.pyclass() == cls),
+    return next(
+        (config_class for config_class in get_allowed_embedder_models(mad_hatter) if config_class.pyclass() == cls),
         None
     )
+
+
+def get_embedder_from_config_name(agent_id: str, config_name: str, mad_hatter: MadHatter) -> Embeddings:
+    """
+    Get Embedder from configuration name. This function is used to get the Embedder from the configuration name
+    and the agent key.
+
+    Args:
+        agent_id: The agent key
+        config_name: The configuration name
+        mad_hatter: The MadHatter instance
+
+    Returns:
+        Embeddings: The Embeddings instance
+    """
+
+    # get Embedder factory class
+    list_embedders = get_allowed_embedder_models(mad_hatter)
+    factory_class = next((cls for cls in list_embedders if cls.__name__ == config_name), None)
+    if factory_class is None:
+        log.warning(f"Embedder class {config_name} not found in the list of allowed embedders")
+        return EmbedderDumbConfig.get_embedder_from_config({})
+
+    # obtain configuration and instantiate Embedder
+    selected_embedder_config = crud_settings.get_setting_by_name(agent_id, config_name)
+    try:
+        embedder = factory_class.get_embedder_from_config(selected_embedder_config["value"])
+    except AttributeError:
+        import traceback
+        traceback.print_exc()
+
+        embedder = EmbedderDumbConfig.get_embedder_from_config({})
+    return embedder
+
+
+def get_config_class_name(cls: Type[EmbedderSettings]) -> str:
+    return cls.__name__

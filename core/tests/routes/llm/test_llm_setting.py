@@ -5,8 +5,8 @@ from cat.factory.llm import get_llms_schemas
 from tests.utils import create_new_user, new_user_password, agent_id
 
 
-def test_get_all_llm_settings(secure_client, secure_client_headers, mad_hatter):
-    llms_schemas = get_llms_schemas(mad_hatter)
+def test_get_all_llm_settings(secure_client, secure_client_headers, cheshire_cat):
+    llms_schemas = get_llms_schemas(cheshire_cat.mad_hatter)
 
     response = secure_client.get("/llm/settings", headers=secure_client_headers)
     json = response.json()

@@ -12,12 +12,16 @@ from typing import Type, Dict, List
 import json
 from pydantic import BaseModel, ConfigDict
 
+from cat.db.cruds import settings as crud_settings
 from cat.factory.custom_llm import LLMDefault, LLMCustom, CustomOpenAI, CustomOllama
+from cat.log import log
 from cat.mad_hatter.mad_hatter import MadHatter
 
 
 # Base class to manage LLM configuration.
 class LLMSettings(BaseModel):
+    _is_multimodal: bool = False
+
     # class instantiating the model
     _pyclass: Type[BaseLanguageModel] = None
 
@@ -35,6 +39,10 @@ class LLMSettings(BaseModel):
     @classmethod
     def pyclass(cls) -> Type[BaseLanguageModel]:
         return cls._pyclass.default
+
+    @classmethod
+    def is_multimodal(cls) -> bool:
+        return cls._is_multimodal.default
 
 
 class LLMDefaultConfig(LLMSettings):
@@ -54,6 +62,7 @@ class LLMCustomConfig(LLMSettings):
     url: str
     auth_key: str = "optional_auth_key"
     options: str = "{}"
+
     _pyclass: Type = LLMCustom
 
     # instantiate Custom LLM from configuration
@@ -84,6 +93,7 @@ class LLMOpenAICompatibleConfig(LLMSettings):
     model_name: str
     api_key: str
     streaming: bool = True
+
     _pyclass: Type = CustomOpenAI
 
     model_config = ConfigDict(
@@ -100,6 +110,7 @@ class LLMOpenAIChatConfig(LLMSettings):
     model_name: str = "gpt-4o-mini"
     temperature: float = 0.7
     streaming: bool = True
+
     _pyclass: Type = ChatOpenAI
 
     model_config = ConfigDict(
@@ -116,6 +127,7 @@ class LLMOpenAIConfig(LLMSettings):
     model_name: str = "gpt-3.5-turbo-instruct"
     temperature: float = 0.7
     streaming: bool = True
+
     _pyclass: Type = OpenAI
 
     model_config = ConfigDict(
@@ -136,9 +148,9 @@ class LLMAzureChatOpenAIConfig(LLMSettings):
     openai_api_type: str = "azure"
     # Dont mix api versions https://github.com/hwchase17/langchain/issues/4775
     openai_api_version: str = "2023-05-15"
-
     azure_deployment: str
     streaming: bool = True
+
     _pyclass: Type = AzureChatOpenAI
 
     model_config = ConfigDict(
@@ -163,6 +175,7 @@ class LLMAzureOpenAIConfig(LLMSettings):
     azure_deployment: str = "gpt-35-turbo-instruct"
     model_name: str = "gpt-35-turbo-instruct"  # Use only completion models !
     streaming: bool = True
+
     _pyclass: Type = AzureOpenAI
 
     model_config = ConfigDict(
@@ -200,6 +213,7 @@ class LLMHuggingFaceTextGenInferenceConfig(LLMSettings):
     typical_p: float = 0.95
     temperature: float = 0.01
     repetition_penalty: float = 1.03
+
     _pyclass: Type = HuggingFaceTextGenInference
 
     model_config = ConfigDict(
@@ -221,6 +235,7 @@ class LLMHuggingFaceEndpointConfig(LLMSettings):
     top_p: float = 0.95
     temperature: float = 0.8
     return_full_text: bool = False
+
     _pyclass: Type = HuggingFaceEndpoint
 
     model_config = ConfigDict(
@@ -306,12 +321,6 @@ def get_allowed_language_models(mad_hatter: MadHatter) -> List[Type[LLMSettings]
     return list_llms
 
 
-def get_llm_factory_from_config_name(name: str, mad_hatter: MadHatter) -> Type[LLMSettings] | None:
-    """Find the llm adapter class by name"""
-
-    return next((cls for cls in get_allowed_language_models(mad_hatter) if cls.__name__ == name), None)
-
-
 def get_llms_schemas(mad_hatter: MadHatter) -> Dict:
     # llm_schemas contains metadata to let any client know
     # which fields are required to create the language model.
@@ -325,12 +334,47 @@ def get_llms_schemas(mad_hatter: MadHatter) -> Dict:
     return llm_schemas
 
 
-def get_llm_config_class_from_model(cls: Type[BaseLanguageModel], mad_hatter: MadHatter) -> str | None:
-    """Find the class name of the llm adapter"""
+def get_llm_config_class_from_model(cls: Type[BaseLanguageModel], mad_hatter: MadHatter) -> Type[LLMSettings] | None:
+    """Find the class of the llm adapter"""
 
-    return next((
-        config_class.__name__
-        for config_class in get_allowed_language_models(mad_hatter)
-        if config_class.pyclass() == cls),
+    return next(
+        (config_class for config_class in get_allowed_language_models(mad_hatter) if config_class.pyclass() == cls),
         None
     )
+
+
+def get_llm_from_config_name(agent_id: str, config_name: str, mad_hatter: MadHatter) -> BaseLanguageModel:
+    """
+    Get the language model from the configuration name.
+
+    Args:
+        agent_id: The agent key
+        config_name: The configuration name
+        mad_hatter: The MadHatter instance
+
+    Returns:
+        BaseLanguageModel: The language model instance
+    """
+
+    # get LLM factory class
+    list_llms = get_allowed_language_models(mad_hatter)
+    factory_class = next((cls for cls in list_llms if cls.__name__ == config_name), None)
+    if not factory_class:
+        log.warning(f"LLM class {config_name} not found in the list of allowed LLMs")
+        return LLMDefaultConfig.get_llm_from_config({})
+
+    # obtain configuration and instantiate LLM
+    selected_llm_config = crud_settings.get_setting_by_name(agent_id, config_name)
+    try:
+        llm = factory_class.get_llm_from_config(selected_llm_config["value"])
+    except Exception:
+        import traceback
+        traceback.print_exc()
+
+        llm = LLMDefaultConfig.get_llm_from_config({})
+
+    return llm
+
+
+def get_config_class_name(cls: Type[LLMSettings]) -> str:
+    return cls.__name__
