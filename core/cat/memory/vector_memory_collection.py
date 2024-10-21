@@ -98,13 +98,12 @@ class VectorMemoryCollection:
     def create_db_collection_if_not_exists(self):
         # is collection present in DB?
         collections_response = self.client.get_collections()
-        for c in collections_response.collections:
-            if c.name == self.collection_name:
-                # collection exists. Do nothing
-                log.info(
-                    f"Collection \"{self.collection_name}\" already present in vector store"
-                )
-                return
+        if any(c.name == self.collection_name for c in collections_response.collections):
+            # collection exists. Do nothing
+            log.info(
+                f"Collection \"{self.collection_name}\" already present in vector store"
+            )
+            return
 
         self.create_collection()
 
@@ -162,18 +161,13 @@ class VectorMemoryCollection:
         out = []
 
         if isinstance(value, Dict):
-            for _key, value in value.items():
-                out.extend(self._build_condition(f"{key}.{_key}", value))
+            out.extend(self._build_condition(f"{key}.{k}", v) for k, v in value.items())
         elif isinstance(value, List):
-            for _value in value:
-                out.extend(self._build_condition(f"{key}[]" if isinstance(_value, Dict) else f"{key}", _value))
-        else:
-            out.append(
-                FieldCondition(
-                    key=f"metadata.{key}",
-                    match=MatchValue(value=value),
-                )
+            out.extend(
+                self._build_condition(f"{key}[]" if isinstance(v, Dict) else f"{key}", v) for v in value
             )
+        else:
+            out.append(FieldCondition(key=f"metadata.{key}", match=MatchValue(value=value)))
 
         return out
 

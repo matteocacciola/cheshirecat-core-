@@ -308,10 +308,8 @@ def get_allowed_language_models(mad_hatter: MadHatter) -> List[Type[LLMSettings]
 
 def get_llm_factory_from_config_name(name: str, mad_hatter: MadHatter) -> Type[LLMSettings] | None:
     """Find the llm adapter class by name"""
-    for cls in get_allowed_language_models(mad_hatter):
-        if cls.__name__ == name:
-            return cls
-    return None
+
+    return next((cls for cls in get_allowed_language_models(mad_hatter) if cls.__name__ == name), None)
 
 
 def get_llms_schemas(mad_hatter: MadHatter) -> Dict:
@@ -329,7 +327,10 @@ def get_llms_schemas(mad_hatter: MadHatter) -> Dict:
 
 def get_llm_config_class_from_model(cls: Type[BaseLanguageModel], mad_hatter: MadHatter) -> str | None:
     """Find the class name of the llm adapter"""
-    for config_class in get_allowed_language_models(mad_hatter):
-        if config_class.pyclass() == cls:
-            return config_class.__name__
-    return None
+
+    return next((
+        config_class.__name__
+        for config_class in get_allowed_language_models(mad_hatter)
+        if config_class.pyclass() == cls),
+        None
+    )

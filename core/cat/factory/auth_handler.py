@@ -74,15 +74,15 @@ def get_auth_handlers_schemas(mad_hatter: MadHatter) -> Dict:
 
 def get_auth_handler_factory_from_config_name(name: str, mad_hatter: MadHatter) -> Type[AuthHandlerConfig] | None:
     list_auth_handler = get_allowed_auth_handler_strategies(mad_hatter)
-    for auth_handler in list_auth_handler:
-        if auth_handler.__name__ == name:
-            return auth_handler
-    return None
+    return next((auth_handler for auth_handler in list_auth_handler if auth_handler.__name__ == name), None)
 
 
 def get_auth_handler_config_class_from_strategy(cls: Type[BaseAuthHandler], mad_hatter: MadHatter) -> str | None:
     """Find the class name of the auth handler strategy"""
-    for config_class in get_allowed_auth_handler_strategies(mad_hatter):
-        if config_class.pyclass() == cls:
-            return config_class.__name__
-    return None
+
+    return next((
+        config_class.__name__
+        for config_class in get_allowed_auth_handler_strategies(mad_hatter)
+        if config_class.pyclass() == cls),
+        None
+    )

@@ -150,9 +150,7 @@ class MadHatter:
 
                 # cache hooks (indexed by hook name)
                 for h in plugin.hooks:
-                    if h.name not in self.hooks.keys():
-                        self.hooks[h.name] = []
-                    self.hooks[h.name].append(h)
+                    self.hooks.setdefault(h.name, []).append(h)
 
         # sort each hooks list by priority
         for hook_name in self.hooks.keys():

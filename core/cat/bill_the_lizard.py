@@ -178,18 +178,19 @@ class BillTheLizard:
         # embedder selected configuration is saved under "embedder_selected" name
         selected = crud_settings.get_setting_by_name(self.__key, "embedder_selected")
         if selected is not None:
-            selected = selected["value"]["name"]
-        else:
-            supported_embedding_models = get_allowed_embedder_models(self.mad_hatter)
+            return selected["value"]["name"]
 
-            # TODO: take away automatic embedder settings in v2
-            # If DB does not contain a selected embedder, it means an embedder was automatically selected.
-            # Deduce selected embedder:
-            for embedder_config_class in reversed(supported_embedding_models):
-                if isinstance(self.embedder, embedder_config_class._pyclass.default):
-                    selected = embedder_config_class.__name__
+        supported_embedding_models = get_allowed_embedder_models(self.mad_hatter)
 
-        return selected
+        # TODO: take away automatic embedder settings in v2
+        # If DB does not contain a selected embedder, it means an embedder was automatically selected.
+        # Deduce selected embedder:
+        return next((
+            embedder_config_class.__name__
+            for embedder_config_class in reversed(supported_embedding_models)
+            if isinstance(self.embedder, embedder_config_class._pyclass.default)),
+            None
+        )
 
     async def remove_cheshire_cat(self, agent_id: str) -> None:
         """

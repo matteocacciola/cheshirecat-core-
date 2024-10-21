@@ -173,12 +173,19 @@ class CheshireCat:
             await stray.shutdown()
 
         self.__strays.clear()
-        self.memory.wipe()
 
         self.memory = None
         self.custom_auth_handler = None
         self.mad_hatter = None
         self.llm = None
+
+    def wipe(self):
+        """Wipe all data from the cat."""
+
+        self.memory.wipe()
+        crud_settings.wipe_settings(self.id)
+
+        # self.memory = None
 
     def load_language_model(self) -> BaseLanguageModel:
         """Large Language Model (LLM) selection.

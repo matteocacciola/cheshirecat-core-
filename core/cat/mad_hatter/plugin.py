@@ -106,24 +106,20 @@ class Plugin:
     # get plugin settings JSON schema
     def settings_schema(self):
         # is "settings_schema" hook defined in the plugin?
-        for h in self._plugin_overrides:
-            if h.name == "settings_schema":
-                return h.function()
-            else:
-                # if the "settings_schema" is not defined but
-                # "settings_model" is it get the schema from the model
-                if h.name == "settings_model":
-                    return h.function().model_json_schema()
+        # otherwise, if the "settings_schema" is not defined but "settings_model" is it get the schema from the model
+        ph = next((h for h in self._plugin_overrides if h.name in ["settings_schema", "settings_model"]), None)
+        if ph is None:
+            # default schema (empty)
+            return PluginSettingsModel.model_json_schema()
 
-        # default schema (empty)
-        return PluginSettingsModel.model_json_schema()
+        return ph.function() if ph.name == "settings_schema" else ph.function().model_json_schema()
 
     # get plugin settings Pydantic model
     def settings_model(self):
         # is "settings_model" hook defined in the plugin?
-        for h in self._plugin_overrides:
-            if h.name == "settings_model":
-                return h.function()
+        ph = next((h for h in self._plugin_overrides if h.name == "settings_model"), None)
+        if ph is not None:
+            return ph.function()
 
         # default schema (empty)
         return PluginSettingsModel
@@ -131,9 +127,9 @@ class Plugin:
     # load plugin settings
     def load_settings(self):
         # is "settings_load" hook defined in the plugin?
-        for h in self._plugin_overrides:
-            if h.name == "load_settings":
-                return h.function()
+        ph = next((h for h in self._plugin_overrides if h.name == "load_settings"), None)
+        if ph is not None:
+            return ph.function()
 
         # by default, plugin settings are saved inside the plugin folder
         #   in a JSON file called settings.json
@@ -156,9 +152,9 @@ class Plugin:
     # save plugin settings
     def save_settings(self, settings: Dict):
         # is "settings_save" hook defined in the plugin?
-        for h in self._plugin_overrides:
-            if h.name == "save_settings":
-                return h.function(settings)
+        ph = next((h for h in self._plugin_overrides if h.name == "save_settings"), None)
+        if ph is not None:
+            return ph.function(settings)
 
         # by default, plugin settings are saved inside the plugin folder
         #   in a JSON file called settings.json
@@ -263,7 +259,7 @@ class Plugin:
                 if package_name not in installed_packages:
                     filtered_requirements.append(req)
                 else:
-                    log.debug(f"{package_name} is alredy installed")
+                    log.debug(f"{package_name} is already installed")
         except Exception as e:
             log.error(f"Error during requirements check: {e}, for {self.id}")
 

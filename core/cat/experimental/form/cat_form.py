@@ -95,8 +95,7 @@ Examples where {"exit": true}:
 - exit form
 - stop it"""
 
-        for se in self.stop_examples:
-            stop_examples += f"\n- {se}"
+        stop_examples += "".join([f"\n- {se}" for se in self.stop_examples])
 
         # Check exit prompt
         check_exit_prompt = f"""Your task is to produce a JSON representing whether a user wants to exit or not.
@@ -233,12 +232,10 @@ JSON:
         # JSON structure
         # BaseModel.__fields__['my_field'].type_
         json_structure = "{"
-        for field_name, field in self.model_class.model_fields.items():
-            if field.description:
-                description = field.description
-            else:
-                description = ""
-            json_structure += f'\n\t"{field_name}": // {description} Must be of type `{field.annotation.__name__}` or `null`'  # field.required?
+        json_structure += "".join([
+            f'\n\t"{field_name}": // {field.description if field.description else ""} Must be of type `{field.annotation.__name__}` or `null`'
+            for field_name, field in self.model_class.model_fields.items()
+        ])  # field.required?
         json_structure += "\n}"
 
         # TODO: reintroduce examples

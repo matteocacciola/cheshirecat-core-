@@ -5,7 +5,7 @@ import traceback
 import inspect
 from datetime import timedelta
 from urllib.parse import urlparse
-from typing import Dict, Tuple, List
+from typing import Dict, Tuple
 from pydantic import BaseModel, ConfigDict
 import io
 from fastapi import UploadFile

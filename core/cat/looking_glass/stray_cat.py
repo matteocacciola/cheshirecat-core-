@@ -570,9 +570,9 @@ class StrayCat:
         if isinstance(labels, Dict):
             labels_names = labels.keys()
             examples_list = "\n\nExamples:"
-            for label, examples in labels.items():
-                for ex in examples:
-                    examples_list += f'\n"{ex}" -> "{label}"'
+            examples_list += "".join([
+                f'\n"{ex}" -> "{label}"' for label, examples in labels.items() for ex in examples
+            ])
         else:
             labels_names = labels
             examples_list = ""

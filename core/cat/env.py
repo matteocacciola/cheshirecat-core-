@@ -39,10 +39,7 @@ def get_env(name):
 
     # TODO: take away in v2
     # support cat envs without the "CCAT_" prefix
-    legacy_variables = {}
-    for k, v in cat_default_env_variables.items():
-        legacy_name = k.replace("CCAT_", "")
-        legacy_variables[legacy_name] = v
+    legacy_variables = {k.replace("CCAT_", ""): v for k, v in cat_default_env_variables.items()}
     cat_default_env_variables = cat_default_env_variables | legacy_variables
 
     if name in cat_default_env_variables:
