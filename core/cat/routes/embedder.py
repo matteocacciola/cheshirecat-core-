@@ -6,9 +6,9 @@ from cat.auth.permissions import AdminAuthResource, AuthPermission
 from cat.bill_the_lizard import BillTheLizard
 from cat.db.cruds import settings as crud_settings
 from cat.exceptions import CustomValidationException
-from cat.factory.embedder import get_embedders_schemas
+from cat.factory.base_factory import ReplacedNLPConfig
+from cat.factory.embedder import EmbedderFactory
 from cat.routes.routes_utils import GetSettingsResponse, GetSettingResponse, UpsertSettingResponse
-from cat.utils import ReplacedNLPConfig
 
 router = APIRouter()
 
@@ -20,19 +20,20 @@ def get_embedders_settings(
 ) -> GetSettingsResponse:
     """Get the list of the Embedders"""
 
-    selected = crud_settings.get_setting_by_name(lizard.config_key, "embedder_selected")
+    factory = EmbedderFactory(lizard.mad_hatter)
+
+    selected = crud_settings.get_setting_by_name(lizard.config_key, factory.setting_name)
     if selected is not None:
         selected = selected["value"]["name"]
 
-    # embedder type and config are saved in settings table under "embedder_factory" category
-    saved_settings = crud_settings.get_settings_by_category(lizard.config_key, "embedder_factory")
+    saved_settings = crud_settings.get_settings_by_category(lizard.config_key, factory.setting_factory_category)
     saved_settings = {s["name"]: s for s in saved_settings}
 
     settings = [GetSettingResponse(
         name=class_name,
         value=saved_settings[class_name]["value"] if class_name in saved_settings else {},
         scheme=scheme
-    ) for class_name, scheme in get_embedders_schemas(lizard.mad_hatter).items()]
+    ) for class_name, scheme in factory.get_schemas().items()]
 
     return GetSettingsResponse(settings=settings, selected_configuration=selected)
 
@@ -45,7 +46,7 @@ def get_embedder_settings(
 ) -> GetSettingResponse:
     """Get settings and scheme of the specified Embedder"""
 
-    embedder_schemas = get_embedders_schemas(lizard.mad_hatter)
+    embedder_schemas = EmbedderFactory(lizard.mad_hatter).get_schemas()
     # check that language_embedder_name is a valid name
     allowed_configurations = list(embedder_schemas.keys())
     if embedder_name not in allowed_configurations:
@@ -67,7 +68,7 @@ def upsert_embedder_setting(
 ) -> ReplacedNLPConfig:
     """Upsert the Embedder setting"""
 
-    embedder_schemas = get_embedders_schemas(lizard.mad_hatter)
+    embedder_schemas = EmbedderFactory(lizard.mad_hatter).get_schemas()
     # check that language_embedder_name is a valid name
     allowed_configurations = list(embedder_schemas.keys())
     if embedder_name not in allowed_configurations:

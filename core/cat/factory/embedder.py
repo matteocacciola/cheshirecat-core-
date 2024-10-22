@@ -8,9 +8,9 @@ from langchain_google_genai import GoogleGenerativeAIEmbeddings
 from fastembed import TextEmbedding
 
 from cat.db.cruds import settings as crud_settings
+from cat.factory.base_factory import BaseFactory
 from cat.factory.custom_embedder import DumbEmbedder, CustomOpenAIEmbeddings
 from cat.log import log
-from cat.mad_hatter.mad_hatter import MadHatter
 from cat.utils import Enum
 
 
@@ -181,77 +181,82 @@ class EmbedderGeminiChatConfig(EmbedderSettings):
     )
 
 
-def get_allowed_embedder_models(mad_hatter: MadHatter) -> List[Type[EmbedderSettings]]:
-    list_embedder_default = [
-        EmbedderQdrantFastEmbedConfig,
-        EmbedderOpenAIConfig,
-        EmbedderAzureOpenAIConfig,
-        EmbedderGeminiChatConfig,
-        EmbedderOpenAICompatibleConfig,
-        EmbedderCohereConfig,
-        EmbedderDumbConfig,
-        EmbedderFakeConfig,
-    ]
+class EmbedderFactory(BaseFactory):
+    def get_allowed_classes(self) -> List[Type[EmbedderSettings]]:
+        list_embedder_default = [
+            EmbedderQdrantFastEmbedConfig,
+            EmbedderOpenAIConfig,
+            EmbedderAzureOpenAIConfig,
+            EmbedderGeminiChatConfig,
+            EmbedderOpenAICompatibleConfig,
+            EmbedderCohereConfig,
+            EmbedderDumbConfig,
+            EmbedderFakeConfig,
+        ]
 
-    list_embedder = mad_hatter.execute_hook(
-        "factory_allowed_embedders", list_embedder_default, cat=None
-    )
-    return list_embedder
+        list_embedder = self._mad_hatter.execute_hook(
+            "factory_allowed_embedders", list_embedder_default, cat=None
+        )
+        return list_embedder
 
+    def get_schemas(self) -> Dict:
+        # embedder_schemas contains metadata to let any client know which fields are required to create the language embedder.
+        embedder_schemas = {}
+        for config_class in self.get_allowed_classes():
+            schema = config_class.model_json_schema()
+            # useful for clients in order to call the correct config endpoints
+            schema["languageEmbedderName"] = schema["title"]
+            embedder_schemas[schema["title"]] = schema
 
-def get_embedders_schemas(mad_hatter: MadHatter) -> Dict:
-    # embedder_schemas contains metadata to let any client know which fields are required to create the language embedder.
-    embedder_schemas = {}
-    for config_class in get_allowed_embedder_models(mad_hatter):
-        schema = config_class.model_json_schema()
-        # useful for clients in order to call the correct config endpoints
-        schema["languageEmbedderName"] = schema["title"]
-        embedder_schemas[schema["title"]] = schema
+        return embedder_schemas
 
-    return embedder_schemas
+    def get_config_class_from_adapter(self, cls: Type[Embeddings]) -> Type[EmbedderSettings] | None:
+        """Find the class of the embedder adapter"""
 
+        return next(
+            (config_class for config_class in self.get_allowed_classes() if config_class.pyclass() == cls),
+            None
+        )
 
-def get_embedder_config_class_from_model(cls: Type[Embeddings], mad_hatter: MadHatter) -> Type[EmbedderSettings] | None:
-    """Find the class of the embedder adapter"""
+    def get_from_config_name(self, agent_id: str, config_name: str) -> Embeddings:
+        """
+        Get Embedder from configuration name. This function is used to get the Embedder from the configuration name
+        and the agent key.
 
-    return next(
-        (config_class for config_class in get_allowed_embedder_models(mad_hatter) if config_class.pyclass() == cls),
-        None
-    )
+        Args:
+            agent_id: The agent key
+            config_name: The configuration name
 
+        Returns:
+            Embeddings: The Embeddings instance
+        """
 
-def get_embedder_from_config_name(agent_id: str, config_name: str, mad_hatter: MadHatter) -> Embeddings:
-    """
-    Get Embedder from configuration name. This function is used to get the Embedder from the configuration name
-    and the agent key.
+        # get Embedder factory class
+        list_embedders = self.get_allowed_classes()
+        factory_class = next((cls for cls in list_embedders if cls.__name__ == config_name), None)
+        if factory_class is None:
+            log.warning(f"Embedder class {config_name} not found in the list of allowed embedders")
+            return EmbedderDumbConfig.get_embedder_from_config({})
 
-    Args:
-        agent_id: The agent key
-        config_name: The configuration name
-        mad_hatter: The MadHatter instance
+        # obtain configuration and instantiate Embedder
+        selected_embedder_config = crud_settings.get_setting_by_name(agent_id, config_name)
+        try:
+            embedder = factory_class.get_embedder_from_config(selected_embedder_config["value"])
+        except AttributeError:
+            import traceback
+            traceback.print_exc()
 
-    Returns:
-        Embeddings: The Embeddings instance
-    """
+            embedder = EmbedderDumbConfig.get_embedder_from_config({})
+        return embedder
 
-    # get Embedder factory class
-    list_embedders = get_allowed_embedder_models(mad_hatter)
-    factory_class = next((cls for cls in list_embedders if cls.__name__ == config_name), None)
-    if factory_class is None:
-        log.warning(f"Embedder class {config_name} not found in the list of allowed embedders")
-        return EmbedderDumbConfig.get_embedder_from_config({})
+    @property
+    def setting_name(self) -> str:
+        return "embedder_selected"
 
-    # obtain configuration and instantiate Embedder
-    selected_embedder_config = crud_settings.get_setting_by_name(agent_id, config_name)
-    try:
-        embedder = factory_class.get_embedder_from_config(selected_embedder_config["value"])
-    except AttributeError:
-        import traceback
-        traceback.print_exc()
+    @property
+    def setting_category(self) -> str:
+        return "embedder"
 
-        embedder = EmbedderDumbConfig.get_embedder_from_config({})
-    return embedder
-
-
-def get_config_class_name(cls: Type[EmbedderSettings]) -> str:
-    return cls.__name__
+    @property
+    def setting_factory_category(self) -> str:
+        return "embedder_factory"

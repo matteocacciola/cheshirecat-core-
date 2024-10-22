@@ -1,14 +1,14 @@
 from json import dumps
-
 import pytest
 from fastapi.encoders import jsonable_encoder
 
-from cat.factory.auth_handler import get_auth_handlers_schemas
+from cat.factory.auth_handler import AuthHandlerFactory
+
 from tests.utils import api_key, api_key_ws
 
 
 def test_get_all_auth_handler_settings(secure_client, secure_client_headers, mad_hatter):
-    auth_handler_schemas = get_auth_handlers_schemas(mad_hatter)
+    auth_handler_schemas = AuthHandlerFactory(mad_hatter).get_schemas()
     response = secure_client.get("/auth_handler/settings", headers=secure_client_headers)
     json = response.json()
 

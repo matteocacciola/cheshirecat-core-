@@ -15,8 +15,8 @@ from langchain_core.prompts import PromptTemplate
 from langchain_core.utils import get_colored_text
 from enum import Enum as BaseEnum, EnumMeta
 
-from cat.log import log
 from cat.env import get_env
+from cat.log import log
 
 
 def to_camel_case(text: str) -> str:
@@ -328,8 +328,3 @@ class MetaEnum(EnumMeta):
 class Enum(BaseEnum, metaclass=MetaEnum):
     def __str__(self):
         return self.value
-
-
-class ReplacedNLPConfig(BaseModel):
-    name: str
-    value: Dict

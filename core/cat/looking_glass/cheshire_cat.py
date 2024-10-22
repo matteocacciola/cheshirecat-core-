@@ -16,17 +16,18 @@ from langchain_core.output_parsers.string import StrOutputParser
 
 from cat.auth.auth_utils import hash_password
 from cat.auth.permissions import get_base_permissions
-from cat.db import models
 from cat.db.cruds import settings as crud_settings
 from cat.db.cruds import users as crud_users
-from cat.factory.auth_handler import CoreOnlyAuthConfig, get_auth_handler_from_config_name, get_config_class_name
-from cat.factory.embedder import get_embedder_config_class_from_model
-from cat.factory.llm import LLMDefaultConfig, get_llm_from_config_name, get_llm_config_class_from_model
+from cat.factory.adapter import FactoryAdapter
+from cat.factory.auth_handler import CoreOnlyAuthConfig, AuthHandlerFactory
+from cat.factory.base_factory import ReplacedNLPConfig
+from cat.factory.embedder import EmbedderFactory
+from cat.factory.llm import LLMDefaultConfig, LLMFactory
 from cat.log import log
 from cat.mad_hatter.mad_hatter import MadHatter
 from cat.mad_hatter.registry import registry_search_plugins
 from cat.memory.long_term_memory import LongTermMemory
-from cat.utils import ReplacedNLPConfig, langchain_log_prompt, langchain_log_output, get_caller_info
+from cat.utils import langchain_log_prompt, langchain_log_output, get_caller_info
 
 
 class Procedure(Protocol):
@@ -193,16 +194,26 @@ class CheshireCat:
     def load_language_model(self):
         """Large Language Model (LLM) selection."""
 
-        selected_llm = crud_settings.get_setting_by_name(self.id, "llm_selected")
+        llm_factory = LLMFactory(self.mad_hatter)
+
+        selected_llm = crud_settings.get_setting_by_name(self.id, llm_factory.setting_name)
 
         if selected_llm is None:
             # return default LLM
             llm = LLMDefaultConfig.get_llm_from_config({})
         else:
-            llm = get_llm_from_config_name(self.id, selected_llm["value"]["name"], self.mad_hatter)
+            llm = llm_factory.get_from_config_name(self.id, selected_llm["value"]["name"], )
 
-        embedder_config = get_embedder_config_class_from_model(self.embedder.__class__, self.mad_hatter)
-        llm_config = get_llm_config_class_from_model(llm.__class__, self.mad_hatter)
+        embedder_config = EmbedderFactory(
+            self.lizard.mad_hatter
+        ).get_config_class_from_adapter(self.lizard.embedder.__class__)
+        llm_config = llm_factory.get_config_class_from_adapter(llm.__class__)
+        if not embedder_config or not llm_config:
+            raise ValueError(
+                f"Embedder or LLM not found in the list of allowed models."
+                f" Embedder: {self.lizard.embedder.__class__}, LLM: {llm.__class__}"
+            )
+
         if embedder_config.is_multimodal() != llm_config.is_multimodal():
             raise ValueError(
                 f"Embedder and LLM must be both multimodal or both single modal."
@@ -212,47 +223,26 @@ class CheshireCat:
         self.llm = llm
 
     def load_auth(self):
+        factory = AuthHandlerFactory(self.mad_hatter)
+
         # Custom auth_handler
-        selected_auth_handler = crud_settings.get_setting_by_name(self.id, "auth_handler_selected")
+        selected_config = FactoryAdapter(factory).get_factory_config_by_settings(self.id, CoreOnlyAuthConfig)
 
-        # if no auth_handler is saved, use default one and save to db
-        if selected_auth_handler is None:
-            class_config_name = get_config_class_name(CoreOnlyAuthConfig)
-
-            # create the auth settings
-            crud_settings.upsert_setting_by_name(
-                self.id,
-                models.Setting(name=class_config_name, category="auth_handler_factory", value={}),
-            )
-            crud_settings.upsert_setting_by_name(
-                self.id,
-                models.Setting(
-                    name="auth_handler_selected",
-                    category="auth_handler_factory",
-                    value={"name": class_config_name},
-                ),
-            )
-
-            # reload from db
-            selected_auth_handler = crud_settings.get_setting_by_name(self.id, "auth_handler_selected")
-
-        self.custom_auth_handler = get_auth_handler_from_config_name(
-            self.id, selected_auth_handler["value"]["name"], self.mad_hatter
-        )
+        self.custom_auth_handler = factory.get_from_config_name(self.id, selected_config["value"]["name"])
 
     def load_memory(self):
         """Load LongTerMemory and WorkingMemory."""
         # Memory
 
         # Get embedder size (langchain classes do not store it)
-        embedder_size = len(self.embedder.embed_query("hello world"))
+        embedder_size = len(self.lizard.embedder.embed_query("hello world"))
 
         # Get embedder name (useful for for vectorstore aliases)
         embedder_name = "default_embedder"
-        if hasattr(self.embedder, "model"):
-            embedder_name = self.embedder.model
-        elif hasattr(self.embedder, "repo_id"):
-            embedder_name = self.embedder.repo_id
+        if hasattr(self.lizard.embedder, "model"):
+            embedder_name = self.lizard.embedder.model
+        elif hasattr(self.lizard.embedder, "repo_id"):
+            embedder_name = self.lizard.embedder.repo_id
 
         # instantiate long term memory
         vector_memory_config = {
@@ -289,12 +279,8 @@ class CheshireCat:
             trigger_content in trigger_list}
 
         # points_to_be_kept = set(active_procedures_hashes.keys()) and set(embedded_procedures_hashes.keys()) not necessary
-        points_to_be_deleted = set(embedded_procedures_hashes.keys()) - set(
-            active_procedures_hashes.keys()
-        )
-        points_to_be_embedded = set(active_procedures_hashes.keys()) - set(
-            embedded_procedures_hashes.keys()
-        )
+        points_to_be_deleted = set(embedded_procedures_hashes.keys()) - set(active_procedures_hashes.keys())
+        points_to_be_embedded = set(active_procedures_hashes.keys()) - set(embedded_procedures_hashes.keys())
 
         if points_to_be_deleted_ids := [embedded_procedures_hashes[p] for p in points_to_be_deleted]:
             log.warning(f"Deleting triggers: {points_to_be_deleted}")
@@ -302,7 +288,7 @@ class CheshireCat:
 
         active_triggers_to_be_embedded = [active_procedures_hashes[p] for p in points_to_be_embedded]
         for t in active_triggers_to_be_embedded:
-            trigger_embedding = self.embedder.embed_documents([t["content"]])
+            trigger_embedding = self.lizard.embedder.embed_documents([t["content"]])
             self.memory.vectors.procedural.add_point(
                 t["content"],
                 trigger_embedding[0],
@@ -329,24 +315,17 @@ class CheshireCat:
         This method is useful for generating a response with both a chat and a completion model using the same syntax
 
         Args:
-            prompt : str
-                The prompt for generating the response.
+            prompt (str): The prompt for generating the response.
 
         Returns:
-            str
-                The generated response.
-
+            str: The generated response.
         """
 
         # Add a token counter to the callbacks
         caller = get_caller_info()
 
         # here we deal with motherfucking langchain
-        prompt = ChatPromptTemplate(
-            messages=[
-                SystemMessage(content=prompt)
-            ]
-        )
+        prompt = ChatPromptTemplate(messages=[SystemMessage(content=prompt)])
 
         chain = (
             prompt
@@ -356,11 +335,8 @@ class CheshireCat:
             | StrOutputParser()
         )
 
-        output = chain.invoke(
-            {}, # in case we need to pass info to the template
-        )
-
-        return output
+        # in case we need to pass info to the template
+        return chain.invoke({})
 
     async def get_plugins(self, query: str = None) -> Plugins:
         """
@@ -414,26 +390,12 @@ class CheshireCat:
             The dictionary resuming the new name and settings of the LLM
         """
 
-        current_llm = crud_settings.get_setting_by_name(self.id, "llm_selected")
-        current_factory = (
-            crud_settings.get_setting_by_name(self.id, current_llm["value"]["name"]) if current_llm else None
-        )
+        adapter = FactoryAdapter(LLMFactory(self.mad_hatter))
 
-        if current_llm is not None and current_llm["value"]["name"] == language_model_name:
-            # do nothing
-            return ReplacedNLPConfig(name=language_model_name, value=current_factory["value"])
-
-        # create the setting and upsert it
-        final_setting = crud_settings.upsert_setting_by_name(
-            self.id,
-            models.Setting(name=language_model_name, category="llm_factory", value=settings),
-        )
-
-        # general LLM settings are saved in settings table under "llm" category
-        crud_settings.upsert_setting_by_name(
-            self.id,
-            models.Setting(name="llm_selected", category="llm", value={"name": language_model_name}),
-        )
+        updater = adapter.upsert_factory_config_by_settings(self.id, language_model_name, settings)
+        # if the llm is the same, return the old one, i.e. there is no new factory llm
+        if not updater.new_factory:
+            return ReplacedNLPConfig(name=language_model_name, value=updater.old_factory.get("value"))
 
         try:
             # try to reload the llm of the cat
@@ -442,17 +404,45 @@ class CheshireCat:
             log.error(f"Error while loading the new LLM: {e}")
 
             # something went wrong: rollback
-            crud_settings.delete_settings_by_category(self.id, "llm")
-            crud_settings.delete_settings_by_category(self.id, "llm_factory")
-            if current_llm is not None:
-                self.replace_llm(current_llm["value"]["name"], current_factory["value"])
+            adapter.rollback_factory_config(self.id)
+
+            if updater.old_setting is not None:
+                self.replace_llm(updater.old_setting["value"]["name"], updater.new_factory["value"])
 
             raise e
 
         # recreate tools embeddings
         self.mad_hatter.find_plugins()
 
-        return ReplacedNLPConfig(name=language_model_name, value=final_setting["value"])
+        return ReplacedNLPConfig(name=language_model_name, value=updater.new_factory["value"])
+
+    def replace_auth_handler(self, auth_handler_name: str, settings: Dict) -> ReplacedNLPConfig:
+        """
+        Replace the current Auth Handler with a new one.
+        Args:
+            auth_handler_name: name of the new Auth Handler
+            settings: settings of the new Auth Handler
+
+        Returns:
+            The dictionary resuming the new name and settings of the Auth Handler
+        """
+
+        updater = FactoryAdapter(
+            AuthHandlerFactory(self.mad_hatter)
+        ).upsert_factory_config_by_settings(self.id, auth_handler_name, settings)
+
+        # if the auth handler is the same, return the old one, i.e. there is no new factory auth handler
+        if not updater.new_factory:
+            return ReplacedNLPConfig(name=auth_handler_name, value=updater.old_factory.get("value"))
+
+        self.load_auth()
+
+        return ReplacedNLPConfig(name=auth_handler_name, value=updater.new_factory["value"])
+
+    @property
+    def lizard(self) -> "BillTheLizard":
+        from cat.bill_the_lizard import BillTheLizard
+        return BillTheLizard()
 
     @property
     def strays(self):
@@ -460,23 +450,19 @@ class CheshireCat:
 
     @property
     def embedder(self) -> Embeddings:
-        from cat.bill_the_lizard import BillTheLizard
-        return BillTheLizard().embedder
+        return self.lizard.embedder
 
     @property
     def rabbit_hole(self) -> "RabbitHole":
-        from cat.bill_the_lizard import BillTheLizard
-        return BillTheLizard().rabbit_hole
+        return self.lizard.rabbit_hole
 
     @property
     def core_auth_handler(self) -> "CoreAuthHandler":
-        from cat.bill_the_lizard import BillTheLizard
-        return BillTheLizard().core_auth_handler
+        return self.lizard.core_auth_handler
 
     @property
     def main_agent(self) -> "MainAgent":
-        from cat.bill_the_lizard import BillTheLizard
-        return BillTheLizard().main_agent
+        return self.lizard.main_agent
 
     # each time we access the file handlers, plugins can intervene
     @property

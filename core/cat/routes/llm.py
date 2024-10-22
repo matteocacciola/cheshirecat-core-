@@ -4,10 +4,10 @@ from fastapi import APIRouter, Body, Depends
 from cat.auth.connection import HTTPAuth, ContextualCats
 from cat.auth.permissions import AuthPermission, AuthResource
 from cat.exceptions import CustomValidationException
-from cat.factory.llm import get_llms_schemas
+from cat.factory.base_factory import ReplacedNLPConfig
+from cat.factory.llm import LLMFactory
 from cat.db.cruds import settings as crud_settings
 from cat.routes.routes_utils import GetSettingsResponse, GetSettingResponse, UpsertSettingResponse
-from cat.utils import ReplacedNLPConfig
 
 router = APIRouter()
 
@@ -20,22 +20,21 @@ def get_llms_settings(
     """Get the list of the Large Language Models"""
 
     ccat = cats.cheshire_cat
+    factory = LLMFactory(ccat.mad_hatter)
 
     # get selected LLM, if any
-    # llm selected configuration is saved under "llm_selected" name
-    selected = crud_settings.get_setting_by_name(ccat.id, "llm_selected")
+    selected = crud_settings.get_setting_by_name(ccat.id, factory.setting_name)
     if selected is not None:
         selected = selected["value"]["name"]
 
-    # llm type and config are saved in settings table under "llm_factory" category
-    saved_settings = crud_settings.get_settings_by_category(ccat.id, "llm_factory")
+    saved_settings = crud_settings.get_settings_by_category(ccat.id, factory.setting_factory_category)
     saved_settings = {s["name"]: s for s in saved_settings}
 
     settings = [GetSettingResponse(
         name=class_name,
         value=saved_settings[class_name]["value"] if class_name in saved_settings else {},
         scheme=scheme
-    ) for class_name, scheme in get_llms_schemas(ccat.mad_hatter).items()]
+    ) for class_name, scheme in factory.get_schemas().items()]
 
     return GetSettingsResponse(settings=settings, selected_configuration=selected)
 
@@ -49,7 +48,7 @@ def get_llm_settings(
     """Get settings and scheme of the specified Large Language Model"""
 
     ccat = cats.cheshire_cat
-    llm_schemas = get_llms_schemas(ccat.mad_hatter)
+    llm_schemas = LLMFactory(ccat.mad_hatter).get_schemas()
 
     # check that language_model_name is a valid name
     allowed_configurations = list(llm_schemas.keys())
@@ -73,7 +72,7 @@ def upsert_llm_setting(
     """Upsert the Large Language Model setting"""
 
     ccat = cats.cheshire_cat
-    llm_schemas = get_llms_schemas(ccat.mad_hatter)
+    llm_schemas = LLMFactory(ccat.mad_hatter).get_schemas()
 
     # check that language_model_name is a valid name
     allowed_configurations = list(llm_schemas.keys())

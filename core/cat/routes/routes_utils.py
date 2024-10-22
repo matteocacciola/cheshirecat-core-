@@ -4,7 +4,7 @@ from pydantic import BaseModel
 from fastapi import Request
 
 from cat.exceptions import CustomForbiddenException
-from cat.utils import ReplacedNLPConfig
+from cat.factory.base_factory import ReplacedNLPConfig
 
 
 class UserCredentials(BaseModel):

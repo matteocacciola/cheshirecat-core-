@@ -13,9 +13,9 @@ import json
 from pydantic import BaseModel, ConfigDict
 
 from cat.db.cruds import settings as crud_settings
+from cat.factory.base_factory import BaseFactory
 from cat.factory.custom_llm import LLMDefault, LLMCustom, CustomOpenAI, CustomOllama
 from cat.log import log
-from cat.mad_hatter.mad_hatter import MadHatter
 
 
 # Base class to manage LLM configuration.
@@ -299,82 +299,87 @@ class LLMGeminiChatConfig(LLMSettings):
     )
 
 
-def get_allowed_language_models(mad_hatter: MadHatter) -> List[Type[LLMSettings]]:
-    list_llms_default = [
-        LLMOpenAIChatConfig,
-        LLMOpenAIConfig,
-        LLMOpenAICompatibleConfig,
-        LLMOllamaConfig,
-        LLMGeminiChatConfig,
-        LLMCohereConfig,
-        LLMAzureOpenAIConfig,
-        LLMAzureChatOpenAIConfig,
-        LLMHuggingFaceEndpointConfig,
-        LLMHuggingFaceTextGenInferenceConfig,
-        LLMCustomConfig,
-        LLMDefaultConfig,
-    ]
+class LLMFactory(BaseFactory):
+    def get_allowed_classes(self) -> List[Type[LLMSettings]]:
+        list_llms_default = [
+            LLMOpenAIChatConfig,
+            LLMOpenAIConfig,
+            LLMOpenAICompatibleConfig,
+            LLMOllamaConfig,
+            LLMGeminiChatConfig,
+            LLMCohereConfig,
+            LLMAzureOpenAIConfig,
+            LLMAzureChatOpenAIConfig,
+            LLMHuggingFaceEndpointConfig,
+            LLMHuggingFaceTextGenInferenceConfig,
+            LLMCustomConfig,
+            LLMDefaultConfig,
+        ]
 
-    list_llms = mad_hatter.execute_hook(
-        "factory_allowed_llms", list_llms_default, cat=None
-    )
-    return list_llms
+        list_llms = self._mad_hatter.execute_hook(
+            "factory_allowed_llms", list_llms_default, cat=None
+        )
+        return list_llms
 
+    def get_schemas(self) -> Dict:
+        # llm_schemas contains metadata to let any client know
+        # which fields are required to create the language model.
+        llm_schemas = {}
+        for config_class in self.get_allowed_classes():
+            schema = config_class.model_json_schema()
+            # useful for clients in order to call the correct config endpoints
+            schema["languageModelName"] = schema["title"]
+            llm_schemas[schema["title"]] = schema
 
-def get_llms_schemas(mad_hatter: MadHatter) -> Dict:
-    # llm_schemas contains metadata to let any client know
-    # which fields are required to create the language model.
-    llm_schemas = {}
-    for config_class in get_allowed_language_models(mad_hatter):
-        schema = config_class.model_json_schema()
-        # useful for clients in order to call the correct config endpoints
-        schema["languageModelName"] = schema["title"]
-        llm_schemas[schema["title"]] = schema
+        return llm_schemas
 
-    return llm_schemas
+    def get_config_class_from_adapter(self, cls: Type[BaseLanguageModel]) -> Type[LLMSettings] | None:
+        """Find the class of the llm adapter"""
 
+        return next(
+            (config_class for config_class in self.get_allowed_classes() if config_class.pyclass() == cls),
+            None
+        )
 
-def get_llm_config_class_from_model(cls: Type[BaseLanguageModel], mad_hatter: MadHatter) -> Type[LLMSettings] | None:
-    """Find the class of the llm adapter"""
+    def get_from_config_name(self, agent_id: str, config_name: str) -> BaseLanguageModel:
+        """
+        Get the language model from the configuration name.
 
-    return next(
-        (config_class for config_class in get_allowed_language_models(mad_hatter) if config_class.pyclass() == cls),
-        None
-    )
+        Args:
+            agent_id: The agent key
+            config_name: The configuration name
 
+        Returns:
+            BaseLanguageModel: The language model instance
+        """
 
-def get_llm_from_config_name(agent_id: str, config_name: str, mad_hatter: MadHatter) -> BaseLanguageModel:
-    """
-    Get the language model from the configuration name.
+        # get LLM factory class
+        list_llms = self.get_allowed_classes()
+        factory_class = next((cls for cls in list_llms if cls.__name__ == config_name), None)
+        if not factory_class:
+            log.warning(f"LLM class {config_name} not found in the list of allowed LLMs")
+            return LLMDefaultConfig.get_llm_from_config({})
 
-    Args:
-        agent_id: The agent key
-        config_name: The configuration name
-        mad_hatter: The MadHatter instance
+        # obtain configuration and instantiate LLM
+        selected_llm_config = crud_settings.get_setting_by_name(agent_id, config_name)
+        try:
+            llm = factory_class.get_llm_from_config(selected_llm_config["value"])
+        except Exception:
+            import traceback
+            traceback.print_exc()
 
-    Returns:
-        BaseLanguageModel: The language model instance
-    """
+            llm = LLMDefaultConfig.get_llm_from_config({})
 
-    # get LLM factory class
-    list_llms = get_allowed_language_models(mad_hatter)
-    factory_class = next((cls for cls in list_llms if cls.__name__ == config_name), None)
-    if not factory_class:
-        log.warning(f"LLM class {config_name} not found in the list of allowed LLMs")
-        return LLMDefaultConfig.get_llm_from_config({})
+        return llm
 
-    # obtain configuration and instantiate LLM
-    selected_llm_config = crud_settings.get_setting_by_name(agent_id, config_name)
-    try:
-        llm = factory_class.get_llm_from_config(selected_llm_config["value"])
-    except Exception:
-        import traceback
-        traceback.print_exc()
+    @property
+    def setting_name(self) -> str:
+        return "llm_selected"
 
-        llm = LLMDefaultConfig.get_llm_from_config({})
+    @property
+    def setting_category(self) -> str:
+        return "llm"
 
-    return llm
-
-
-def get_config_class_name(cls: Type[LLMSettings]) -> str:
-    return cls.__name__
+    @property
+    def setting_factory_category(self) -> str:
+        return "llm_factory"

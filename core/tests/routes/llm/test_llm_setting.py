@@ -1,12 +1,13 @@
 from json import dumps
 from fastapi.encoders import jsonable_encoder
 
-from cat.factory.llm import get_llms_schemas
+from cat.factory.llm import LLMFactory
+
 from tests.utils import create_new_user, new_user_password, agent_id
 
 
 def test_get_all_llm_settings(secure_client, secure_client_headers, cheshire_cat):
-    llms_schemas = get_llms_schemas(cheshire_cat.mad_hatter)
+    llms_schemas = LLMFactory(cheshire_cat.mad_hatter).get_schemas()
 
     response = secure_client.get("/llm/settings", headers=secure_client_headers)
     json = response.json()

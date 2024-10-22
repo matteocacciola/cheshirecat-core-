@@ -6,21 +6,21 @@ from cat import utils
 from cat.agents.main_agent import MainAgent
 from cat.auth.auth_utils import hash_password
 from cat.auth.permissions import get_full_admin_permissions
-from cat.db import models
-from cat.db.cruds import settings as crud_settings
 from cat.db.cruds import users as crud_users
 from cat.db.database import DEFAULT_SYSTEM_KEY
 from cat.env import get_env
 from cat.exceptions import LoadMemoryException
+from cat.factory.adapter import FactoryAdapter
+from cat.factory.base_factory import ReplacedNLPConfig
 from cat.factory.custom_auth_handler import CoreAuthHandler
-from cat.factory.embedder import EmbedderDumbConfig, get_embedder_from_config_name, get_config_class_name
+from cat.factory.embedder import EmbedderDumbConfig, EmbedderFactory
 from cat.jobs import job_on_idle_strays
 from cat.log import log
 from cat.looking_glass.cheshire_cat import CheshireCat
 from cat.looking_glass.white_rabbit import WhiteRabbit
 from cat.mad_hatter.mad_hatter import MadHatter
 from cat.rabbit_hole import RabbitHole
-from cat.utils import singleton, ReplacedNLPConfig
+from cat.utils import singleton
 
 
 @singleton
@@ -96,30 +96,11 @@ class BillTheLizard:
         Hook into the embedder selection. Allows to modify how the Cats select the embedder at bootstrap time.
         """
 
-        selected_embedder = crud_settings.get_setting_by_name(self.__key, "embedder_selected")
+        factory = EmbedderFactory(self.mad_hatter)
 
-        # if no llm is saved, use default one and save to db
-        if selected_embedder is None:
-            class_config_name = get_config_class_name(EmbedderDumbConfig)
+        selected_config = FactoryAdapter(factory).get_factory_config_by_settings(self.__key, EmbedderDumbConfig)
 
-            # selected_embedder the auth settings
-            crud_settings.upsert_setting_by_name(
-                self.__key,
-                models.Setting(name=class_config_name, category="embedder_factory", value={}),
-            )
-            crud_settings.upsert_setting_by_name(
-                self.__key,
-                models.Setting(
-                    name="embedder_selected",
-                    category="embedder_factory",
-                    value={"name": class_config_name},
-                ),
-            )
-
-            # reload from db
-            selected_embedder = crud_settings.get_setting_by_name(self.__key, "embedder_selected")
-
-        self.embedder = get_embedder_from_config_name(self.__key, selected_embedder["value"]["name"], self.mad_hatter)
+        self.embedder = factory.get_from_config_name(self.__key, selected_config["value"]["name"])
 
     def replace_embedder(self, language_embedder_name: str, settings: Dict) -> ReplacedNLPConfig:
         """
@@ -133,41 +114,15 @@ class BillTheLizard:
             The dictionary resuming the new name and settings of the embedder
         """
 
-        # get selected config if any
-        # embedder selected configuration is saved under "embedder_selected" name
-        current_embedder = crud_settings.get_setting_by_name(self.__key, "embedder_selected")
-        # embedder type and config are saved in settings table under "embedder_factory" category
-        current_factory = (
-            crud_settings.get_setting_by_name(self.__key, current_embedder["value"]["name"])
-            if current_embedder
-            else None
-        )
+        adapter = FactoryAdapter(EmbedderFactory(self.mad_hatter))
 
-        if current_embedder is not None and current_embedder["value"]["name"] == language_embedder_name:
-            # do nothing
-            return ReplacedNLPConfig(name=language_embedder_name, value=current_factory["value"])
-
-        # create the setting and upsert it
-        # embedder type and config are saved in settings table under "embedder_factory" category
-        final_setting = crud_settings.upsert_setting_by_name(
-            self.__key,
-            models.Setting(
-                name=language_embedder_name, category="embedder_factory", value=settings
-            ),
-        )
-
-        # general embedder settings are saved in settings table under "embedder" category
-        crud_settings.upsert_setting_by_name(
-            self.__key,
-            models.Setting(
-                name="embedder_selected",
-                category="embedder",
-                value={"name": language_embedder_name},
-            ),
-        )
+        updater = adapter.upsert_factory_config_by_settings(self.__key, language_embedder_name, settings)
+        # if the embedder is the same, return the old one, i.e. there is no new factory embedder
+        if not updater.new_factory:
+            return ReplacedNLPConfig(name=language_embedder_name, value=updater.old_factory.get("value"))
 
         # reload the embedder of the cat
-        self.embedder = self.load_language_embedder()
+        self.load_language_embedder()
 
         for ccat in self.__cheshire_cats.values():
             try:
@@ -177,17 +132,17 @@ class BillTheLizard:
                 log.error(e)
 
                 # something went wrong: rollback
-                crud_settings.delete_settings_by_category(self.__key, "embedder")
-                crud_settings.delete_settings_by_category(self.__key, "embedder_factory")
-                if current_embedder is not None:
-                    self.replace_embedder(current_embedder["value"]["name"], current_factory["value"])
+                adapter.rollback_factory_config(self.__key)
+
+                if updater.old_setting is not None:
+                    self.replace_embedder(updater.old_setting["value"]["name"], updater.old_factory["value"])
 
                 raise LoadMemoryException(f"Load memory exception: {utils.explicit_error_message(e)}")
 
         # recreate tools embeddings
         self.mad_hatter.find_plugins()
 
-        return ReplacedNLPConfig(name=language_embedder_name, value=final_setting["value"])
+        return ReplacedNLPConfig(name=language_embedder_name, value=updater.new_factory["value"])
 
     async def remove_cheshire_cat(self, agent_id: str) -> None:
         """

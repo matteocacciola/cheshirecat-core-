@@ -7,7 +7,7 @@ from qdrant_client.http.models import UpdateResult, Record
 from cat.auth.connection import HTTPAuth, ContextualCats
 from cat.auth.permissions import AuthPermission, AuthResource
 from cat.exceptions import CustomNotFoundException, CustomValidationException
-from cat.factory.embedder import get_embedder_config_class_from_model
+from cat.factory.embedder import EmbedderFactory
 from cat.memory.vector_memory_collection import VectoryMemoryCollectionTypes
 
 router = APIRouter()
@@ -87,10 +87,12 @@ async def recall_memory_points_from_text(
         build_memory_dict(metadata, score, vector, id) for metadata, score, vector, id in get_memories(c)
     ] for c in VectoryMemoryCollectionTypes}
 
+    config_class = EmbedderFactory(ccat.mad_hatter).get_config_class_from_adapter(ccat.embedder.__class__)
+
     return RecallResponse(
         query=RecallResponseQuery(text=text, vector=query_embedding),
         vectors=RecallResponseVectors(
-            embedder=get_embedder_config_class_from_model(ccat.embedder.__class__, ccat.mad_hatter).__name__,
+            embedder=config_class.__name__ if config_class else None,
             collections=recalled
         )
     )

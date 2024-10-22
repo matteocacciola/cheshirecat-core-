@@ -6,6 +6,7 @@ from cat.auth.permissions import get_full_admin_permissions
 from cat.db import models
 from cat.db.cruds import settings as crud_settings, users as crud_users
 from cat.db.database import DEFAULT_SYSTEM_KEY
+from cat.factory.auth_handler import AuthHandlerFactory
 
 from tests.utils import agent_id
 
@@ -26,7 +27,7 @@ def test_get_settings(cheshire_cat):
     crud_settings.create_setting(agent_id, models.Setting(**{
         "name": "CoreOnlyAuthConfig2",
         "value": {},
-        "category": "auth_handler_factory",
+        "category": AuthHandlerFactory(cheshire_cat.mad_hatter).setting_factory_category,
         "setting_id": "96f4c9d4-b58d-41c5-88e2-c87b94fe012c",
         "updated_at": 1729169367
     }))
@@ -36,6 +37,8 @@ def test_get_settings(cheshire_cat):
 
 
 def test_get_setting_by_category(cheshire_cat):
+    factory = AuthHandlerFactory(cheshire_cat.mad_hatter)
+
     value = crud_settings.get_settings_by_category(agent_id, "")
     assert isinstance(value, list)
     assert len(value) == 0
@@ -44,9 +47,13 @@ def test_get_setting_by_category(cheshire_cat):
     assert isinstance(value, list)
     assert len(value) == 0
 
-    value = crud_settings.get_settings_by_category(agent_id, "auth_handler_factory")
+    value = crud_settings.get_settings_by_category(agent_id, factory.setting_factory_category)
     assert isinstance(value, list)
-    assert len(value) == 2
+    assert len(value) == 1
+
+    value = crud_settings.get_settings_by_category(agent_id, factory.setting_category)
+    assert isinstance(value, list)
+    assert len(value) == 1
 
 
 def test_get_setting_by_name(cheshire_cat):
@@ -59,7 +66,7 @@ def test_get_setting_by_name(cheshire_cat):
     assert len(users) == 1
     assert users[0]["username"] == "admin"
 
-    value = crud_settings.get_setting_by_name(agent_id, "auth_handler_selected")
+    value = crud_settings.get_setting_by_name(agent_id, AuthHandlerFactory(cheshire_cat.mad_hatter).setting_name)
     assert isinstance(value, dict)
     assert value["value"]["name"] == "CoreOnlyAuthConfig"
 
@@ -69,7 +76,7 @@ def test_get_setting_by_id(cheshire_cat):
     expected = {
         "name": "CoreOnlyAuthConfig2",
         "value": {},
-        "category": "auth_handler_factory",
+        "category": AuthHandlerFactory(cheshire_cat.mad_hatter).setting_factory_category,
         "setting_id": setting_id,
         "updated_at": 1729169367
     }
@@ -86,7 +93,7 @@ def test_delete_setting_by_id(cheshire_cat):
     add = {
         "name": "CoreOnlyAuthConfig2",
         "value": {},
-        "category": "auth_handler_factory",
+        "category": AuthHandlerFactory(cheshire_cat.mad_hatter).setting_factory_category,
         "setting_id": setting_id,
         "updated_at": 1729169367
     }
@@ -100,11 +107,11 @@ def test_delete_setting_by_id(cheshire_cat):
 
 
 def test_delete_settings_by_category(cheshire_cat):
-    category = "auth_handler_factory"
+    category = AuthHandlerFactory(cheshire_cat.mad_hatter).setting_factory_category
     value = crud_settings.get_settings_by_category(agent_id, category)
-    assert len(value) == 2
+    assert len(value) == 1
 
-    crud_settings.delete_settings_by_category(agent_id, "auth_handler_factory")
+    crud_settings.delete_settings_by_category(agent_id, category)
     value = crud_settings.get_settings_by_category(agent_id, category)
     assert len(value) == 0
 
@@ -113,7 +120,7 @@ def test_create_setting_with_empty_name(cheshire_cat):
     add = {
         "name": "",
         "value": {},
-        "category": "auth_handler_factory",
+        "category": AuthHandlerFactory(cheshire_cat.mad_hatter).setting_factory_category,
         "setting_id": "96f4c9d4-b58d-41c5-88e2-c87b94fe012c",
         "updated_at": 1729169367
     }
@@ -127,7 +134,7 @@ def test_update_setting_by_id(cheshire_cat):
     add = {
         "name": "CoreOnlyAuthConfig2",
         "value": {},
-        "category": "auth_handler_factory",
+        "category": AuthHandlerFactory(cheshire_cat.mad_hatter).setting_factory_category,
         "setting_id": setting_id,
         "updated_at": 1729169367
     }
@@ -147,7 +154,7 @@ def test_upsert_setting_by_name(cheshire_cat):
     add = {
         "name": name,
         "value": {},
-        "category": "auth_handler_factory",
+        "category": AuthHandlerFactory(cheshire_cat.mad_hatter).setting_factory_category,
         "setting_id": "96f4c9d4-b58d-41c5-88e2-c87b94fe012c",
         "updated_at": 1729169367
     }

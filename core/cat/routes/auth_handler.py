@@ -3,10 +3,10 @@ from fastapi import APIRouter, Body, Depends
 
 from cat.auth.connection import HTTPAuth, ContextualCats
 from cat.auth.permissions import AuthPermission, AuthResource
-from cat.db import models
 from cat.db.cruds import settings as crud_settings
 from cat.exceptions import CustomValidationException
-from cat.factory.auth_handler import get_auth_handlers_schemas
+from cat.factory.auth_handler import AuthHandlerFactory
+from cat.factory.base_factory import ReplacedNLPConfig
 from cat.routes.routes_utils import GetSettingsResponse, GetSettingResponse, UpsertSettingResponse
 
 router = APIRouter()
@@ -19,20 +19,21 @@ def get_auth_handler_settings(
     """Get the list of the AuthHandlers"""
 
     ccat = cats.cheshire_cat
+    factory = AuthHandlerFactory(ccat.mad_hatter)
 
     # get selected AuthHandler
-    selected = crud_settings.get_setting_by_name(ccat.id, "auth_handler_selected")
+    selected = crud_settings.get_setting_by_name(ccat.id, factory.setting_name)
     if selected is not None:
         selected = selected["value"]["name"]
 
-    saved_settings = crud_settings.get_settings_by_category(ccat.id, "auth_handler_factory")
+    saved_settings = crud_settings.get_settings_by_category(ccat.id, factory.setting_factory_category)
     saved_settings = {s["name"]: s for s in saved_settings}
 
     settings = [GetSettingResponse(
         name=class_name,
         value=saved_settings[class_name]["value"] if class_name in saved_settings else {},
         scheme=scheme
-    ) for class_name, scheme in get_auth_handlers_schemas(ccat.mad_hatter).items()]
+    ) for class_name, scheme in factory.get_schemas().items()]
 
     return GetSettingsResponse(settings=settings, selected_configuration=selected)
 
@@ -44,7 +45,7 @@ def get_auth_handler_setting(
 ) -> GetSettingResponse:
     """Get the settings of a specific AuthHandler"""
 
-    auth_handler_schemas = get_auth_handlers_schemas(cats.cheshire_cat.mad_hatter)
+    auth_handler_schemas = AuthHandlerFactory(cats.cheshire_cat.mad_hatter).get_schemas()
 
     allowed_configurations = list(auth_handler_schemas.keys())
     if auth_handler_name not in allowed_configurations:
@@ -63,34 +64,14 @@ def upsert_authenticator_setting(
     auth_handler_name: str,
     cats: ContextualCats = Depends(HTTPAuth(AuthResource.AUTH_HANDLER, AuthPermission.LIST)),
     payload: Dict = Body(...),
-) -> UpsertSettingResponse:
+) -> ReplacedNLPConfig:
     """Upsert the settings of a specific AuthHandler"""
 
     ccat = cats.cheshire_cat
-    agent_id = ccat.id
-
-    auth_handler_schemas = get_auth_handlers_schemas(ccat.mad_hatter)
+    auth_handler_schemas = AuthHandlerFactory(ccat.mad_hatter).get_schemas()
 
     allowed_configurations = list(auth_handler_schemas.keys())
     if auth_handler_name not in allowed_configurations:
         raise CustomValidationException(f"{auth_handler_name} not supported. Must be one of {allowed_configurations}")
 
-    crud_settings.upsert_setting_by_name(
-        agent_id,
-        models.Setting(
-            name=auth_handler_name, value=payload, category="auth_handler_factory"
-        ),
-    )
-
-    crud_settings.upsert_setting_by_name(
-        agent_id,
-        models.Setting(
-            name="auth_handler_selected",
-            value={"name": auth_handler_name},
-            category="auth_handler_factory",
-        ),
-    )
-
-    ccat.load_auth()
-
-    return UpsertSettingResponse(name=auth_handler_name, value=payload)
+    return ccat.replace_auth_handler(auth_handler_name, payload)

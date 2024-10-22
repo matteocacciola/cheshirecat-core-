@@ -1,11 +1,11 @@
 from json import dumps
 from fastapi.encoders import jsonable_encoder
 
-from cat.factory.embedder import get_embedders_schemas
+from cat.factory.embedder import EmbedderFactory
 
 
 def test_get_all_embedder_settings(secure_client, secure_client_headers, lizard):
-    embedder_schemas = get_embedders_schemas(lizard.mad_hatter)
+    embedder_schemas = EmbedderFactory(lizard.mad_hatter).get_schemas()
     response = secure_client.get("/embedder/settings", headers=secure_client_headers)
     json = response.json()
 
