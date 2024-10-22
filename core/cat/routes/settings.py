@@ -1,104 +1,110 @@
-from cat.auth.permissions import AuthPermission, AuthResource
-from cat.auth.connection import HTTPAuth
-from fastapi import Depends, APIRouter, HTTPException
-from cat.db import models
-from cat.db import crud
+from typing import Dict, List
 
+from fastapi import Depends, APIRouter
+from pydantic import BaseModel
+
+from cat.auth.permissions import AuthPermission, AuthResource
+from cat.auth.connection import HTTPAuth, ContextualCats
+from cat.db import models
+from cat.db.cruds import settings as crud_settings
+from cat.exceptions import CustomNotFoundException
 
 router = APIRouter()
 
 
-@router.get("/")
+class SettingResponse(BaseModel):
+    setting: Dict
+
+
+class GetSettingsResponse(BaseModel):
+    settings: List[Dict]
+
+
+class DeleteSettingResponse(BaseModel):
+    deleted: str
+
+
+@router.get("/", response_model=GetSettingsResponse)
 def get_settings(
     search: str = "",
-    stray=Depends(HTTPAuth(AuthResource.SETTINGS, AuthPermission.LIST)),
-):
+    cats: ContextualCats = Depends(HTTPAuth(AuthResource.SETTINGS, AuthPermission.LIST)),
+) -> GetSettingsResponse:
     """Get the entire list of settings available in the database"""
 
-    settings = crud.get_settings(search=search)
+    settings = crud_settings.get_settings(cats.cheshire_cat.id, search=search)
 
-    return {"settings": settings}
+    return GetSettingsResponse(settings=settings)
 
 
-@router.post("/")
+@router.post("/", response_model=SettingResponse)
 def create_setting(
     payload: models.SettingBody,
-    stray=Depends(HTTPAuth(AuthResource.SETTINGS, AuthPermission.WRITE)),
-):
+    cats: ContextualCats = Depends(HTTPAuth(AuthResource.SETTINGS, AuthPermission.WRITE)),
+) -> SettingResponse:
     """Create a new setting in the database"""
 
     # complete the payload with setting_id and updated_at
     payload = models.Setting(**payload.model_dump())
 
     # save to DB
-    new_setting = crud.create_setting(payload)
+    new_setting = crud_settings.create_setting(cats.cheshire_cat.id, payload)
 
-    return {"setting": new_setting}
+    return SettingResponse(setting=new_setting)
 
 
-@router.get("/{settingId}")
+@router.get("/{setting_id}", response_model=SettingResponse)
 def get_setting(
-    settingId: str, stray=Depends(HTTPAuth(AuthResource.SETTINGS, AuthPermission.READ))
-):
-    """Get the a specific setting from the database"""
+    setting_id: str,
+    cats: ContextualCats = Depends(HTTPAuth(AuthResource.SETTINGS, AuthPermission.READ))
+) -> SettingResponse:
+    """Get the specific setting from the database"""
 
-    setting = crud.get_setting_by_id(settingId)
+    setting = crud_settings.get_setting_by_id(cats.cheshire_cat.id, setting_id)
     if not setting:
-        raise HTTPException(
-            status_code=404,
-            detail={
-                "error": f"No setting with this id: {settingId}",
-            },
-        )
-    return {"setting": setting}
+        raise CustomNotFoundException(f"No setting with this id: {setting_id}")
+    return SettingResponse(setting=setting)
 
 
-@router.put("/{settingId}")
+@router.put("/{setting_id}", response_model=SettingResponse)
 def update_setting(
-    settingId: str,
+    setting_id: str,
     payload: models.SettingBody,
-    stray=Depends(HTTPAuth(AuthResource.SETTINGS, AuthPermission.EDIT)),
-):
+    cats: ContextualCats = Depends(HTTPAuth(AuthResource.SETTINGS, AuthPermission.EDIT)),
+) -> SettingResponse:
     """Update a specific setting in the database if it exists"""
 
+    agent_id = cats.cheshire_cat.id
+
     # does the setting exist?
-    setting = crud.get_setting_by_id(settingId)
+    setting = crud_settings.get_setting_by_id(agent_id, setting_id)
     if not setting:
-        raise HTTPException(
-            status_code=404,
-            detail={
-                "error": f"No setting with this id: {settingId}",
-            },
-        )
+        raise CustomNotFoundException(f"No setting with this id: {setting_id}")
 
     # complete the payload with setting_id and updated_at
     payload = models.Setting(**payload.model_dump())
-    payload.setting_id = settingId  # force this to be the setting_id
+    payload.setting_id = setting_id  # force this to be the setting_id
 
     # save to DB
-    updated_setting = crud.update_setting_by_id(payload)
+    updated_setting = crud_settings.update_setting_by_id(agent_id, payload)
 
-    return {"setting": updated_setting}
+    return SettingResponse(setting=updated_setting)
 
 
-@router.delete("/{settingId}")
+@router.delete("/{setting_id}", response_model=DeleteSettingResponse)
 def delete_setting(
-    settingId: str,
-    stray=Depends(HTTPAuth(AuthResource.SETTINGS, AuthPermission.DELETE)),
-):
+    setting_id: str,
+    cats: ContextualCats = Depends(HTTPAuth(AuthResource.SETTINGS, AuthPermission.DELETE)),
+) -> DeleteSettingResponse:
     """Delete a specific setting in the database"""
 
+    agent_id = cats.cheshire_cat.id
+
     # does the setting exist?
-    setting = crud.get_setting_by_id(settingId)
+    setting = crud_settings.get_setting_by_id(agent_id, setting_id)
     if not setting:
-        raise HTTPException(
-            status_code=404,
-            detail={
-                "error": f"No setting with this id: {settingId}",
-            },
-        )
+        raise CustomNotFoundException(f"No setting with this id: {setting_id}")
 
     # delete
-    crud.delete_setting_by_id(settingId)
+    crud_settings.delete_setting_by_id(agent_id, setting_id)
 
-    return {"deleted": settingId}
+    return DeleteSettingResponse(deleted=setting_id)

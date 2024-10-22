@@ -1,21 +1,22 @@
-
 services:
 
   cheshire-cat-core:
     build:
       context: ./core
+      target: build
     container_name: cheshire_cat_core
     # Uncomment the two lines below to use your .env (see .env.example)
     #env_file:
     #  - .env
     ports:
       - ${CCAT_CORE_PORT:-1865}:80
-      - 5678:5678 # only for development purposes (take away in production)
+      - "5678:5678" # only for development purposes (take away in production)
     extra_hosts:
-      - "host.docker.internal:host-gateway" # This add an entry to /etc/hosts file in the container mapping host.docker.internal to the host machine IP addr, allowing the container to access services running on the host, not only on Win and Mac but also Linux. See https://docs.docker.com/desktop/networking/#i-want-to-connect-from-a-container-to-a-service-on-the-host and https://docs.docker.com/reference/cli/docker/container/run/#add-host
+      - "host.docker.internal:host-gateway" # This adds an entry to /etc/hosts file in the container mapping host.docker.internal to the host machine IP addr, allowing the container to access services running on the host, not only on Win and Mac but also Linux. See https://docs.docker.com/desktop/networking/#i-want-to-connect-from-a-container-to-a-service-on-the-host and https://docs.docker.com/reference/cli/docker/container/run/#add-host
     environment:
       # Timezone
       - TZ=${CCAT_TIMEZONE:-UTC}
+      - CCAT_REDIS_HOST=host.docker.internal # only for development purposes (take away in production); it allows to use your Redis server from host
     volumes:
       - ./core:/app
     command:

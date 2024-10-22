@@ -3,7 +3,6 @@ from fastapi.openapi.utils import get_openapi
 import tomli
 
 
-
 def get_openapi_configuration_function(cheshire_cat_api: FastAPI):
     # Configure openAPI schema for swagger and redoc
     def custom_openapi():

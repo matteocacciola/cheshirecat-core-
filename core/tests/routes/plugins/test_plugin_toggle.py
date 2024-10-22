@@ -1,20 +1,20 @@
 from tests.utils import get_procedural_memory_contents
 
 
-def test_toggle_non_existent_plugin(client, just_installed_plugin):
-    response = client.put("/plugins/toggle/no_plugin")
+def test_toggle_non_existent_plugin(secure_client, secure_client_headers, just_installed_plugin):
+    response = secure_client.put("/plugins/toggle/no_plugin", headers=secure_client_headers)
     response_json = response.json()
 
     assert response.status_code == 404
     assert response_json["detail"]["error"] == "Plugin not found"
 
 
-def test_deactivate_plugin(client, just_installed_plugin):
+def test_deactivate_plugin(secure_client, secure_client_headers, just_installed_plugin):
     # deactivate
-    response = client.put("/plugins/toggle/mock_plugin")
+    secure_client.put("/plugins/toggle/mock_plugin", headers=secure_client_headers)
 
     # GET plugins endpoint lists the plugin
-    response = client.get("/plugins")
+    response = secure_client.get("/plugins", headers=secure_client_headers)
     installed_plugins = response.json()["installed"]
     mock_plugin = [p for p in installed_plugins if p["id"] == "mock_plugin"]
     assert len(mock_plugin) == 1  # plugin installed
@@ -22,12 +22,12 @@ def test_deactivate_plugin(client, just_installed_plugin):
     assert not mock_plugin[0]["active"]  # plugin NOT active
 
     # GET single plugin info, plugin is not active
-    response = client.get("/plugins/mock_plugin")
+    response = secure_client.get("/plugins/mock_plugin", headers=secure_client_headers)
     assert isinstance(response.json()["data"]["active"], bool)
     assert not response.json()["data"]["active"]
 
     # tool has been taken away
-    procedures = get_procedural_memory_contents(client)
+    procedures = get_procedural_memory_contents(secure_client, headers=secure_client_headers)
     assert len(procedures) == 3
     procedures_sources = list(map(lambda t: t["metadata"]["source"], procedures))
     assert "mock_tool" not in procedures_sources
@@ -43,15 +43,15 @@ def test_deactivate_plugin(client, just_installed_plugin):
     assert procedures_triggers.count("description") == 1
 
 
-def test_reactivate_plugin(client, just_installed_plugin):
+def test_reactivate_plugin(secure_client, secure_client_headers, just_installed_plugin):
     # deactivate
-    response = client.put("/plugins/toggle/mock_plugin")
+    secure_client.put("/plugins/toggle/mock_plugin", headers=secure_client_headers)
 
     # re-activate
-    response = client.put("/plugins/toggle/mock_plugin")
+    secure_client.put("/plugins/toggle/mock_plugin", headers=secure_client_headers)
 
     # GET plugins endpoint lists the plugin
-    response = client.get("/plugins")
+    response = secure_client.get("/plugins", headers=secure_client_headers)
     installed_plugins = response.json()["installed"]
     mock_plugin = [p for p in installed_plugins if p["id"] == "mock_plugin"]
     assert len(mock_plugin) == 1  # plugin installed
@@ -59,12 +59,12 @@ def test_reactivate_plugin(client, just_installed_plugin):
     assert mock_plugin[0]["active"]  # plugin active
 
     # GET single plugin info, plugin is active
-    response = client.get("/plugins/mock_plugin")
+    response = secure_client.get("/plugins/mock_plugin", headers=secure_client_headers)
     assert isinstance(response.json()["data"]["active"], bool)
     assert response.json()["data"]["active"]
 
     # check whether procedures have been re-embedded
-    procedures = get_procedural_memory_contents(client)
+    procedures = get_procedural_memory_contents(secure_client, headers=secure_client_headers)
     assert len(procedures) == 9  # two tools, 4 tools examples, 3  form triggers
     procedures_names = list(map(lambda t: t["metadata"]["source"], procedures))
     assert procedures_names.count("mock_tool") == 3

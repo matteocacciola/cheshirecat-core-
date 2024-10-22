@@ -35,3 +35,4 @@ core/cat/plugins/*
 # cache embedder
 core/local_cache/*
 
+compose*.yml*

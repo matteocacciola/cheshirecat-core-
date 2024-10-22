@@ -1,5 +1,6 @@
 import time
-from tests.utils import send_websocket_message, send_n_websocket_messages
+
+from tests.utils import send_websocket_message, send_n_websocket_messages, agent_id
 
 
 def check_correct_websocket_reply(reply):
@@ -41,19 +42,18 @@ def check_correct_websocket_reply(reply):
             assert isinstance(mi["reply"], list)
             assert isinstance(mi["reply"][0], float)
             assert mi["source"] == "recall"
-        
 
 
-def test_websocket(client):
+def test_websocket(secure_client):
     # send websocket message
-    res = send_websocket_message({"text": "It's late! It's late"}, client)
+    res = send_websocket_message({"text": "It's late! It's late"}, secure_client)
 
     check_correct_websocket_reply(res)
 
 
-def test_websocket_multiple_messages(client):
+def test_websocket_multiple_messages(secure_client):
     # send websocket message
-    replies = send_n_websocket_messages(3, client)
+    replies = send_n_websocket_messages(3, secure_client)
 
     for res in replies:
         check_correct_websocket_reply(res)

@@ -2,23 +2,14 @@ import os
 import pytest
 import fnmatch
 import subprocess
-
 from inspect import isfunction
 
-from tests.conftest import clean_up_mocks
-
 from cat.mad_hatter.mad_hatter import Plugin
-from cat.mad_hatter.decorators import CatHook, CatTool
+from cat.mad_hatter.decorators.hook import CatHook
+from cat.mad_hatter.decorators.tool import CatTool
 
-mock_plugin_path = "tests/mocks/mock_plugin/"
-
-
-# this fixture will give test functions a ready instantiated plugin
-# (and having the `client` fixture, a clean setup every unit)
-@pytest.fixture
-def plugin(client):
-    p = Plugin(mock_plugin_path)
-    yield p
+from tests.conftest import clean_up
+from tests.utils import mock_plugin_path
 
 
 def test_create_plugin_wrong_folder():
@@ -131,9 +122,10 @@ def test_save_settings(plugin):
 # Check if plugin requirements have been installed
 # ATTENTION: not using `plugin` fixture here, we instantiate and cleanup manually
 #           to use the unmocked Plugin class
+@pytest.mark.skip_encapsulation
 def test_install_plugin_dependencies():
     # manual cleanup
-    clean_up_mocks()
+    clean_up()
     # Uninstall mock plugin requirements
     os.system("pip uninstall -y pip-install-test")
 
@@ -149,6 +141,6 @@ def test_install_plugin_dependencies():
     assert fnmatch.fnmatch(result, "*pip-install-test*")
 
     # manual cleanup
-    clean_up_mocks()
+    clean_up()
     # Uninstall mock plugin requirements
     os.system("pip uninstall -y pip-install-test")

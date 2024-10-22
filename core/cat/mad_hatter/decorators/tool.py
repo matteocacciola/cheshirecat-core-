@@ -1,6 +1,6 @@
 import inspect
 
-from typing import Union, Callable, List
+from typing import Callable, List
 from inspect import signature
 
 from langchain_core.tools import BaseTool
@@ -15,11 +15,13 @@ class CatTool(BaseTool):
         name: str,
         func: Callable,
         return_direct: bool = False,
-        examples: List[str] = [],
+        examples: List[str] = None,
     ):
+        examples = examples or []
+
         description = func.__doc__.strip()
 
-        # call parent contructor
+        # call parent constructor
         super().__init__(
             name=name, func=func, description=description, return_direct=return_direct
         )
@@ -50,7 +52,6 @@ class CatTool(BaseTool):
     
     # we run tools always async, even if they are not defined so in a plugin
     async def _arun(self, input_by_llm, stray):
-
         # await if the tool is async
         if inspect.iscoroutinefunction(self.func):
             return await self.func(input_by_llm, cat=stray)
@@ -73,7 +74,7 @@ class CatTool(BaseTool):
 # @tool decorator, a modified version of a langchain Tool that also takes a Cat instance as argument
 # adapted from https://github.com/hwchase17/langchain/blob/master/langchain/agents/tools.py
 def tool(
-    *args: Union[str, Callable], return_direct: bool = False, examples: List[str] = []
+    *args: str | Callable, return_direct: bool = False, examples: List[str] = None
 ) -> Callable:
     """
     Make tools out of functions, can be used with or without arguments.
@@ -84,13 +85,15 @@ def tool(
         .. code-block:: python
             @tool
             def search_api(query: str, cat) -> str:
-                # Searches the API for the query.
+                \"\"\"Searches the API for the query.\"\"\"
                 return "https://api.com/search?q=" + query
             @tool("search", return_direct=True)
             def search_api(query: str, cat) -> str:
-                # Searches the API for the query.
+                \"\"\"Searches the API for the query.\"\"\"
                 return "https://api.com/search?q=" + query
     """
+
+    examples = examples or []
 
     def _make_with_name(tool_name: str) -> Callable:
         def _make_tool(func: Callable[[str], str]) -> CatTool:
@@ -109,16 +112,16 @@ def tool(
         # if the argument is a string, then we use the string as the tool name
         # Example usage: @tool("search", return_direct=True)
         return _make_with_name(args[0])
-    elif len(args) == 1 and callable(args[0]):
+    if len(args) == 1 and callable(args[0]):
         # if the argument is a function, then we use the function name as the tool name
         # Example usage: @tool
         return _make_with_name(args[0].__name__)(args[0])
-    elif len(args) == 0:
+    if len(args) == 0:
         # if there are no arguments, then we use the function name as the tool name
         # Example usage: @tool(return_direct=True)
         def _partial(func: Callable[[str], str]) -> CatTool:
             return _make_with_name(func.__name__)(func)
 
         return _partial
-    else:
-        raise ValueError("Too many arguments for tool decorator")
+
+    raise ValueError("Too many arguments for tool decorator")

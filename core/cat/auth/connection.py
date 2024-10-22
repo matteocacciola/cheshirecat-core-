@@ -1,188 +1,200 @@
 # Helper classes for connection handling
 # Credential extraction from ws / http connections is not delegated to the custom auth handlers,
-#  to have a standard auth interface.
-
-from abc import ABC, abstractmethod
-from typing import Tuple
+# to have a standard auth interface.
 import asyncio
-from urllib.parse import urlencode
-
-from fastapi import (
-    Request,
-    WebSocket,
-    HTTPException,
-    WebSocketException,
-)
+from abc import ABC, abstractmethod
+from fastapi import Request, WebSocket, HTTPException, WebSocketException
 from fastapi.requests import HTTPConnection
+from pydantic import BaseModel, ConfigDict
 
+from cat.bill_the_lizard import BillTheLizard
+from cat.auth.auth_utils import extract_agent_id_from_request, extract_user_id_from_request, extract_token
 from cat.auth.permissions import (
+    AdminAuthResource,
     AuthPermission,
     AuthResource,
     AuthUserInfo,
+    get_full_admin_permissions,
 )
+from cat.looking_glass.cheshire_cat import CheshireCat
 from cat.looking_glass.stray_cat import StrayCat
 from cat.log import log
 
-class ConnectionAuth(ABC):
 
-    def __init__(
-            self,
-            resource: AuthResource,
-            permission: AuthPermission):
-        
+class SuperCredentials(BaseModel):
+    user_id: str
+    credential: str | None
+
+
+class Credentials(SuperCredentials):
+    agent_id: str
+
+
+class ContextualCats(BaseModel):
+    cheshire_cat: CheshireCat
+    stray_cat: StrayCat
+
+    model_config = ConfigDict(arbitrary_types_allowed=True)
+
+
+class AdminConnectionAuth:
+    def __init__(self, resource: AdminAuthResource, permission: AuthPermission):
+        self.resource = resource
+        self.permission = permission
+
+    async def __call__(self, request: Request) -> BillTheLizard:
+        # get protocol from Starlette request
+        protocol = request.scope.get("type")
+
+        # extract credentials (user_id, token_or_key) from connection
+        user_id = extract_user_id_from_request(request)
+        token = extract_token(request)
+
+        lizard: BillTheLizard = request.app.state.lizard
+
+        user: AuthUserInfo = await lizard.core_auth_handler.authorize_user_from_credential(
+            protocol,
+            token,
+            self.resource,
+            self.permission,
+            key_id=lizard.config_key,
+            user_id=user_id,
+            http_permissions=get_full_admin_permissions(),
+        )
+        if user:
+            return lizard
+
+        raise HTTPException(status_code=403, detail={"error": "Invalid Credentials"})
+
+
+class ConnectionAuth(ABC):
+    def __init__(self, resource: AuthResource, permission: AuthPermission):
         self.resource = resource
         self.permission = permission
 
     async def __call__(
         self,
         connection: HTTPConnection # Request | WebSocket,
-    ) -> StrayCat:
+    ) -> ContextualCats:
+        # get protocol from Starlette request
+        protocol = connection.scope.get("type")
 
         # extract credentials (user_id, token_or_key) from connection
-        user_id, credential = await self.extract_credentials(connection)
+        credentials = await self.extract_credentials(connection)
+
+        lizard: BillTheLizard = connection.app.state.lizard
+        ccat = lizard.get_or_create_cheshire_cat(credentials.agent_id)
+
         auth_handlers = [
-            # try to get user from local idp
-            connection.app.state.ccat.core_auth_handler,
-            # try to get user from auth_handler
-            connection.app.state.ccat.custom_auth_handler,
+            lizard.core_auth_handler,  # try to get user from local id
+            ccat.custom_auth_handler,  # try to get user from auth_handler
         ]
-        for ah in auth_handlers:
-            user: AuthUserInfo = await ah.authorize_user_from_credential(
-                credential, self.resource, self.permission, user_id=user_id
+
+        # is that an admin able to manage agents?
+        user: AuthUserInfo = await lizard.core_auth_handler.authorize_user_from_credential(
+            protocol,
+            credentials.credential,
+            AdminAuthResource.CHESHIRE_CATS,
+            self.permission,
+            key_id=lizard.config_key,
+            user_id=credentials.user_id,
+            http_permissions=get_full_admin_permissions(),
+        )
+
+        # no admin was found? try to look for agent's users
+        counter = 0
+        while not user and counter < len(auth_handlers):
+            user = await auth_handlers[counter].authorize_user_from_credential(
+                protocol,
+                credentials.credential,
+                self.resource,
+                self.permission,
+                key_id=credentials.agent_id,
+                user_id=credentials.user_id,
             )
-            if user:
-                return await self.get_user_stray(user, connection)
+            counter += 1
 
-        # if no stray was obtained, raise exception
-        self.not_allowed(connection)
+        if not user:
+            # if no user was obtained, raise exception
+            self.not_allowed(connection)
+
+        stray = await self.get_user_stray(ccat, user, connection)
+        return ContextualCats(cheshire_cat=ccat, stray_cat=stray)
 
     @abstractmethod
-    async def extract_credentials(self, connection: Request | WebSocket) -> Tuple[str] | None:
+    async def extract_credentials(self, connection: HTTPConnection) -> Credentials:
         pass
 
     @abstractmethod
-    async def get_user_stray(self, user: AuthUserInfo, connection: Request | WebSocket) -> StrayCat:
+    async def get_user_stray(self, ccat: CheshireCat, user: AuthUserInfo, connection: HTTPConnection) -> StrayCat:
         pass
 
     @abstractmethod
-    def not_allowed(self, connection: Request | WebSocket):
+    def not_allowed(self, connection: HTTPConnection, **kwargs):
         pass
         
 
 class HTTPAuth(ConnectionAuth):
-
-    async def extract_credentials(self, connection: Request) -> Tuple[str] | None:
+    async def extract_credentials(self, connection: Request) -> Credentials:
         """
         Extract user_id and token/key from headers
         """
 
-        # when using CCAT_API_KEY, user_id is passed in headers
-        user_id = connection.headers.get("user_id", "user")
+        # when using CCAT_API_KEY, agent_id and user_id are passed in headers
+        agent_id = extract_agent_id_from_request(connection)
+        user_id = extract_user_id_from_request(connection)
 
         # Proper Authorization header
-        token = connection.headers.get("Authorization", None)
-        if token and ("Bearer " in token):
-            token = token.replace("Bearer ", "")
+        token = extract_token(connection)
 
-        if not token:
-            # Legacy header to pass CCAT_API_KEY
-            token = connection.headers.get("access_token", None)
-            if token:
-                log.warning(
-                    "Deprecation Warning: `access_token` header will not be supported in v2."
-                    "Pass your token/key using the `Authorization: Bearer <token>` format."
-                )
-        
-        # some clients may send an empty string instead of just not setting the header
-        if token == "":
-            token = None
+        return Credentials(agent_id=agent_id, user_id=user_id, credential=token)
 
-        return user_id, token
+    async def get_user_stray(self, ccat: CheshireCat, user: AuthUserInfo, connection: Request) -> StrayCat:
+        current_stray = ccat.get_stray(user.id)
+        if current_stray:
+            return current_stray
 
-
-    async def get_user_stray(self, user: AuthUserInfo, connection: Request) -> StrayCat:
-        strays = connection.app.state.strays
         event_loop = connection.app.state.event_loop
+        stray_cat = StrayCat(user_data=user, main_loop=event_loop, agent_id=ccat.id)
+        ccat.add_stray(stray_cat)
 
-        if user.id not in strays.keys():
-            strays[user.id] = StrayCat(
-                    # TODOV2: user_id should be the user.id
-                user_id=user.name, user_data=user, main_loop=event_loop
-            )
-        return strays[user.id]
+        return stray_cat
     
-    def not_allowed(self, connection: Request):
+    def not_allowed(self, connection: Request, **kwargs):
         raise HTTPException(status_code=403, detail={"error": "Invalid Credentials"})
     
 
-    
-
 class WebSocketAuth(ConnectionAuth):
-
-    async def extract_credentials(self, connection: WebSocket) -> Tuple[str] | None:
+    async def extract_credentials(self, connection: WebSocket) -> Credentials:
         """
-        Extract user_id from WebSocket path params
+        Extract agent_id and user_id from WebSocket path params
         Extract token from WebSocket query string
         """
-        user_id = connection.path_params.get("user_id", "user")
+        agent_id = extract_agent_id_from_request(connection)
+        user_id = extract_user_id_from_request(connection)
 
-        # TODOAUTH: is there a more secure way to pass the token over websocket?
+        # TODO AUTH: is there a more secure way to pass the token over websocket?
         #   Headers do not work from the browser
         token = connection.query_params.get("token", None)
-        
-        return user_id, token
-    
 
-    async def get_user_stray(self, user: AuthUserInfo, connection: WebSocket) -> StrayCat:
-        strays = connection.app.state.strays
+        return Credentials(agent_id=agent_id, user_id=user_id, credential=token)
 
-        if user.id in strays.keys():
-            stray = strays[user.id]
-            # Close previus ws connection
-            if stray._StrayCat__ws:
-                await stray._StrayCat__ws.close()
+    async def get_user_stray(self, ccat: CheshireCat, user: AuthUserInfo, connection: WebSocket) -> StrayCat:
+        stray: StrayCat = ccat.get_stray(user.id)
+        if stray:
+            await stray.close_connection()
+
             # Set new ws connection
-            stray._StrayCat__ws = connection
+            stray.reset_connection(connection)
             log.info(
                 f"New websocket connection for user '{user.id}', the old one has been closed."
             )
             return stray
 
-        else:
-            stray = StrayCat(
-                ws=connection,
-                user_id=user.name, # TODOV2: user_id should be the user.id
-                user_data=user,
-                main_loop=asyncio.get_running_loop(),
-            )
-            strays[user.id] = stray
-            return stray
-        
-    def not_allowed(self, connection: WebSocket):
+        # Create a new stray and add it to the current cheshire cat
+        stray = StrayCat(user_data=user, main_loop=asyncio.get_running_loop(), agent_id=ccat.id, ws=connection)
+        ccat.add_stray(stray)
+        return stray
+
+    def not_allowed(self, connection: WebSocket, **kwargs):
         raise WebSocketException(code=1004, reason="Invalid Credentials")
-
-
-
-class CoreFrontendAuth(HTTPAuth):
-
-    async def extract_credentials(self, connection: Request) -> Tuple[str] | None:
-        """
-        Extract user_id from cookie
-        """
-
-        token = connection.cookies.get("ccat_user_token", None)
-
-        # core webapps cannot be accessed without a cookie
-        if token is None or token == "":
-            self.not_allowed(connection)
-
-        return "user", token
-    
-    def not_allowed(self, connection: Request):
-        referer_query = urlencode({"referer": connection.url.path})
-        raise HTTPException(
-            status_code=307,
-            headers={
-                "Location": f"/auth/login?{referer_query}"
-            }
-        )

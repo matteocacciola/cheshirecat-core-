@@ -1,65 +1,38 @@
-import pytest
-
-from langchain_community.llms import BaseLLM
+from langchain.base_language import BaseLanguageModel
 from langchain_core.embeddings import Embeddings
 
-
-from cat.looking_glass.cheshire_cat import CheshireCat
 from cat.mad_hatter.mad_hatter import MadHatter
-from cat.rabbit_hole import RabbitHole
 from cat.memory.long_term_memory import LongTermMemory
-from cat.agents.main_agent import MainAgent
 from cat.factory.custom_embedder import DumbEmbedder
 from cat.factory.custom_llm import LLMDefault
 
 
-def get_class_from_decorated_singleton(singleton):
-    return singleton().__class__
-
-
-@pytest.fixture
-def cheshire_cat(client):
-    yield CheshireCat()  # don't panic, it's a singleton
-
-
 def test_main_modules_loaded(cheshire_cat):
-    assert isinstance(
-        cheshire_cat.mad_hatter, get_class_from_decorated_singleton(MadHatter)
-    )
-
-    assert isinstance(
-        cheshire_cat.rabbit_hole, get_class_from_decorated_singleton(RabbitHole)
-    )
-
-    # TODO: this should be singleton too
+    assert isinstance(cheshire_cat.mad_hatter, MadHatter)
     assert isinstance(cheshire_cat.memory, LongTermMemory)
-
-    assert isinstance(cheshire_cat.main_agent, MainAgent)
-
-    assert isinstance(cheshire_cat._llm, BaseLLM)
-
+    assert isinstance(cheshire_cat.llm, BaseLanguageModel)
     assert isinstance(cheshire_cat.embedder, Embeddings)
 
 
-def test_default_llm_loaded(cheshire_cat):
-    assert isinstance(cheshire_cat._llm, LLMDefault)
+def test_default_llm_loaded(llm, cheshire_cat):
+    assert isinstance(llm, LLMDefault)
 
-    out = cheshire_cat.llm("Hey")
+    out = cheshire_cat.llm_response("Hey")
     assert "You did not configure a Language Model" in out
 
 
-def test_default_embedder_loaded(cheshire_cat):
-    assert isinstance(cheshire_cat.embedder, DumbEmbedder)
+def test_default_embedder_loaded(embedder):
+    assert isinstance(embedder, DumbEmbedder)
 
     sentence = "I'm smarter than a random embedder BTW"
     sample_embed = DumbEmbedder().embed_query(sentence)
-    out = cheshire_cat.embedder.embed_query(sentence)
+    out = embedder.embed_query(sentence)
     assert sample_embed == out
 
 
-def test_procedures_embedded(cheshire_cat):
+def test_procedures_embedded(embedder, memory):
     # get embedded tools
-    procedures = cheshire_cat.memory.vectors.procedural.get_all_points()
+    procedures, _ = memory.vectors.procedural.get_all_points()
     assert len(procedures) == 3
 
     for p in procedures:
@@ -79,6 +52,6 @@ def test_procedures_embedded(cheshire_cat):
 
         # some check on the embedding
         assert isinstance(p.vector, list)
-        expected_embed = cheshire_cat.embedder.embed_query(content)
+        expected_embed = embedder.embed_query(content)
         assert len(p.vector) == len(expected_embed)  # same embed
         # assert p.vector == expected_embed TODO: Qdrant does unwanted normalization

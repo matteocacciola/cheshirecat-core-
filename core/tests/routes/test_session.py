@@ -1,29 +1,35 @@
-
+from cat.convo.messages import Role
+from cat.db import models
 from cat.looking_glass.stray_cat import StrayCat
 
-from tests.utils import send_websocket_message
+from tests.utils import send_websocket_message, api_key, agent_id
 
 
-def test_session_creation_from_websocket(client):
+def test_session_creation_from_websocket(secure_client, cheshire_cat):
+    user_id = models.generate_uuid()
+
     # send websocket message
     mex = {"text": "Where do I go?"}
-    res = send_websocket_message(mex, client, user_id="Alice")
+    res = send_websocket_message(mex, secure_client, user_id=user_id)
 
     # check response
     assert "You did not configure" in res["content"]
 
     # verify session
-    strays = client.app.state.strays
-    assert "Alice" in strays
-    assert isinstance(strays["Alice"], StrayCat)
-    assert strays["Alice"].user_id == "Alice"
-    convo = strays["Alice"].working_memory.history
+    strays_user_ids = [s.user.id for s in cheshire_cat.strays]
+    assert user_id in strays_user_ids
+    stray_cat = cheshire_cat.get_stray(user_id)
+    assert isinstance(stray_cat, StrayCat)
+    assert stray_cat.user.id == user_id
+    convo = stray_cat.working_memory.history
     assert len(convo) == 2
-    assert convo[0]["who"] == "Human"
-    assert convo[0]["message"] == mex["text"]
+    assert convo[0].who == Role.HUMAN
+    assert convo[0].message == mex["text"]
 
 
-def test_session_creation_from_http(client):
+def test_session_creation_from_http(secure_client, cheshire_cat):
+    user_id = models.generate_uuid()
+
     content_type = "text/plain"
     file_name = "sample.txt"
     file_path = f"tests/mocks/{file_name}"
@@ -31,19 +37,22 @@ def test_session_creation_from_http(client):
         files = {"file": (file_name, f, content_type)}
 
         # sending file from Alice
-        response = client.post(
-            "/rabbithole/", files=files, headers={"user_id": "Alice"}
+        response = secure_client.post(
+            "/rabbithole/",
+            files=files,
+            headers={"user_id": user_id, "access_token": api_key, "agent_id": agent_id},
         )
 
     # check response
     assert response.status_code == 200
 
     # verify session
-    strays = client.app.state.strays
-    assert "Alice" in strays
-    assert isinstance(strays["Alice"], StrayCat)
-    assert strays["Alice"].user_id == "Alice"
-    convo = strays["Alice"].working_memory.history
+    strays_user_ids = [s.user.id for s in cheshire_cat.strays]
+    assert user_id in strays_user_ids
+    stray_cat = cheshire_cat.get_stray(user_id)
+    assert isinstance(stray_cat, StrayCat)
+    assert stray_cat.user.id == user_id
+    convo = stray_cat.working_memory.history
     assert len(convo) == 0  # no ws message sent from Alice
 
 

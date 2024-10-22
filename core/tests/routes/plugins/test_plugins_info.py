@@ -1,7 +1,5 @@
-
-
-def test_list_plugins(client):
-    response = client.get("/plugins")
+def test_list_plugins(secure_client, secure_client_headers):
+    response = secure_client.get("/plugins", headers=secure_client_headers)
     json = response.json()
 
     assert response.status_code == 200
@@ -22,8 +20,8 @@ def test_list_plugins(client):
     assert len(json["registry"]) > 0
 
 
-def test_get_plugin_id(client):
-    response = client.get("/plugins/core_plugin")
+def test_get_plugin_id(secure_client, secure_client_headers):
+    response = secure_client.get("/plugins/core_plugin", headers=secure_client_headers)
 
     json = response.json()
 
@@ -34,8 +32,8 @@ def test_get_plugin_id(client):
     assert json["data"]["active"]
 
 
-def test_get_non_existent_plugin(client):
-    response = client.get("/plugins/no_plugin")
+def test_get_non_existent_plugin(secure_client, secure_client_headers):
+    response = secure_client.get("/plugins/no_plugin", headers=secure_client_headers)
     json = response.json()
 
     assert response.status_code == 404

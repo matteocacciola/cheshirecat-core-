@@ -6,7 +6,7 @@ These hooks allow to intercept the uploaded documents at different places before
 
 """
 
-from typing import List
+from typing import List, Dict
 from langchain.text_splitter import TextSplitter
 from langchain.docstore.document import Document
 from qdrant_client.http.models import PointStruct
@@ -15,22 +15,20 @@ from cat.mad_hatter.decorators import hook
 
 
 @hook(priority=0)
-def rabbithole_instantiates_parsers(file_handlers: dict, cat) -> dict:
+def rabbithole_instantiates_parsers(file_handlers: Dict, cat) -> Dict:
     """Hook the available parsers for ingesting files in the declarative memory.
 
     Allows replacing or extending existing supported mime types and related parsers to customize the file ingestion.
 
-    Parameters
-    ----------
-    file_handlers : dict
-        Keys are the supported mime types and values are the related parsers.
-    cat : CheshireCat
-        Cheshire Cat instance.
+    Args:
+        file_handlers : Dict
+            Keys are the supported mime types and values are the related parsers.
+        cat : CheshireCat
+            Cheshire Cat instance.
 
-    Returns
-    -------
-    file_handlers : dict
-        Edited dictionary of supported mime types and related parsers.
+    Returns:
+        file_handlers : Dict
+            Edited dictionary of supported mime types and related parsers.
     """
     return file_handlers
 
@@ -41,17 +39,15 @@ def rabbithole_instantiates_splitter(text_splitter: TextSplitter, cat) -> TextSp
 
     Allows replacing the default text splitter to customize the splitting process.
 
-    Parameters
-    ----------
-    text_splitter : TextSplitter
-        The text splitter used by default.
-    cat : CheshireCat
-        Cheshire Cat instance.
+    Args:
+        text_splitter : TextSplitter
+            The text splitter used by default.
+        cat : CheshireCat
+            Cheshire Cat instance.
 
-    Returns
-    -------
-    text_splitter : TextSplitter
-        An instance of a TextSplitter subclass.
+    Returns:
+        text_splitter : TextSplitter
+            An instance of a TextSplitter subclass.
     """
 
     # example on how to change chunking
@@ -68,17 +64,15 @@ def before_rabbithole_insert_memory(doc: Document, cat) -> Document:
 
     Allows editing and enhancing a single `Document` before the *RabbitHole* add it to the declarative vector memory.
 
-    Parameters
-    ----------
-    doc : Document
-        Langchain `Document` to be inserted in memory.
-    cat : CheshireCat
-        Cheshire Cat instance.
+    Args:
+        doc : Document
+            Langchain `Document` to be inserted in memory.
+        cat : CheshireCat
+            Cheshire Cat instance.
 
-    Returns
-    -------
-    doc : Document
-        Langchain `Document` that is added in the declarative vector memory.
+    Returns:
+        doc : Document
+            Langchain `Document` that is added in the declarative vector memory.
 
     Notes
     -----
@@ -88,7 +82,6 @@ def before_rabbithole_insert_memory(doc: Document, cat) -> Document:
         `metadata`: a dictionary with at least two keys:
             `source`: where the text comes from;
             `when`: timestamp to track when it's been uploaded.
-
     """
     return doc
 
@@ -103,18 +96,15 @@ def before_rabbithole_splits_text(docs: List[Document], cat) -> List[Document]:
 
     For instance, the hook allows to change the text or edit/add metadata.
 
-    Parameters
-    ----------
-    docs : List[Document]
-        Langchain `Document`s resulted after parsing the file uploaded in the *RabbitHole*.
-    cat : CheshireCat
-        Cheshire Cat instance.
+    Args:
+        docs : List[Document]
+            Langchain `Document`s resulted after parsing the file uploaded in the *RabbitHole*.
+        cat : CheshireCat
+            Cheshire Cat instance.
 
-    Returns
-    -------
-    docs : List[Document]
-        Edited Langchain `Document`s.
-
+    Returns:
+        docs : List[Document]
+            Edited Langchain `Document`s.
     """
 
     return docs
@@ -128,18 +118,15 @@ def after_rabbithole_splitted_text(chunks: List[Document], cat) -> List[Document
 
     Allows editing the list of `Document` right after the *RabbitHole* chunked them in smaller ones.
 
-    Parameters
-    ----------
-    chunks : List[Document]
-        List of Langchain `Document`.
-    cat : CheshireCat
-        Cheshire Cat instance.
+    Args:
+        chunks : List[Document]
+            List of Langchain `Document`.
+        cat : CheshireCat
+            Cheshire Cat instance.
 
-    Returns
-    -------
-    chunks : List[Document]
-        List of modified chunked langchain documents to be stored in the episodic memory.
-
+    Returns:
+        chunks : List[Document]
+            List of modified chunked langchain documents to be stored in the episodic memory.
     """
 
     return chunks
@@ -159,18 +146,15 @@ def before_rabbithole_stores_documents(docs: List[Document], cat) -> List[Docume
     summarized contents.
     An official plugin is available to test this procedure.
 
-    Parameters
-    ----------
-    docs : List[Document]
-        List of Langchain `Document` to be edited.
-    cat: CheshireCat
-        Cheshire Cat instance.
+    Args:
+        docs : List[Document]
+            List of Langchain `Document` to be edited.
+        cat: CheshireCat
+            Cheshire Cat instance.
 
-    Returns
-    -------
-    docs : List[Document]
-        List of edited Langchain documents.
-
+    Returns:
+        docs : List[Document]
+            List of edited Langchain documents.
     """
 
     return docs
@@ -184,17 +168,12 @@ def after_rabbithole_stored_documents(
 
     Allows editing and enhancing the list of Document after is inserted in the vector memory.
 
-    Parameters
-    ----------
-    source: str
-        Name of ingested file/url
-    docs : List[PointStruct]
-        List of Qdrant PointStruct just inserted into the db.
-    cat : CheshireCat
-        Cheshire Cat instance.
-
-    Returns
-    -------
-    None
+    Args:
+        source: str
+            Name of ingested file/url
+        stored_points : List[PointStruct]
+            List of Qdrant PointStruct just inserted into the db.
+        cat : CheshireCat
+            Cheshire Cat instance.
     """
     pass

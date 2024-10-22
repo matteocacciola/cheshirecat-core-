@@ -7,14 +7,16 @@ from datetime import timedelta
 from urllib.parse import urlparse
 from typing import Dict, Tuple
 from pydantic import BaseModel, ConfigDict
-
+import io
+from fastapi import UploadFile
 from langchain.evaluation import StringDistance, load_evaluator, EvaluatorType
 from langchain_core.output_parsers import JsonOutputParser
 from langchain_core.prompts import PromptTemplate
 from langchain_core.utils import get_colored_text
+from enum import Enum as BaseEnum, EnumMeta
 
-from cat.log import log
 from cat.env import get_env
+from cat.log import log
 
 
 def to_camel_case(text: str) -> str:
@@ -22,15 +24,13 @@ def to_camel_case(text: str) -> str:
 
     Takes a string of words separated by either hyphens or underscores and returns a string of words in camel case.
 
-    Parameters
-    ----------
-    text : str
-        String of hyphens or underscores separated words.
+    Args:
+        text : str
+            String of hyphens or underscores separated words.
 
-    Returns
-    -------
-    str
-        Camel case formatted string.
+    Returns:
+        str
+            Camel case formatted string.
     """
     s = text.replace("-", " ").replace("_", " ").capitalize()
     s = s.split()
@@ -44,15 +44,13 @@ def verbal_timedelta(td: timedelta) -> str:
 
     The function takes a timedelta and converts it to a human-readable string format.
 
-    Parameters
-    ----------
-    td : timedelta
-        Difference between two dates.
+    Args:
+        td : timedelta
+            Difference between two dates.
 
-    Returns
-    -------
-    str
-        Human-readable string of time difference.
+    Returns:
+        str
+            Human-readable string of time difference.
 
     Notes
     -----
@@ -67,20 +65,15 @@ def verbal_timedelta(td: timedelta) -> str:
 
     if td.days != 0:
         abs_days = abs(td.days)
-        if abs_days > 7:
-            abs_delta = "{} weeks".format(td.days // 7)
-        else:
-            abs_delta = "{} days".format(td.days)
+        abs_delta = "{} weeks".format(td.days // 7) if abs_days > 7 else "{} days".format(td.days)
     else:
         abs_minutes = abs(td.seconds) // 60
-        if abs_minutes > 60:
-            abs_delta = "{} hours".format(abs_minutes // 60)
-        else:
-            abs_delta = "{} minutes".format(abs_minutes)
+        abs_delta = "{} hours".format(abs_minutes // 60) if abs_minutes > 60 else "{} minutes".format(abs_minutes)
+
     if td < timedelta(0):
         return "{} ago".format(abs_delta)
-    else:
-        return "{} ago".format(abs_delta)
+
+    return "{} ago".format(abs_delta)
 
 
 def get_base_url():
@@ -134,7 +127,7 @@ def explicit_error_message(e):
         # happens both when there are no credits or the key is not active
         error_description = """Your OpenAI key is not active or you did not add a payment method.
 You need a credit card - and money in it - to use OpenAI api.
-HOW TO FIX: go to your OpenAI accont and add a credit card"""
+HOW TO FIX: go to your OpenAI account and add a credit card"""
 
         log.error(
             error_description
@@ -154,7 +147,7 @@ def levenshtein_distance(prediction: str, reference: str) -> int:
     return result["score"]
 
 
-def parse_json(json_string: str, pydantic_model: BaseModel = None) -> dict:
+def parse_json(json_string: str, pydantic_model: BaseModel = None) -> Dict:
     # instantiate parser
     parser = JsonOutputParser(pydantic_object=pydantic_model)
 
@@ -181,9 +174,9 @@ def parse_json(json_string: str, pydantic_model: BaseModel = None) -> dict:
 
 
 def match_prompt_variables(
-        prompt_variables: Dict,
-        prompt_template: str
-    ) -> Tuple[Dict, str]:
+    prompt_variables: Dict,
+    prompt_template: str
+) -> Tuple[Dict, str]:
     """Ensure prompt variables and prompt placeholders map, so there are no issues on mismatches"""
 
     tmp_prompt = PromptTemplate.from_template(
@@ -199,8 +192,7 @@ def match_prompt_variables(
             log.warning(f"Prompt variable '{m}' not found in prompt template, removed")
             del prompt_variables[m]
         if m in tmp_prompt.input_variables:
-            prompt_template = \
-                prompt_template.replace("{" + m + "}", "")
+            prompt_template = prompt_template.replace("{" + m + "}", "")
             log.warning(f"Placeholder '{m}' not found in prompt variables, removed")
             
     return prompt_variables, prompt_template
@@ -241,6 +233,11 @@ def langchain_log_output(langchain_output, title):
         print(langchain_output)
     print(get_colored_text("========================================", "blue"))
     return langchain_output
+
+
+def format_upload_file(upload_file: UploadFile) -> UploadFile:
+    file_content = upload_file.file.read()
+    return UploadFile(filename=upload_file.filename, file=io.BytesIO(file_content))
 
 
 # This is our masterwork during tea time
@@ -310,3 +307,24 @@ class BaseModelDict(BaseModel):
 
     def __contains__(self, key):
         return key in self.keys()
+
+
+class MetaEnum(EnumMeta):
+    """
+    Enables the use of the `in` operator for enums.
+    For example:
+    if el not in Elements:
+        raise ValueError("invalid element")
+    """
+
+    def __contains__(cls, item):
+        try:
+            cls(item)
+        except ValueError:
+            return False
+        return True
+
+
+class Enum(BaseEnum, metaclass=MetaEnum):
+    def __str__(self):
+        return self.value

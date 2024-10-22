@@ -1,7 +1,6 @@
 import re
 import os
 import string
-import json
 from typing import List
 from itertools import combinations
 from sklearn.feature_extraction.text import CountVectorizer
@@ -28,12 +27,9 @@ class DumbEmbedder(Embeddings):
         chars = [p.lower() for p in string.printable[10:]]
 
         # Make the vocabulary with all possible combinations of 2 characters
-        voc = []
-        for k in combinations(chars, 2):
-            voc.append(f"{k[0]}{k[1]}")
-        voc = sorted(set(voc))
+        voc = sorted(set([f"{k[0]}{k[1]}" for k in combinations(chars, 2)]))
 
-        # Naive embedder that counts occurrences of couple of characters in text
+        # Naive embedder that counts occurrences of a couple of characters in text
         self.embedder = CountVectorizer(
             vocabulary=voc, analyzer=lambda s: re.findall("..", s), binary=True
         )
@@ -54,13 +50,11 @@ class CustomOpenAIEmbeddings(Embeddings):
         self.url = os.path.join(url, "v1/embeddings")
 
     def embed_documents(self, texts: List[str]) -> List[List[float]]:
-        payload = json.dumps({"input": texts})
-        ret = httpx.post(self.url, data=payload, timeout=None)
+        ret = httpx.post(self.url, data={"input": texts}, timeout=None)
         ret.raise_for_status()
         return [e["embedding"] for e in ret.json()["data"]]
 
     def embed_query(self, text: str) -> List[float]:
-        payload = json.dumps({"input": text})
-        ret = httpx.post(self.url, data=payload, timeout=None)
+        ret = httpx.post(self.url, data={"input": text}, timeout=None)
         ret.raise_for_status()
         return ret.json()["data"][0]["embedding"]

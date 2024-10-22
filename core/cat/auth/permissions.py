@@ -1,23 +1,29 @@
-from enum import Enum
 from typing import Dict, List
 
+from cat.utils import BaseModelDict, Enum
 
-from cat.utils import BaseModelDict
 
-class AuthResource(str, Enum):
+class AuthResource(Enum):
+    CRUD = "CRUD"
     STATUS = "STATUS"
     MEMORY = "MEMORY"
     CONVERSATION = "CONVERSATION"
     SETTINGS = "SETTINGS"
     LLM = "LLM"
-    EMBEDDER = "EMBEDDER"
     AUTH_HANDLER = "AUTH_HANDLER"
     USERS = "USERS"
     UPLOAD = "UPLOAD"
     PLUGINS = "PLUGINS"
     STATIC = "STATIC"
 
-class AuthPermission(str, Enum):
+
+class AdminAuthResource(Enum):
+    ADMINS = "ADMINS"
+    EMBEDDER = "EMBEDDER"
+    CHESHIRE_CATS = "CHESHIRE_CATS"
+
+
+class AuthPermission(Enum):
     WRITE = "WRITE"
     EDIT = "EDIT"
     LIST = "LIST"
@@ -25,17 +31,21 @@ class AuthPermission(str, Enum):
     DELETE = "DELETE"
 
 
-def get_full_permissions() -> Dict[AuthResource, List[AuthPermission]]:
+def get_full_permissions() -> Dict[str, List[str]]:
     """
     Returns all available resources and permissions.
     """
-    perms = {}
-    for res in AuthResource:
-        perms[res.name] = [p.name for p in AuthPermission]
-    return perms
+    return {str(res): [str(p) for p in AuthPermission] for res in AuthResource}
 
 
-def get_base_permissions() -> Dict[AuthResource, List[AuthPermission]]:
+def get_full_admin_permissions() -> Dict[str, List[str]]:
+    """
+    Returns all available resources and permissions for an admin user.
+    """
+    return {str(res): [str(p) for p in AuthPermission] for res in AdminAuthResource}
+
+
+def get_base_permissions() -> Dict[str, List[str]]:
     """
     Returns the default permissions for new users (chat only!).
     """
@@ -50,17 +60,15 @@ def get_base_permissions() -> Dict[AuthResource, List[AuthPermission]]:
 class AuthUserInfo(BaseModelDict):
     """
     Class to represent token content after the token has been decoded.
-    Will be creted by AuthHandler(s) to standardize their output.
+    Will be created by AuthHandler(s) to standardize their output.
     Core will use this object to retrieve or create a StrayCat (session)
     """
 
-    # TODOAUTH: id & username can be confused when is time to retrieve or create a StrayCat
-    # (id should be used)
     id: str
     name: str
 
     # permissions
-    permissions: Dict[AuthResource, List[AuthPermission]] = get_base_permissions()
+    permissions: Dict[str, List[str]]
 
     # only put in here what you are comfortable to pass plugins:
     # - profile data

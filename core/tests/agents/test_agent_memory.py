@@ -1,24 +1,21 @@
 import time
-
 from langchain.docstore.document import Document
 
 
-
-def test_format_agent_input_on_empty_memory(main_agent, stray):
+def test_format_agent_input_on_empty_memory(stray):
     # empty memory
-    agent_input = main_agent.format_agent_input(stray)
+    agent_input = stray.main_agent.format_agent_input(stray)
     assert agent_input["input"] == "meow"
     assert agent_input["episodic_memory"] == ""
     assert agent_input["declarative_memory"] == ""
     assert agent_input["tools_output"] == ""
 
 
-def test_format_agent_input(main_agent, stray):
-
+def test_format_agent_input(stray):
     # episodic and declarative memories are present
     stray = fill_working_memory(stray)
 
-    agent_input = main_agent.format_agent_input(stray)
+    agent_input = stray.main_agent.format_agent_input(stray)
     assert agent_input["input"] == "meow"
     assert (
         agent_input["episodic_memory"]
@@ -35,15 +32,15 @@ def test_format_agent_input(main_agent, stray):
     assert agent_input["tools_output"] == ""
 
 
-def test_agent_prompt_episodic_memories(main_agent, stray):
+def test_agent_prompt_episodic_memories(stray):
     # empty episodic memory
-    episodic_prompt = main_agent.agent_prompt_episodic_memories([])
+    episodic_prompt = stray.main_agent.agent_prompt_episodic_memories([])
     assert episodic_prompt == ""
 
     # some points in episodic memory
     stray = fill_working_memory(stray)
 
-    episodic_prompt = main_agent.agent_prompt_episodic_memories(
+    episodic_prompt = stray.main_agent.agent_prompt_episodic_memories(
         stray.working_memory.episodic_memories
     )
     assert (
@@ -54,14 +51,14 @@ def test_agent_prompt_episodic_memories(main_agent, stray):
     )
 
 
-def test_agent_prompt_declarative_memories(main_agent, stray):
+def test_agent_prompt_declarative_memories(stray):
     # empty declarative memory
-    declarative_prompt = main_agent.agent_prompt_declarative_memories([])
+    declarative_prompt = stray.main_agent.agent_prompt_declarative_memories([])
     assert declarative_prompt == ""
 
     # some points in declarative memory
     stray = fill_working_memory(stray)
-    declarative_prompt = main_agent.agent_prompt_declarative_memories(
+    declarative_prompt = stray.main_agent.agent_prompt_declarative_memories(
         stray.working_memory.declarative_memories
     )
     assert (

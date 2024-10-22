@@ -1,12 +1,13 @@
-from typing import Union, Callable
+from typing import Callable
 
 
 # class to represent a @hook
 class CatHook:
-    def __init__(self, name: str, func: Callable, priority: int):
+    def __init__(self, name: str, func: Callable, priority: int, plugin_id: str | None = None):
         self.function = func
         self.name = name
         self.priority = priority
+        self.plugin_id = plugin_id
 
     def __repr__(self) -> str:
         return f"CatHook(name={self.name}, priority={self.priority})"
@@ -14,7 +15,7 @@ class CatHook:
 
 # @hook decorator. Any function in a plugin decorated by @hook and named properly (among list of available hooks) is used by the Cat
 # @hook priority defaults to 1, the higher the more important. Hooks in the default core plugin have all priority=0 so they are automatically overwritten from plugins
-def hook(*args: Union[str, Callable], priority: int = 1) -> Callable:
+def hook(*args: str | Callable, priority: int = 1) -> Callable:
     """
     Make hooks out of functions, can be used with or without arguments.
     Examples:
@@ -38,16 +39,18 @@ def hook(*args: Union[str, Callable], priority: int = 1) -> Callable:
         # if the argument is a string, then we use the string as the hook name
         # Example usage: @hook("search", priority=2)
         return _make_with_name(args[0])
-    elif len(args) == 1 and callable(args[0]):
+
+    if len(args) == 1 and callable(args[0]):
         # if the argument is a function, then we use the function name as the hook name
         # Example usage: @hook
         return _make_with_name(args[0].__name__)(args[0])
-    elif len(args) == 0:
+
+    if len(args) == 0:
         # if there are no arguments, then we use the function name as the hook name
         # Example usage: @hook(priority=2)
         def _partial(func: Callable[[str], str]) -> CatHook:
             return _make_with_name(func.__name__)(func)
 
         return _partial
-    else:
-        raise ValueError("Too many arguments for hook decorator")
+
+    raise ValueError("Too many arguments for hook decorator")

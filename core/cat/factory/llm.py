@@ -1,3 +1,4 @@
+from langchain_core.language_models import BaseLanguageModel
 from langchain_openai import AzureChatOpenAI
 from langchain_openai import AzureOpenAI
 from langchain_community.llms import (
@@ -7,19 +8,22 @@ from langchain_community.llms import (
 from langchain_openai import ChatOpenAI, OpenAI
 from langchain_cohere import ChatCohere
 from langchain_google_genai import ChatGoogleGenerativeAI
-
-from typing import Type
+from typing import Type, Dict, List
 import json
 from pydantic import BaseModel, ConfigDict
 
+from cat.db.cruds import settings as crud_settings
+from cat.factory.base_factory import BaseFactory
 from cat.factory.custom_llm import LLMDefault, LLMCustom, CustomOpenAI, CustomOllama
-from cat.mad_hatter.mad_hatter import MadHatter
+from cat.log import log
 
 
 # Base class to manage LLM configuration.
 class LLMSettings(BaseModel):
+    _is_multimodal: bool = False
+
     # class instantiating the model
-    _pyclass: Type = None
+    _pyclass: Type[BaseLanguageModel] = None
 
     # This is related to pydantic, because "model_*" attributes are protected.
     # We deactivate the protection because langchain relies on several "model_*" named attributes
@@ -27,12 +31,18 @@ class LLMSettings(BaseModel):
 
     # instantiate an LLM from configuration
     @classmethod
-    def get_llm_from_config(cls, config):
-        if cls._pyclass is None:
-            raise Exception(
-                "Language model configuration class has self._pyclass==None. Should be a valid LLM class"
-            )
-        return cls._pyclass.default(**config)
+    def get_llm_from_config(cls, config) -> BaseLanguageModel:
+        if cls._pyclass:
+            return cls._pyclass.default(**config)
+        raise Exception("Language model configuration class is invalid. It should be a valid BaseLanguageModel class")
+
+    @classmethod
+    def pyclass(cls) -> Type[BaseLanguageModel]:
+        return cls._pyclass.default
+
+    @classmethod
+    def is_multimodal(cls) -> bool:
+        return cls._is_multimodal.default
 
 
 class LLMDefaultConfig(LLMSettings):
@@ -52,6 +62,7 @@ class LLMCustomConfig(LLMSettings):
     url: str
     auth_key: str = "optional_auth_key"
     options: str = "{}"
+
     _pyclass: Type = LLMCustom
 
     # instantiate Custom LLM from configuration
@@ -82,6 +93,7 @@ class LLMOpenAICompatibleConfig(LLMSettings):
     model_name: str
     api_key: str
     streaming: bool = True
+
     _pyclass: Type = CustomOpenAI
 
     model_config = ConfigDict(
@@ -98,6 +110,7 @@ class LLMOpenAIChatConfig(LLMSettings):
     model_name: str = "gpt-4o-mini"
     temperature: float = 0.7
     streaming: bool = True
+
     _pyclass: Type = ChatOpenAI
 
     model_config = ConfigDict(
@@ -114,6 +127,7 @@ class LLMOpenAIConfig(LLMSettings):
     model_name: str = "gpt-3.5-turbo-instruct"
     temperature: float = 0.7
     streaming: bool = True
+
     _pyclass: Type = OpenAI
 
     model_config = ConfigDict(
@@ -134,9 +148,9 @@ class LLMAzureChatOpenAIConfig(LLMSettings):
     openai_api_type: str = "azure"
     # Dont mix api versions https://github.com/hwchase17/langchain/issues/4775
     openai_api_version: str = "2023-05-15"
-
     azure_deployment: str
     streaming: bool = True
+
     _pyclass: Type = AzureChatOpenAI
 
     model_config = ConfigDict(
@@ -161,6 +175,7 @@ class LLMAzureOpenAIConfig(LLMSettings):
     azure_deployment: str = "gpt-35-turbo-instruct"
     model_name: str = "gpt-35-turbo-instruct"  # Use only completion models !
     streaming: bool = True
+
     _pyclass: Type = AzureOpenAI
 
     model_config = ConfigDict(
@@ -198,6 +213,7 @@ class LLMHuggingFaceTextGenInferenceConfig(LLMSettings):
     typical_p: float = 0.95
     temperature: float = 0.01
     repetition_penalty: float = 1.03
+
     _pyclass: Type = HuggingFaceTextGenInference
 
     model_config = ConfigDict(
@@ -219,6 +235,7 @@ class LLMHuggingFaceEndpointConfig(LLMSettings):
     top_p: float = 0.95
     temperature: float = 0.8
     return_full_text: bool = False
+
     _pyclass: Type = HuggingFaceEndpoint
 
     model_config = ConfigDict(
@@ -282,45 +299,87 @@ class LLMGeminiChatConfig(LLMSettings):
     )
 
 
-def get_allowed_language_models():
-    list_llms_default = [
-        LLMOpenAIChatConfig,
-        LLMOpenAIConfig,
-        LLMOpenAICompatibleConfig,
-        LLMOllamaConfig,
-        LLMGeminiChatConfig,
-        LLMCohereConfig,
-        LLMAzureOpenAIConfig,
-        LLMAzureChatOpenAIConfig,
-        LLMHuggingFaceEndpointConfig,
-        LLMHuggingFaceTextGenInferenceConfig,
-        LLMCustomConfig,
-        LLMDefaultConfig,
-    ]
+class LLMFactory(BaseFactory):
+    def get_allowed_classes(self) -> List[Type[LLMSettings]]:
+        list_llms_default = [
+            LLMOpenAIChatConfig,
+            LLMOpenAIConfig,
+            LLMOpenAICompatibleConfig,
+            LLMOllamaConfig,
+            LLMGeminiChatConfig,
+            LLMCohereConfig,
+            LLMAzureOpenAIConfig,
+            LLMAzureChatOpenAIConfig,
+            LLMHuggingFaceEndpointConfig,
+            LLMHuggingFaceTextGenInferenceConfig,
+            LLMCustomConfig,
+            LLMDefaultConfig,
+        ]
 
-    mad_hatter_instance = MadHatter()
-    list_llms = mad_hatter_instance.execute_hook(
-        "factory_allowed_llms", list_llms_default, cat=None
-    )
-    return list_llms
+        list_llms = self._mad_hatter.execute_hook(
+            "factory_allowed_llms", list_llms_default, cat=None
+        )
+        return list_llms
 
+    def get_schemas(self) -> Dict:
+        # llm_schemas contains metadata to let any client know
+        # which fields are required to create the language model.
+        llm_schemas = {}
+        for config_class in self.get_allowed_classes():
+            schema = config_class.model_json_schema()
+            # useful for clients in order to call the correct config endpoints
+            schema["languageModelName"] = schema["title"]
+            llm_schemas[schema["title"]] = schema
 
-def get_llm_from_name(name_llm: str):
-    """Find the llm adapter class by name"""
-    for cls in get_allowed_language_models():
-        if cls.__name__ == name_llm:
-            return cls
-    return None
+        return llm_schemas
 
+    def get_config_class_from_adapter(self, cls: Type[BaseLanguageModel]) -> Type[LLMSettings] | None:
+        """Find the class of the llm adapter"""
 
-def get_llms_schemas():
-    # LLM_SCHEMAS contains metadata to let any client know
-    # which fields are required to create the language model.
-    LLM_SCHEMAS = {}
-    for config_class in get_allowed_language_models():
-        schema = config_class.model_json_schema()
-        # useful for clients in order to call the correct config endpoints
-        schema["languageModelName"] = schema["title"]
-        LLM_SCHEMAS[schema["title"]] = schema
+        return next(
+            (config_class for config_class in self.get_allowed_classes() if config_class.pyclass() == cls),
+            None
+        )
 
-    return LLM_SCHEMAS
+    def get_from_config_name(self, agent_id: str, config_name: str) -> BaseLanguageModel:
+        """
+        Get the language model from the configuration name.
+
+        Args:
+            agent_id: The agent key
+            config_name: The configuration name
+
+        Returns:
+            BaseLanguageModel: The language model instance
+        """
+
+        # get LLM factory class
+        list_llms = self.get_allowed_classes()
+        factory_class = next((cls for cls in list_llms if cls.__name__ == config_name), None)
+        if not factory_class:
+            log.warning(f"LLM class {config_name} not found in the list of allowed LLMs")
+            return LLMDefaultConfig.get_llm_from_config({})
+
+        # obtain configuration and instantiate LLM
+        selected_llm_config = crud_settings.get_setting_by_name(agent_id, config_name)
+        try:
+            llm = factory_class.get_llm_from_config(selected_llm_config["value"])
+        except Exception:
+            import traceback
+            traceback.print_exc()
+
+            llm = LLMDefaultConfig.get_llm_from_config({})
+
+        return llm
+
+    @property
+    def setting_name(self) -> str:
+        return "llm_selected"
+
+    @property
+    def setting_category(self) -> str:
+        return "llm"
+
+    @property
+    def setting_factory_category(self) -> str:
+        return "llm_factory"

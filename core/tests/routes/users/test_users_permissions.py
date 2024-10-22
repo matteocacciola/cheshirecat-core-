@@ -1,18 +1,14 @@
-
 import pytest
-from cat.env import get_env
+
+from tests.conftest import api_key
+from tests.utils import agent_id
+
 
 # test endpoints with different user permissions
 # NOTE: we are using here the secure_client:
-# - CCAT_API_KEY and CCAT_API_KEY_WS are active
+# - CCAT_API_KEY, CCAT_API_KEY_WS and CCAT_JWT_SECRET are active
 # - we will auth with JWT
 
-
-@pytest.mark.parametrize("credentials", [
-    # default users: `admin` has USERS permissions, `user` has not
-    {"username": "user", "password": "user"},
-    {"username": "admin", "password": "admin"},
-])
 @pytest.mark.parametrize("endpoint", [
     {
         "method": "GET",
@@ -40,7 +36,10 @@ from cat.env import get_env
         "payload": None
     }
 ])
-def test_users_permissions(secure_client, credentials, endpoint):
+
+
+def test_users_permissions(secure_client, secure_client_headers, endpoint):
+    credentials = {"username": "user", "password": "user"}
 
     # create new user that will be edited by calling the endpoints
     # we create it using directly CCAT_API_KEY
@@ -51,8 +50,9 @@ def test_users_permissions(secure_client, credentials, endpoint):
             "password": "U R U"
         },
         headers={
-            "Authorization": f"Bearer {get_env('CCAT_API_KEY')}",
-            "user_id": "admin"
+            "Authorization": f"Bearer {api_key}",
+            "user_id": "admin",
+            "agent_id": agent_id
         }
     )
     assert response.status_code == 200
@@ -60,17 +60,18 @@ def test_users_permissions(secure_client, credentials, endpoint):
 
     # tests for `admin` and `user` using the endpoints
 
-    # no JWT, no pass
+    # no authentication, no pass
     res = secure_client.request(
         endpoint["method"],
         endpoint["path"].replace("ID_PLACEHOLDER", target_user_id),
-        json=endpoint["payload"]
+        json=endpoint["payload"],
+        headers={"agent_id": agent_id}
     )
     assert res.status_code == 403
     assert res.json()["detail"]["error"] == "Invalid Credentials"
     
     # obtain JWT
-    res = secure_client.post("/auth/token", json=credentials)
+    res = secure_client.post("/auth/token", json=credentials, headers=secure_client_headers)
     assert res.status_code == 200
     jwt = res.json()["access_token"]
 
@@ -79,12 +80,10 @@ def test_users_permissions(secure_client, credentials, endpoint):
         endpoint["method"],
         endpoint["path"].replace("ID_PLACEHOLDER", target_user_id),
         json=endpoint["payload"],
-        headers={"Authorization": f"Bearer {jwt}"} # using credentials
+        headers={"Authorization": f"Bearer {jwt}", "agent_id": agent_id} # using credentials
     )
     # `admin` can now use endpoints, `user` cannot
     if credentials["username"] == "admin":
         assert res.status_code == 200
     else:
         assert res.status_code == 403
-
-# TODOAUTH: more tests here on critical endpoints

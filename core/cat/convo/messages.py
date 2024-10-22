@@ -1,14 +1,14 @@
-from typing import List, Literal
-from cat.utils import BaseModelDict
-from langchain_core.messages import BaseMessage, AIMessage, HumanMessage
-from enum import Enum
-from pydantic import BaseModel, Field, ConfigDict
 import time
+from typing import List, Literal, Dict
+from langchain_core.messages import AIMessage, HumanMessage
+from pydantic import BaseModel, Field, ConfigDict
+
+from cat.utils import BaseModelDict, Enum
 
 
 class Role(Enum):
     AI = "AI"
-    Human = "Human"
+    HUMAN = "Human"
 
 
 class ModelInteraction(BaseModel):
@@ -18,9 +18,7 @@ class ModelInteraction(BaseModel):
     input_tokens: int
     started_at: float = Field(default_factory=lambda: time.time())
 
-    model_config = ConfigDict(
-        protected_namespaces=()
-    )
+    model_config = ConfigDict(protected_namespaces=())
 
 
 class LLMModelInteraction(ModelInteraction):
@@ -42,13 +40,13 @@ class MessageWhy(BaseModelDict):
     Variables:
         input (str): input message
         intermediate_steps (List): intermediate steps
-        memory (dict): memory
+        memory (Dict): memory
         model_interactions (List[LLMModelInteraction | EmbedderModelInteraction]): model interactions
     """
 
     input: str
     intermediate_steps: List
-    memory: dict
+    memory: Dict
     model_interactions: List[LLMModelInteraction | EmbedderModelInteraction]
 
 
@@ -78,23 +76,36 @@ class UserMessage(BaseModelDict):
     user_id: str
 
 
-def convert_to_Langchain_message(
-        messages: List[UserMessage | CatMessage],
-) -> List[BaseMessage]:
-    messages = []
-    for m in messages:
-        if isinstance(m, CatMessage):
-            messages.append(
-                HumanMessage(content=m.content, response_metadata={"userId": m.user_id})
-            )
-        else:
-            messages.append(
-                AIMessage(content=m.text, response_metadata={"userId": m.user_id})
-            )
-    return messages
+class ConversationHistoryInfo(BaseModelDict):
+    """Class for wrapping conversation history info
+
+    Variables:
+        who (Role): role
+        message (str): message
+        why (MessageWhy): message why
+        when (float): when
+        role (Role): role
+    """
+
+    who: Role
+    message: str
+    why: MessageWhy | None = None
+    when: float | None = time.time()
+    role: Role
 
 
-def convert_to_Cat_message(cat_message: AIMessage, why: MessageWhy) -> CatMessage:
+def convert_to_langchain_message(
+    messages: List[UserMessage | CatMessage],
+) -> List[HumanMessage | AIMessage]:
+    return [
+        HumanMessage(content=m.text, response_metadata={"userId": m.user_id})
+        if isinstance(m, UserMessage)
+        else AIMessage(content=m.content, response_metadata={"userId": m.user_id})
+        for m in messages
+    ]
+
+
+def convert_to_cat_message(cat_message: AIMessage, why: MessageWhy) -> CatMessage:
     return CatMessage(
         content=cat_message.content,
         user_id=cat_message.response_metadata["userId"],

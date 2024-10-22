@@ -6,35 +6,32 @@ import traceback
 from copy import deepcopy
 from typing import List, Dict
 
-from cat.log import log
-
-import cat.utils as utils
-from cat.utils import singleton
-
-from cat.db import crud
+from cat.db.cruds import settings as crud_settings
 from cat.db.models import Setting
-
+from cat.log import log
 from cat.mad_hatter.plugin_extractor import PluginExtractor
 from cat.mad_hatter.plugin import Plugin
 from cat.mad_hatter.decorators.hook import CatHook
 from cat.mad_hatter.decorators.tool import CatTool
-
-from cat.experimental.form import CatForm
+from cat.experimental.form.cat_form import CatForm
+import cat.utils as utils
 
 
 # This class is responsible for plugins functionality:
 # - loading
 # - prioritizing
 # - executing
-@singleton
 class MadHatter:
     # loads and execute plugins
-    # - enter into the plugin folder and loads everthing
+    # - enter into the plugin folder and loads everything
     #   that is decorated or named properly
     # - orders plugged in hooks by name and priority
     # - exposes functionality to the cat
 
-    def __init__(self):
+    def __init__(self, config_key: str):
+        self.__config_key = config_key
+        self.skip_folders = ["__pycache__", "lost+found"]
+
         self.plugins: Dict[str, Plugin] = {}  # plugins dictionary
 
         self.hooks: Dict[
@@ -104,18 +101,22 @@ class MadHatter:
 
         # discover plugins, folder by folder
         for folder in all_plugin_folders:
+            plugin_id = os.path.basename(os.path.normpath(folder))
+            if plugin_id in self.skip_folders:
+                continue
+
             self.load_plugin(folder)
 
-            plugin_id = os.path.basename(os.path.normpath(folder))
+            if plugin_id not in self.active_plugins:
+                continue
 
-            if plugin_id in self.active_plugins:
-                try:
-                    self.plugins[plugin_id].activate()
-                except Exception as e:
-                    # Couldn't activate the plugin -> Deactivate it
-                    if plugin_id in self.active_plugins:
-                        self.toggle_plugin(plugin_id)
-                    raise e
+            try:
+                self.plugins[plugin_id].activate()
+            except Exception as e:
+                # Couldn't activate the plugin -> Deactivate it
+                if plugin_id in self.active_plugins:
+                    self.toggle_plugin(plugin_id)
+                raise e
 
         self.sync_hooks_tools_and_forms()
 
@@ -149,9 +150,7 @@ class MadHatter:
 
                 # cache hooks (indexed by hook name)
                 for h in plugin.hooks:
-                    if h.name not in self.hooks.keys():
-                        self.hooks[h.name] = []
-                    self.hooks[h.name].append(h)
+                    self.hooks.setdefault(h.name, []).append(h)
 
         # sort each hooks list by priority
         for hook_name in self.hooks.keys():
@@ -165,7 +164,7 @@ class MadHatter:
         return plugin_id in self.plugins.keys()
 
     def load_active_plugins_from_db(self):
-        active_plugins = crud.get_setting_by_name("active_plugins")
+        active_plugins = crud_settings.get_setting_by_name(self.__config_key, "active_plugins")
 
         if active_plugins is None:
             active_plugins = []
@@ -178,62 +177,57 @@ class MadHatter:
 
         return active_plugins
 
-    def save_active_plugins_to_db(self, active_plugins):
-        new_setting = {"name": "active_plugins", "value": active_plugins}
-        new_setting = Setting(**new_setting)
-        crud.upsert_setting_by_name(new_setting)
-
     # activate / deactivate plugin
     def toggle_plugin(self, plugin_id):
-        if self.plugin_exists(plugin_id):
-            plugin_is_active = plugin_id in self.active_plugins
+        if not self.plugin_exists(plugin_id):
+            raise Exception(f"Plugin {plugin_id} not present in plugins folder")
 
-            # update list of active plugins
-            if plugin_is_active:
-                log.warning(f"Toggle plugin {plugin_id}: Deactivate")
+        plugin_is_active = plugin_id in self.active_plugins
 
-                # Execute hook on plugin deactivation
-                # Deactivation hook must happen before actual deactivation,
-                # otherwise the hook will not be available in _plugin_overrides anymore
-                for hook in self.plugins[plugin_id]._plugin_overrides:
-                    if hook.name == "deactivated":
-                        hook.function(self.plugins[plugin_id])
+        # update list of active plugins
+        if plugin_is_active:
+            log.warning(f"Toggle plugin {plugin_id}: Deactivate")
 
-                # Deactivate the plugin
-                self.plugins[plugin_id].deactivate()
-                # Remove the plugin from the list of active plugins
-                self.active_plugins.remove(plugin_id)
-            else:
-                log.warning(f"Toggle plugin {plugin_id}: Activate")
+            # Execute hook on plugin deactivation
+            # Deactivation hook must happen before actual deactivation,
+            # otherwise the hook will not be available in _plugin_overrides anymore
+            for hook in self.plugins[plugin_id].plugin_overrides:
+                if hook.name == "deactivated":
+                    hook.function(self.plugins[plugin_id])
 
-                # Activate the plugin
-                try:
-                    self.plugins[plugin_id].activate()
-                except Exception as e:
-                    # Couldn't activate the plugin
-                    raise e
-
-                # Execute hook on plugin activation
-                # Activation hook must happen before actual activation,
-                # otherwise the hook will still not be available in _plugin_overrides
-                for hook in self.plugins[plugin_id]._plugin_overrides:
-                    if hook.name == "activated":
-                        hook.function(self.plugins[plugin_id])
-
-                # Add the plugin in the list of active plugins
-                self.active_plugins.append(plugin_id)
-
-            # update DB with list of active plugins, delete duplicate plugins
-            self.save_active_plugins_to_db(list(set(self.active_plugins)))
-
-            # update cache and embeddings
-            self.sync_hooks_tools_and_forms()
-
+            # Deactivate the plugin
+            self.plugins[plugin_id].deactivate()
+            # Remove the plugin from the list of active plugins
+            self.active_plugins.remove(plugin_id)
         else:
-            raise Exception("Plugin {plugin_id} not present in plugins folder")
+            log.warning(f"Toggle plugin {plugin_id}: Activate")
+
+            # Activate the plugin
+            try:
+                self.plugins[plugin_id].activate()
+            except Exception as e:
+                # Couldn't activate the plugin
+                raise e
+
+            # Execute hook on plugin activation
+            # Activation hook must happen before actual activation,
+            # otherwise the hook will still not be available in _plugin_overrides
+            for hook in self.plugins[plugin_id].plugin_overrides:
+                if hook.name == "activated":
+                    hook.function(self.plugins[plugin_id])
+
+            # Add the plugin in the list of active plugins
+            self.active_plugins.append(plugin_id)
+
+        # update DB with list of active plugins, delete duplicate plugins
+        active_plugins = list(set(self.active_plugins))
+        crud_settings.upsert_setting_by_name(self.__config_key, Setting(name="active_plugins", value=active_plugins))
+
+        # update cache and embeddings
+        self.sync_hooks_tools_and_forms()
 
     # execute requested hook
-    def execute_hook(self, hook_name, *args, cat):
+    def execute_hook(self, hook_name: str, *args, cat):
         # check if hook is supported
         if hook_name not in self.hooks.keys():
             raise Exception(f"Hook {hook_name} not present in any plugin")

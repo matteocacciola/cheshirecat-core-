@@ -1,16 +1,21 @@
 from typing import Dict, List
 
+from pydantic import BaseModel
 from pytz import utc
 from datetime import datetime, timedelta
-
 from apscheduler.schedulers.background import BackgroundScheduler
 from apscheduler.jobstores.memory import MemoryJobStore
 from apscheduler.executors.pool import ThreadPoolExecutor, ProcessPoolExecutor
 from apscheduler.events import EVENT_JOB_EXECUTED, EVENT_JOB_ERROR
 
 from cat.log import log
-
 from cat.utils import singleton
+
+
+class Job(BaseModel):
+    id: str
+    name: str
+    next_run: int | float
 
 
 # I'm late, I'm late, for a very important date!
@@ -63,10 +68,9 @@ class WhiteRabbit:
         """
         Triggered when a job ends
 
-        Parameters
-        ----------
-        event: apscheduler.events.JobExecutionEvent
-            Passed by the scheduler when the job ends. It contains information about the job.
+        Args:
+            event: apscheduler.events.JobExecutionEvent
+                Passed by the scheduler when the job ends. It contains information about the job.
         """
         if event.exception:
             log.error(
@@ -81,31 +85,24 @@ class WhiteRabbit:
         """
         Gets a scheduled job
 
-        Parameters
-        ----------
-        job_id: str
-            The id assigned to the job.
+        Args:
+            job_id: str
+                The id assigned to the job.
 
-        Returns
-        -------
-        Dict[str, str] | None
-            A dict with id, name and next_run if the job exists, otherwise None.
+        Returns:
+            Dict[str, str] | None
+                A dictionary with id, name and next_run if the job exists, otherwise None.
         """
         job = self.scheduler.get_job(job_id)
-        return (
-            {"id": job.id, "name": job.name, "next_run": job.next_run_time}
-            if job
-            else None
-        )
+        return Job(id=job.id, name=job.name, next_run=job.next_run_time) if job else None
 
     def get_jobs(self) -> List[Dict[str, str]]:
         """
         Returns a list of scheduled jobs
 
-        Returns
-        -------
-        List[Dict[str, str]]
-            A list of jobs. Each job is a dict with id, name and next_run.
+        Returns:
+            List[Dict[str, str]]
+                A list of jobs. Each job is a dictionary with id, name and next_run.
         """
         jobs = self.scheduler.get_jobs()
 
@@ -118,15 +115,13 @@ class WhiteRabbit:
         """
         Pauses a scheduled job
 
-        Parameters
-        ----------
-        job_id: str
-            The id assigned to the job.
+        Args:
+            job_id: str
+                The id assigned to the job.
 
-        Returns
-        -------
-        bool
-            The outcome of the pause action.
+        Returns:
+            bool
+                The outcome of the pause action.
         """
         try:
             self.scheduler.pause_job(job_id)
@@ -140,15 +135,13 @@ class WhiteRabbit:
         """
         Resumes a paused job
 
-        Parameters
-        ----------
-        job_id: str
-            The id assigned to the job.
+        Args:
+            job_id: str
+                The id assigned to the job.
 
-        Returns
-        -------
-        bool
-            The outcome of the resume action.
+        Returns:
+            bool
+                The outcome of the resume action.
         """
         try:
             self.scheduler.resume_job(job_id)
@@ -162,15 +155,13 @@ class WhiteRabbit:
         """
         Removes a scheduled job
 
-        Parameters
-        ----------
-        job_id: str
-            The id assigned to the job.
+        Args:
+            job_id: str
+                The id assigned to the job.
 
-        Returns
-        -------
-        bool
-            The outcome of the removal.
+        Returns:
+            bool
+                The outcome of the removal.
         """
         try:
             self.scheduler.remove_job(job_id)
@@ -195,31 +186,29 @@ class WhiteRabbit:
         """
         Schedule a job
 
-        Parameters
-        ----------
-        job: function
-            The function to be called.
-        job_id: str
-            The id assigned to the job.
-        days: int
-            Days to wait.
-        hours: int
-            Hours to wait.
-        minutes: int
-            Minutes to wait.
-        seconds: int
-            Seconds to wait.
-        milliseconds: int
-            Milliseconds to wait.
-        microseconds: int
-            Microseconds to wait.
-        **kwargs
-            The arguments to pass to the function.
+        Args:
+            job: function
+                The function to be called.
+            job_id: str
+                The id assigned to the job.
+            days: int
+                Days to wait.
+            hours: int
+                Hours to wait.
+            minutes: int
+                Minutes to wait.
+            seconds: int
+                Seconds to wait.
+            milliseconds: int
+                Milliseconds to wait.
+            microseconds: int
+                Microseconds to wait.
+            **kwargs
+                The arguments to pass to the function.
 
-        Returns
-        -------
-        str
-            The job id.
+        Returns:
+            str
+                The job id.
         """
         # Calculate time
         schedule = datetime.today() + timedelta(
@@ -260,31 +249,29 @@ class WhiteRabbit:
         """
         Schedule an interval job
 
-        Parameters
-        ----------
-        job: function
-            The function to be called.
-        job_id: str
-            The id assigned to the job
-        start_date: datetime
-            Start date. If None the job can start instantaneously
-        end_date: datetime
-            End date. If None the job never ends.
-        days: int
-            Days to wait.
-        hours: int
-            Hours to wait.
-        minutes: int
-            Minutes to wait.
-        seconds: int
-            Seconds to wait.
-        **kwargs
-            The arguments to pass to the function
+        Args:
+            job: function
+                The function to be called.
+            job_id: str
+                The id assigned to the job
+            start_date: datetime
+                Start date. If None the job can start instantaneously
+            end_date: datetime
+                End date. If None the job never ends.
+            days: int
+                Days to wait.
+            hours: int
+                Hours to wait.
+            minutes: int
+                Minutes to wait.
+            seconds: int
+                Seconds to wait.
+            **kwargs
+                The arguments to pass to the function
 
-        Returns
-        -------
-        str
-            The job id.
+        Returns:
+            str
+                The job id.
         """
 
         # Check that the function is callable
@@ -331,39 +318,37 @@ class WhiteRabbit:
         """
         Schedule a cron job
 
-        Parameters
-        ----------
-        job: function
-            The function to be called.
-        job_id: str
-            The id assigned to the job
-        start_date: datetime
-            Start date. If None the job can start instantaneously
-        end_date: datetime
-            End date. If None the job never ends.
-        year: int|str
-            4-digit year
-        month: int|str
-            month (1-12)
-        day: int|str
-            day of month (1-31)
-        week: int|str
-            ISO week (1-53)
-        day_of_week: int|str
-            number or name of weekday (0-6 or mon,tue,wed,thu,fri,sat,sun)
-        hour: int|str
-            hour (0-23)
-        minute: int|str
-            minute (0-59)
-        second: int|str
-            second (0-59)
-        **kwargs
-            The arguments to pass to the function
+        Args:
+            job: function
+                The function to be called.
+            job_id: str
+                The id assigned to the job
+            start_date: datetime
+                Start date. If None the job can start instantaneously
+            end_date: datetime
+                End date. If None the job never ends.
+            year: int|str
+                4-digit year
+            month: int|str
+                month (1-12)
+            day: int|str
+                day of month (1-31)
+            week: int|str
+                ISO week (1-53)
+            day_of_week: int|str
+                number or name of weekday (0-6 or mon,tue,wed,thu,fri,sat,sun)
+            hour: int|str
+                hour (0-23)
+            minute: int|str
+                minute (0-59)
+            second: int|str
+                second (0-59)
+            **kwargs
+                The arguments to pass to the function
 
-        Returns
-        -------
-        str
-            The job id.
+        Returns:
+            str
+                The job id.
         """
 
         # Check that the function is callable
@@ -409,29 +394,27 @@ class WhiteRabbit:
         """
         Schedule a chat message
 
-        Parameters
-        ----------
-        content: str
-            The message to be sent.
-        cat: StrayCat
-            Stray Cat instance.
-        days: int
-            Days to wait.
-        hours: int
-            Hours to wait.
-        minutes: int
-            Minutes to wait.
-        seconds: int
-            Seconds to wait.
-        milliseconds: int
-            Milliseconds to wait.
-        microseconds: int
-            Microseconds to wait.
+        Args:
+            content: str
+                The message to be sent.
+            cat: StrayCat
+                Stray Cat instance.
+            days: int
+                Days to wait.
+            hours: int
+                Hours to wait.
+            minutes: int
+                Minutes to wait.
+            seconds: int
+                Seconds to wait.
+            milliseconds: int
+                Milliseconds to wait.
+            microseconds: int
+                Microseconds to wait.
 
-        Returns
-        -------
-        str
-            The job id.
+        Returns:
+            str
+                The job id.
         """
 
         # Calculate time

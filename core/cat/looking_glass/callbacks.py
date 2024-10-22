@@ -2,12 +2,18 @@ from typing import Any, Dict, List
 from langchain.callbacks.base import BaseCallbackHandler
 from langchain_core.outputs.llm_result import LLMResult
 import tiktoken
-from cat.convo.messages import LLMModelInteraction
 import time
+
+from cat.convo.messages import LLMModelInteraction
 
 
 class NewTokenHandler(BaseCallbackHandler):
     def __init__(self, stray):
+        """
+        Args:
+            stray: StrayCat instance
+        """
+
         # cat could be an instance of CheshireCat or StrayCat
         self.stray = stray
 
@@ -21,6 +27,12 @@ class ModelInteractionHandler(BaseCallbackHandler):
     """
 
     def __init__(self, stray, source: str):
+        """
+        Args:
+            stray: StrayCat instance
+            source: Source of the model interaction
+        """
+
         self.stray = stray
         self.stray.working_memory.model_interactions.append(
             LLMModelInteraction(

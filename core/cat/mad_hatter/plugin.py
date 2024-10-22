@@ -6,13 +6,15 @@ import tempfile
 import traceback
 import importlib
 import subprocess
-from typing import Dict, List
+from typing import Dict, List, Tuple
 from inspect import getmembers, isclass
 from pydantic import BaseModel, ValidationError
 from packaging.requirements import Requirement
 
-from cat.mad_hatter.decorators import CatTool, CatHook, CatPluginDecorator
-from cat.experimental.form import CatForm
+from cat.experimental.form.cat_form import CatForm
+from cat.mad_hatter.decorators.hook import CatHook
+from cat.mad_hatter.decorators.plugin_decorator import CatPluginDecorator
+from cat.mad_hatter.decorators.tool import CatTool
 from cat.utils import to_camel_case
 from cat.log import log
 
@@ -23,7 +25,7 @@ class PluginSettingsModel(BaseModel):
 
 
 # this class represents a plugin in memory
-# the plugin itsefl is managed as much as possible unix style
+# the plugin itself is managed as much as possible unix style
 #      (i.e. by saving information in the folder itself)
 
 
@@ -104,24 +106,20 @@ class Plugin:
     # get plugin settings JSON schema
     def settings_schema(self):
         # is "settings_schema" hook defined in the plugin?
-        for h in self._plugin_overrides:
-            if h.name == "settings_schema":
-                return h.function()
-            else:
-                # if the "settings_schema" is not defined but
-                # "settings_model" is it get the schema from the model
-                if h.name == "settings_model":
-                    return h.function().model_json_schema()
+        # otherwise, if the "settings_schema" is not defined but "settings_model" is it get the schema from the model
+        ph = next((h for h in self._plugin_overrides if h.name in ["settings_schema", "settings_model"]), None)
+        if ph is None:
+            # default schema (empty)
+            return PluginSettingsModel.model_json_schema()
 
-        # default schema (empty)
-        return PluginSettingsModel.model_json_schema()
+        return ph.function() if ph.name == "settings_schema" else ph.function().model_json_schema()
 
     # get plugin settings Pydantic model
     def settings_model(self):
         # is "settings_model" hook defined in the plugin?
-        for h in self._plugin_overrides:
-            if h.name == "settings_model":
-                return h.function()
+        ph = next((h for h in self._plugin_overrides if h.name == "settings_model"), None)
+        if ph is not None:
+            return ph.function()
 
         # default schema (empty)
         return PluginSettingsModel
@@ -129,17 +127,16 @@ class Plugin:
     # load plugin settings
     def load_settings(self):
         # is "settings_load" hook defined in the plugin?
-        for h in self._plugin_overrides:
-            if h.name == "load_settings":
-                return h.function()
+        ph = next((h for h in self._plugin_overrides if h.name == "load_settings"), None)
+        if ph is not None:
+            return ph.function()
 
         # by default, plugin settings are saved inside the plugin folder
         #   in a JSON file called settings.json
         settings_file_path = os.path.join(self._path, "settings.json")
 
-        if not os.path.isfile(settings_file_path):
-            if not self._create_settings_from_model():
-                return {}
+        if not os.path.isfile(settings_file_path) and not self._create_settings_from_model():
+            return {}
 
         # load settings.json if exists
         if os.path.isfile(settings_file_path):
@@ -147,7 +144,6 @@ class Plugin:
                 with open(settings_file_path, "r") as json_file:
                     settings = json.load(json_file)
                     return settings
-
             except Exception as e:
                 log.error(f"Unable to load plugin {self._id} settings: {e}")
                 log.warning(self.plugin_specific_error_message())
@@ -156,9 +152,9 @@ class Plugin:
     # save plugin settings
     def save_settings(self, settings: Dict):
         # is "settings_save" hook defined in the plugin?
-        for h in self._plugin_overrides:
-            if h.name == "save_settings":
-                return h.function(settings)
+        ph = next((h for h in self._plugin_overrides if h.name == "save_settings"), None)
+        if ph is not None:
+            return ph.function(settings)
 
         # by default, plugin settings are saved inside the plugin folder
         #   in a JSON file called settings.json
@@ -192,7 +188,7 @@ class Plugin:
             settings = model().model_dump_json(indent=4)
 
             # If each field have a default value and the model is correct,
-            # create the settings.json wiht default values
+            # create the settings.json with default values
             with open(settings_file_path, "x") as json_file:
                 json_file.write(settings)
                 log.debug(
@@ -200,7 +196,6 @@ class Plugin:
                 )
 
             return True
-
         except ValidationError:
             log.debug(
                 f"{self.id} settings model have missing defaut values, no settings.json created"
@@ -245,50 +240,49 @@ class Plugin:
 
     def _install_requirements(self):
         req_file = os.path.join(self.path, "requirements.txt")
-        filtered_requirements = []
+        if not os.path.exists(req_file):
+            return
 
-        if os.path.exists(req_file):
-            installed_packages = {x.name for x in importlib.metadata.distributions()}
+        installed_packages = {x.name for x in importlib.metadata.distributions()}
+        filtered_requirements = []
+        try:
+            with open(req_file, "r") as read_file:
+                requirements = read_file.readlines()
+
+            for req in requirements:
+                log.info(f"Installing requirements for: {self.id}")
+
+                # get package name
+                package_name = Requirement(req).name
+
+                # check if package is installed
+                if package_name not in installed_packages:
+                    filtered_requirements.append(req)
+                else:
+                    log.debug(f"{package_name} is already installed")
+        except Exception as e:
+            log.error(f"Error during requirements check: {e}, for {self.id}")
+
+        if len(filtered_requirements) == 0:
+            return
+
+        with tempfile.NamedTemporaryFile(mode="w") as tmp:
+            tmp.write("".join(filtered_requirements))
+            # If flush is not performed, when pip reads the file it is empty
+            tmp.flush()
 
             try:
-                with open(req_file, "r") as read_file:
-                    requirements = read_file.readlines()
+                subprocess.run(
+                    ["pip", "install", "--no-cache-dir", "-r", tmp.name], check=True
+                )
+            except subprocess.CalledProcessError as e:
+                log.error(f"Error during installing {self.id} requirements: {e}")
 
-                for req in requirements:
-                    log.info(f"Installing requirements for: {self.id}")
+                # Uninstall the previously installed packages
+                log.info(f"Uninstalling requirements for: {self.id}")
+                subprocess.run(["pip", "uninstall", "-r", tmp.name], check=True)
 
-                    # get package name
-                    package_name = Requirement(req).name
-
-                    # check if package is installed
-                    if package_name not in installed_packages:
-                        filtered_requirements.append(req)
-                    else:
-                        log.debug(f"{package_name} is alredy installed")
-
-            except Exception as e:
-                log.error(f"Error during requirements check: {e}, for {self.id}")
-
-            if len(filtered_requirements) == 0:
-                return
-
-            with tempfile.NamedTemporaryFile(mode="w") as tmp:
-                tmp.write("".join(filtered_requirements))
-                # If flush is not performed, when pip reads the file it is empty
-                tmp.flush()
-
-                try:
-                    subprocess.run(
-                        ["pip", "install", "--no-cache-dir", "-r", tmp.name], check=True
-                    )
-                except subprocess.CalledProcessError as e:
-                    log.error(f"Error during installing {self.id} requirements: {e}")
-
-                    # Uninstall the previously installed packages
-                    log.info(f"Uninstalling requirements for: {self.id}")
-                    subprocess.run(["pip", "uninstall", "-r", tmp.name], check=True)
-
-                    raise Exception(f"Error during {self.id} requirements installation")
+                raise Exception(f"Error during {self.id} requirements installation")
 
     # lists of hooks and tools
     def _load_decorated_functions(self):
@@ -306,9 +300,9 @@ class Plugin:
             try:
                 plugin_module = importlib.import_module(py_filename)
 
-                hooks += getmembers(plugin_module, self._is_cat_hook)
-                tools += getmembers(plugin_module, self._is_cat_tool)
-                forms += getmembers(plugin_module, self._is_cat_form)
+                hooks += getmembers(plugin_module, self.is_cat_hook)
+                tools += getmembers(plugin_module, self.is_cat_tool)
+                forms += getmembers(plugin_module, self.is_cat_form)
                 plugin_overrides += getmembers(
                     plugin_module, self._is_cat_plugin_override
                 )
@@ -332,19 +326,19 @@ class Plugin:
         url = self.manifest.get("plugin_url")
         return f"To resolve any problem related to {name} plugin, contact the creator using github issue at the link {url}"
 
-    def _clean_hook(self, hook: CatHook):
+    def _clean_hook(self, hook: Tuple[str, CatHook]):
         # getmembers returns a tuple
         h = hook[1]
         h.plugin_id = self._id
         return h
 
-    def _clean_tool(self, tool: CatTool):
+    def _clean_tool(self, tool: Tuple[str, CatTool]):
         # getmembers returns a tuple
         t = tool[1]
         t.plugin_id = self._id
         return t
 
-    def _clean_form(self, form: CatForm):
+    def _clean_form(self, form: Tuple[str, CatForm]):
         # getmembers returns a tuple
         f = form[1]
         f.plugin_id = self._id
@@ -357,15 +351,15 @@ class Plugin:
     # a plugin hook function has to be decorated with @hook
     # (which returns an instance of CatHook)
     @staticmethod
-    def _is_cat_hook(obj):
+    def is_cat_hook(obj):
         return isinstance(obj, CatHook)
 
     @staticmethod
-    def _is_cat_form(obj):
+    def is_cat_form(obj):
         if not isclass(obj) or obj is CatForm:
             return False
 
-        if not issubclass(obj, CatForm) or not obj._autopilot:
+        if not issubclass(obj, CatForm) or not obj.autopilot:
             return False
 
         return True
@@ -373,7 +367,7 @@ class Plugin:
     # a plugin tool function has to be decorated with @tool
     # (which returns an instance of CatTool)
     @staticmethod
-    def _is_cat_tool(obj):
+    def is_cat_tool(obj):
         return isinstance(obj, CatTool)
 
     # a plugin override function has to be decorated with @plugin
@@ -409,3 +403,7 @@ class Plugin:
     @property
     def forms(self):
         return self._forms
+
+    @property
+    def plugin_overrides(self):
+        return self._plugin_overrides

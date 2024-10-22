@@ -10,15 +10,15 @@ from cat.mad_hatter.decorators import hook
 def factory_allowed_llms(allowed: List[LLMSettings], cat) -> List:
     """Hook to extend support of llms.
 
-    Parameters
-    ---------
-    allowed : List of LLMSettings classes
-        list of allowed language models
+    Args:
+        allowed : List of LLMSettings classes
+            list of allowed language models
+        cat : Cat
+            Cat instance
 
-    Returns
-    -------
-    supported : List of LLMSettings classes
-        list of allowed language models
+    Returns:
+        supported : List of LLMSettings classes
+            list of allowed language models
     """
     return allowed
 
@@ -27,15 +27,15 @@ def factory_allowed_llms(allowed: List[LLMSettings], cat) -> List:
 def factory_allowed_embedders(allowed: List[EmbedderSettings], cat) -> List:
     """Hook to extend list of supported embedders.
 
-    Parameters
-    ---------
-    allowed : embedder of EmbedderSettings classes
-        list of allowed embedders
+    Args:
+        allowed : embedder of EmbedderSettings classes
+            list of allowed embedders
+        cat : Cat
+            Cat instance
 
-    Returns
-    -------
-    supported : List of EmbedderSettings classes
-        list of allowed embedders
+    Returns:
+        supported : List of EmbedderSettings classes
+            list of allowed embedders
     """
     return allowed
 
@@ -44,16 +44,15 @@ def factory_allowed_embedders(allowed: List[EmbedderSettings], cat) -> List:
 def factory_allowed_auth_handlers(allowed: List[AuthHandlerConfig], cat) -> List:
     """Hook to extend list of supported auth_handlers.
 
-    Parameters
-    ---------
-    allowed : List of AuthHandlerConfig classes
-        list of allowed auth_handlers
+    Args:
+        allowed : List of AuthHandlerConfig classes
+            list of allowed auth_handlers
+        cat : Cat
+            Cat instance
 
-    Returns
-    -------
-    supported : List of AuthHandlerConfig classes
-        list of allowed auth_handlers
+    Returns:
+        supported : List of AuthHandlerConfig classes
+            list of allowed auth_handlers
     """
 
-    # TODOAUTH: documentation links to language.py must be moved to factory.py
     return allowed

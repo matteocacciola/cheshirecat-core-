@@ -1,12 +1,10 @@
-
 from cat.auth.permissions import AuthPermission, AuthResource
-from cat.auth.connection import WebSocketAuth
+from cat.auth.connection import WebSocketAuth, ContextualCats
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect, Depends
 from fastapi.concurrency import run_in_threadpool
 
 from cat.looking_glass.stray_cat import StrayCat
 from cat.log import log
-
 
 router = APIRouter()
 
@@ -19,21 +17,25 @@ async def receive_message(websocket: WebSocket, stray: StrayCat):
     while True:
         # Receive the next message from the WebSocket.
         user_message = await websocket.receive_json()
-        user_message["user_id"] = stray.user_id
+        user_message["user_id"] = stray.user.id
 
         # Run the `stray` object's method in a threadpool since it might be a CPU-bound operation.
-        await run_in_threadpool(stray.run, user_message)
+        await run_in_threadpool(stray.run, user_message, return_message=False)
 
 
 @router.websocket("/ws")
 @router.websocket("/ws/{user_id}")
+@router.websocket("/ws/{user_id}/{agent_id}")
 async def websocket_endpoint(
     websocket: WebSocket,
-    stray=Depends(WebSocketAuth(AuthResource.CONVERSATION, AuthPermission.WRITE)),
+    cats: ContextualCats = Depends(WebSocketAuth(AuthResource.CONVERSATION, AuthPermission.WRITE)),
 ):
     """
     Endpoint to handle incoming WebSocket connections by user id, process messages, and check for messages.
     """
+
+    # Extract the StrayCat object from the DependingCats object.
+    stray = cats.stray_cat
 
     # Add the new WebSocket connection to the manager.
     await websocket.accept()
@@ -42,7 +44,5 @@ async def websocket_endpoint(
         await receive_message(websocket, stray)
     except WebSocketDisconnect:
         # Handle the event where the user disconnects their WebSocket.
-        stray._StrayCat__ws = None
+        stray.nullify_connection()
         log.info("WebSocket connection closed")
-    # finally:
-    #     del strays[user_id]

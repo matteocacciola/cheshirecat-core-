@@ -1,17 +1,31 @@
-FROM python:3.10.11-slim-bullseye
+FROM python:3.10.11-slim-bullseye AS libraries
 
 ### ENVIRONMENT VARIABLES ###
 ENV PYTHONUNBUFFERED=1
 ENV WATCHFILES_FORCE_POLLING=true
 
 ### SYSTEM SETUP ###
-RUN apt-get -y update && apt-get install -y curl build-essential fastjar libmagic-mgc libmagic1 mime-support && \
+RUN apt-get -y update && apt-get install -y \
+    curl \
+    build-essential \
+    fastjar \
+    libmagic-mgc \
+    libmagic1 \
+    mime-support \
+    # Packages required by Rust (from required by py_rust_stemmers from fastembed library)
+    pkg-config \
+    gcc \
+    && \
+    # Install Rust by rustup
+    curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y && \
+    # Clean APT cache
     apt-get clean && \
     rm -rf /var/lib/apt/lists/*
 
-### ADMIN (static build) ###
-WORKDIR /admin
-RUN curl -sL https://github.com/cheshire-cat-ai/admin-vue/releases/download/Admin/release.zip | jar -xv
+# Add Cargo to PATH
+ENV PATH="/root/.cargo/bin:${PATH}"
+
+FROM libraries AS build
 
 ### PREPARE BUILD WITH NECESSARY FILES AND FOLDERS ###
 COPY ./pyproject.toml /app/pyproject.toml
