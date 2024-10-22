@@ -27,10 +27,6 @@ def test_get_env(client):
         else:
             assert get_env(k) == v
 
-            # TODO: take away in v2
-            # missing prefix (legacy)
-            assert get_env(k.replace("CCAT_", "")) == v
-
     if redis_host:
         os.environ["CCAT_REDIS_HOST"] = redis_host
     else:
