@@ -23,9 +23,9 @@ def test_job_on_idle_strays(lizard):
     # Run the job asynchronously
     loop.run_until_complete(async_run(loop, job_on_idle_strays, lizard, loop))
 
-    assert ccat.get_stray(stray.user_id) is None
+    assert ccat.get_stray(stray.user.id) is None
     assert ccat.has_strays() is False
-    assert crud_users.get_user(lizard.config_key, stray.user_id) is None
+    assert crud_users.get_user(lizard.config_key, stray.user.id) is None
     assert lizard.has_cheshire_cats is False
 
     # clean up

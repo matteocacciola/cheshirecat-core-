@@ -7,7 +7,7 @@ from cat.memory.working_memory import WorkingMemory
 
 def test_stray_initialization(stray_no_memory):
     assert isinstance(stray_no_memory, StrayCat)
-    assert stray_no_memory.user_id == "user_alice"
+    assert stray_no_memory.user.id == "user_alice"
     assert isinstance(stray_no_memory.working_memory, WorkingMemory)
 
 

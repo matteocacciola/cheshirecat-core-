@@ -74,7 +74,7 @@ async def recall_memory_points_from_text(
         return ccat.memory.vectors.collections[str(c)].recall_memories_from_embedding(
             query_embedding,
             k=k,
-            metadata={"source": cats.stray_cat.user_id} if c == VectoryMemoryCollectionTypes.EPISODIC else None
+            metadata={"source": cats.stray_cat.user.id} if c == VectoryMemoryCollectionTypes.EPISODIC else None
         )
 
     ccat = cats.cheshire_cat
@@ -122,7 +122,7 @@ async def create_memory_point(
 
     # ensure source is set
     if not point.metadata.get("source"):
-        point.metadata["source"] = cats.stray_cat.user_id  # this will do also for declarative memory
+        point.metadata["source"] = cats.stray_cat.user.id  # this will do also for declarative memory
 
     # ensure when is set
     if not point.metadata.get("when"):

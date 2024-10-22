@@ -11,7 +11,7 @@ def job_on_idle_strays(lizard: "BillTheLizard", loop) -> bool:
     for ccat in ccats:
         for stray in list(ccat.strays):  # Create a copy of strays to iterate over
             if stray.is_idle:
-                asyncio.run_coroutine_threadsafe(ccat.remove_stray(stray.user_id), loop=loop).result()
+                asyncio.run_coroutine_threadsafe(ccat.remove_stray(stray.user.id), loop=loop).result()
 
         # Check if the CheshireCat has still strays; if not, remove it
         if not ccat.has_strays():

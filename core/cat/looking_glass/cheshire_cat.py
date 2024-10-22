@@ -139,17 +139,17 @@ class CheshireCat:
         """
 
         return next(
-            (cat for cat in self.__strays if cat.user_id == user_id),
+            (stray for stray in self.__strays if stray.user.id == user_id),
             None
         )
 
     def __any_stray(self, user_id: str) -> bool:
-        return any(cat.user_id == user_id for cat in self.__strays)
+        return any(stray.user.id == user_id for stray in self.__strays)
 
     def add_stray(self, stray):
         """Add a stray to the Cat."""
 
-        if not self.__any_stray(stray.user_id):
+        if not self.__any_stray(stray.user.id):
             self.__strays.add(stray)
 
     async def remove_stray(self, user_id: str):

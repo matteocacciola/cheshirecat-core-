@@ -66,16 +66,16 @@ class StrayCat:
         """Check if two cats are equal."""
         if not isinstance(other, StrayCat):
             return False
-        return self.user_id == other.user_id
+        return self.user.id == other.user.id
 
     def __hash__(self):
-        return hash(self.user_id)
+        return hash(self.user.id)
 
     def __repr__(self):
-        return f"StrayCat(user_id={self.user_id},agent_id={self.__agent_id})"
+        return f"StrayCat(user_id={self.user.id},agent_id={self.__agent_id})"
 
     def __send_ws_json(self, data: Any):
-        data = data | {"user_id": self.user_id, "agent_id": self.__agent_id}
+        data = data | {"user_id": self.user.id, "agent_id": self.__agent_id}
 
         # Run the coroutine in the main event loop in the main thread
         # and wait for the result
@@ -110,7 +110,7 @@ class StrayCat:
         """
 
         if self.__ws is None:
-            log.warning(f"No websocket connection is open for user {self.user_id}")
+            log.warning(f"No websocket connection is open for user {self.user.id}")
             return
 
         options = get_args(MSG_TYPES)
@@ -138,12 +138,12 @@ class StrayCat:
         """
 
         if self.__ws is None:
-            log.warning(f"No websocket connection is open for user {self.user_id}")
+            log.warning(f"No websocket connection is open for user {self.user.id}")
             return
 
         if isinstance(message, str):
             why = self.__build_why()
-            message = CatMessage(content=message, user_id=self.user_id, why=why)
+            message = CatMessage(content=message, user_id=self.user.id, why=why)
 
         if save:
             self.working_memory.update_conversation_history(
@@ -173,7 +173,7 @@ class StrayCat:
         """
 
         if self.__ws is None:
-            log.warning(f"No websocket connection is open for user {self.user_id}")
+            log.warning(f"No websocket connection is open for user {self.user.id}")
             return
 
         if isinstance(error, str):
@@ -314,7 +314,7 @@ class StrayCat:
         recall_configs = [
             mad_hatter.execute_hook(
                 "before_cat_recalls_episodic_memories",
-                RecallSettings(embedding=recall_query_embedding, metadata={"source": self.user_id}),
+                RecallSettings(embedding=recall_query_embedding, metadata={"source": self.user.id}),
                 cat=self,
             ),
             mad_hatter.execute_hook(
@@ -477,7 +477,7 @@ class StrayCat:
 
         doc = Document(
             page_content=user_message_text,
-            metadata={"source": self.user_id, "when": time.time()},
+            metadata={"source": self.user.id, "when": time.time()},
         )
         doc = mad_hatter.execute_hook(
             "before_cat_stores_episodic_memory", doc, cat=self
@@ -500,7 +500,7 @@ class StrayCat:
 
         # prepare final cat message
         final_output = CatMessage(
-            user_id=self.user_id, content=str(agent_output.output), why=why
+            user_id=self.user.id, content=str(agent_output.output), why=why
         )
 
         # run message through plugins
@@ -663,11 +663,11 @@ Allowed classes are:
 
     async def shutdown(self):
         await self.close_connection()
-        crud_users.delete_user(self.agent_id, self.user_id)
+        crud_users.delete_user(self.agent_id, self.user.id)
 
     @property
-    def user_id(self) -> str:
-        return self.__user.id
+    def user(self) -> AuthUserInfo:
+        return self.__user
 
     @property
     def agent_id(self) -> str:
@@ -677,7 +677,7 @@ Allowed classes are:
     def cheshire_cat(self) -> "CheshireCat":
         ccat = BillTheLizard().get_cheshire_cat(self.__agent_id)
         if not ccat:
-            raise ValueError(f"Cheshire Cat not found for the StrayCat {self.user_id}.")
+            raise ValueError(f"Cheshire Cat not found for the StrayCat {self.user.id}.")
 
         return ccat
 

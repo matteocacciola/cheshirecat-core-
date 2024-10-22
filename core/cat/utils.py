@@ -319,7 +319,7 @@ class MetaEnum(EnumMeta):
 
     def __contains__(cls, item):
         try:
-            cls(item)  # pylint: disable=E1120
+            cls(item)
         except ValueError:
             return False
         return True

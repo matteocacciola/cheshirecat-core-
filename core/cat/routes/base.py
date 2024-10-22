@@ -36,6 +36,6 @@ async def message_with_cat(
     """Get a response from the Cat"""
     stray = cats.stray_cat
 
-    user_message_json = {"user_id": stray.user_id, **payload}
+    user_message_json = {"user_id": stray.user.id, **payload}
     answer = await run_in_threadpool(stray.run, user_message_json, True)
-    return CatMessage(**{**answer, **{"user_id": stray.user_id, "agent_id": cats.cheshire_cat.id}})
+    return CatMessage(**{**answer, **{"user_id": stray.user.id, "agent_id": cats.cheshire_cat.id}})

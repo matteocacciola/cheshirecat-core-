@@ -16,11 +16,11 @@ def test_session_creation_from_websocket(secure_client, cheshire_cat):
     assert "You did not configure" in res["content"]
 
     # verify session
-    strays_user_ids = [s.user_id for s in cheshire_cat.strays]
+    strays_user_ids = [s.user.id for s in cheshire_cat.strays]
     assert user_id in strays_user_ids
     stray_cat = cheshire_cat.get_stray(user_id)
     assert isinstance(stray_cat, StrayCat)
-    assert stray_cat.user_id == user_id
+    assert stray_cat.user.id == user_id
     convo = stray_cat.working_memory.history
     assert len(convo) == 2
     assert convo[0].who == Role.HUMAN
@@ -47,11 +47,11 @@ def test_session_creation_from_http(secure_client, cheshire_cat):
     assert response.status_code == 200
 
     # verify session
-    strays_user_ids = [s.user_id for s in cheshire_cat.strays]
+    strays_user_ids = [s.user.id for s in cheshire_cat.strays]
     assert user_id in strays_user_ids
     stray_cat = cheshire_cat.get_stray(user_id)
     assert isinstance(stray_cat, StrayCat)
-    assert stray_cat.user_id == user_id
+    assert stray_cat.user.id == user_id
     convo = stray_cat.working_memory.history
     assert len(convo) == 0  # no ws message sent from Alice
 
