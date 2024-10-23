@@ -217,7 +217,6 @@ class CatLogEngine:
 
         print("\n=============== ^._.^ ===============\n")
         print(f"Cat REST API:   {cat_address}/docs")
-        print(f"Cat ADMIN:      {cat_address}/admin\n")
         print("======================================")
 
 
