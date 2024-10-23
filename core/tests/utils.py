@@ -28,7 +28,7 @@ def get_class_from_decorated_singleton(singleton):
 
 # utility function to communicate with the cat via websocket
 def send_websocket_message(msg, client, user_id="user", query_params=None):
-    query_params = query_params if query_params is not None else {"token": api_key_ws}
+    query_params = query_params if query_params is not None else {"apikey": api_key_ws}
     url = f"/ws/{user_id}/{agent_id}?" + urlencode(query_params)
 
     with client.websocket_connect(url) as websocket:

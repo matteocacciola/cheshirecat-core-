@@ -175,9 +175,9 @@ class WebSocketAuth(ConnectionAuth):
 
         # TODO AUTH: is there a more secure way to pass the token over websocket?
         #   Headers do not work from the browser
-        token = connection.query_params.get("token", None)
+        credential = connection.query_params.get("token", connection.query_params.get("apikey", None))
 
-        return Credentials(agent_id=agent_id, user_id=user_id, credential=token)
+        return Credentials(agent_id=agent_id, user_id=user_id, credential=credential)
 
     async def get_user_stray(self, ccat: CheshireCat, user: AuthUserInfo, connection: WebSocket) -> StrayCat:
         stray: StrayCat = ccat.get_stray(user.id)

@@ -39,7 +39,7 @@ class WorkingMemory(BaseModelDict):
     def __init__(self, **data: Any):
         super().__init__(**data)
 
-        self.__history = self.__to_list_conversation_history_info(crud_history.get_history(self.agent_id, self.user_id))
+        self.__history = [ConversationHistoryInfo(**m) for m in crud_history.get_history(self.agent_id, self.user_id)]
 
         # Have the memories as instance attributes (i.e. do things like stray.working_memory.declarative_memories
         # or stray.working_memory.declarative_memories[something])
@@ -100,11 +100,9 @@ class WorkingMemory(BaseModelDict):
         conversation_history_info = ConversationHistoryInfo(who=who, message=message, why=why, role=role)
 
         # append latest message in conversation
-        conversation_history = crud_history.update_history(self.agent_id, self.user_id, conversation_history_info)
-        self.__history = self.__to_list_conversation_history_info(conversation_history)
-
-    def __to_list_conversation_history_info(self, conversation_history: List[Dict]):
-        return [ConversationHistoryInfo(**m) for m in conversation_history]
+        self.__history = [ConversationHistoryInfo(**m) for m in crud_history.update_history(
+            self.agent_id, self.user_id, conversation_history_info
+        )]
 
     @property
     def history(self) -> List[ConversationHistoryInfo]:

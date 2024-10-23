@@ -72,7 +72,8 @@ def test_api_key_ws(secure_client, secure_client_headers):
 
     wrong_query_params = [
         {}, # no key
-        {"token": "wrong"}, # wrong key
+        {"apikey": "wrong"}, # wrong apikey
+        {"token": "wrong"}, # wrong token
     ]
 
     for params in wrong_query_params:
@@ -81,7 +82,7 @@ def test_api_key_ws(secure_client, secure_client_headers):
         assert str(e_info.type.__name__) == "WebSocketDisconnect"
 
     # allow access if CCAT_API_KEY_WS is right
-    query_params = {"token": api_key_ws}
+    query_params = {"apikey": api_key_ws}
     res = send_websocket_message(mex, secure_client, query_params=query_params)
     assert "You did not configure" in res["content"]
 

@@ -16,7 +16,7 @@ def test_agent_reset_success(client, lizard, cheshire_cat):
 
     received_token = res.json()["access_token"]
     response = client.post(
-        "/admins/utils/agent-reset", headers={"Authorization": f"Bearer {received_token}", "agent_id": cheshire_cat.id}
+        "/admins/utils/agent_reset", headers={"Authorization": f"Bearer {received_token}", "agent_id": cheshire_cat.id}
     )
 
     assert response.status_code == 200
@@ -38,7 +38,7 @@ def test_agent_reset_error_because_of_lack_of_permissions(client, lizard, cheshi
     received_token = res.json()["access_token"]
 
     response = client.post(
-        "/admins/utils/agent-reset",
+        "/admins/utils/agent_reset",
         headers={"Authorization": f"Bearer {received_token}", "agent_id": cheshire_cat.id}
     )
 
@@ -59,7 +59,7 @@ def test_agent_reset_error_because_of_lack_not_existing_agent(client, lizard, ch
 
     received_token = res.json()["access_token"]
     response = client.post(
-        "/admins/utils/agent-reset", headers={"Authorization": f"Bearer {received_token}", "agent_id": "wrong_id"}
+        "/admins/utils/agent_reset", headers={"Authorization": f"Bearer {received_token}", "agent_id": "wrong_id"}
     )
 
     assert response.status_code == 200

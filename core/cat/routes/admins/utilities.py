@@ -15,7 +15,7 @@ class ResetResponse(BaseModel):
     deleted_memories: bool
 
 
-@router.post("/factory-reset", response_model=ResetResponse)
+@router.post("/factory_reset", response_model=ResetResponse)
 async  def factory_reset(
     request: Request,
     lizard: BillTheLizard = Depends(AdminConnectionAuth(AdminAuthResource.CHESHIRE_CATS, AuthPermission.DELETE)),
@@ -41,7 +41,7 @@ async  def factory_reset(
     return ResetResponse(deleted_settings=deleted_settings, deleted_memories=deleted_memories)
 
 
-@router.post("/agent-reset", response_model=ResetResponse)
+@router.post("/agent_reset", response_model=ResetResponse)
 async def agent_reset(
     request: Request,
     lizard: BillTheLizard = Depends(AdminConnectionAuth(AdminAuthResource.CHESHIRE_CATS, AuthPermission.DELETE)),
