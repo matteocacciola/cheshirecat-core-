@@ -56,10 +56,14 @@ class CatMessage(BaseModelDict):
     Variables:
         content (str): cat message
         user_id (str): user id
+        agent_id (str): agent id
+        type (str): message type
+        why (MessageWhy): message why
     """
 
     content: str
     user_id: str
+    agent_id: str
     type: str = "chat"
     why: MessageWhy | None = None
 
@@ -70,10 +74,12 @@ class UserMessage(BaseModelDict):
     Variables:
         text (str): user message
         user_id (str): user id
+        agent_id (str): agent id
     """
 
     text: str
     user_id: str
+    agent_id: str
 
 
 class ConversationHistoryInfo(BaseModelDict):
@@ -98,9 +104,9 @@ def convert_to_langchain_message(
     messages: List[UserMessage | CatMessage],
 ) -> List[HumanMessage | AIMessage]:
     return [
-        HumanMessage(content=m.text, response_metadata={"userId": m.user_id})
+        HumanMessage(content=m.text, response_metadata={"userId": m.user_id, "agentId": m.agent_id})
         if isinstance(m, UserMessage)
-        else AIMessage(content=m.content, response_metadata={"userId": m.user_id})
+        else AIMessage(content=m.content, response_metadata={"userId": m.user_id, "agentId": m.agent_id})
         for m in messages
     ]
 
@@ -109,5 +115,6 @@ def convert_to_cat_message(cat_message: AIMessage, why: MessageWhy) -> CatMessag
     return CatMessage(
         content=cat_message.content,
         user_id=cat_message.response_metadata["userId"],
+        agent_id=cat_message.response_metadata["agentId"],
         why=why,
     )

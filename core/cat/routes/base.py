@@ -6,7 +6,7 @@ from pydantic import BaseModel
 
 from cat.auth.permissions import AuthPermission, AuthResource
 from cat.auth.connection import HTTPAuth, ContextualCats
-from cat.convo.messages import CatMessage
+from cat.convo.messages import CatMessage, UserMessage
 
 router = APIRouter()
 
@@ -36,6 +36,6 @@ async def message_with_cat(
     """Get a response from the Cat"""
     stray = cats.stray_cat
 
-    user_message_json = {"user_id": stray.user.id, **payload}
-    answer = await run_in_threadpool(stray.run, user_message_json, True)
-    return CatMessage(**{**answer, **{"user_id": stray.user.id, "agent_id": cats.cheshire_cat.id}})
+    user_message = UserMessage(user_id=stray.user.id, agent_id=stray.agent_id, text=payload["text"])
+    answer = await run_in_threadpool(stray.run, user_message, True)
+    return CatMessage(**{**answer, **{"user_id": stray.user.id, "agent_id": stray.agent_id}})

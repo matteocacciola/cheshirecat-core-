@@ -2,6 +2,10 @@ class LoadMemoryException(Exception):
     pass
 
 
+class VectorMemoryError(Exception):
+    pass
+
+
 class CustomValidationException(Exception):
     pass
 

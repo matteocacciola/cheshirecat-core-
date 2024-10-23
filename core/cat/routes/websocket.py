@@ -3,6 +3,7 @@ from cat.auth.connection import WebSocketAuth, ContextualCats
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect, Depends
 from fastapi.concurrency import run_in_threadpool
 
+from cat.convo.messages import UserMessage
 from cat.looking_glass.stray_cat import StrayCat
 from cat.log import log
 
@@ -16,8 +17,8 @@ async def receive_message(websocket: WebSocket, stray: StrayCat):
 
     while True:
         # Receive the next message from the WebSocket.
-        user_message = await websocket.receive_json()
-        user_message["user_id"] = stray.user.id
+        user_message_text = await websocket.receive_json()
+        user_message = UserMessage(user_id=stray.user.id, agent_id=stray.agent_id, text=user_message_text["text"])
 
         # Run the `stray` object's method in a threadpool since it might be a CPU-bound operation.
         await run_in_threadpool(stray.run, user_message, return_message=False)

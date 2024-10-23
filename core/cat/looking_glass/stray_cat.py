@@ -22,6 +22,7 @@ from cat.auth.permissions import AuthUserInfo
 from cat.convo.messages import CatMessage, UserMessage, MessageWhy, Role, EmbedderModelInteraction
 from cat.db.cruds import users as crud_users
 from cat.env import get_env
+from cat.exceptions import VectorMemoryError
 from cat.log import log
 from cat.looking_glass.callbacks import NewTokenHandler, ModelInteractionHandler
 from cat.looking_glass.white_rabbit import WhiteRabbit
@@ -143,7 +144,7 @@ class StrayCat:
 
         if isinstance(message, str):
             why = self.__build_why()
-            message = CatMessage(content=message, user_id=self.user.id, why=why)
+            message = CatMessage(content=message, user_id=self.user.id, why=why, agent_id=self.agent_id)
 
         if save:
             self.working_memory.update_conversation_history(
@@ -392,14 +393,14 @@ class StrayCat:
 
         return output
 
-    async def __call__(self, message_dict: Dict) -> CatMessage:
+    async def __call__(self, user_message: UserMessage) -> CatMessage:
         """Call the Cat instance.
 
         This method is called on the user's message received from the client.
 
         Args:
-            message_dict : Dict
-                Dictionary received from the Websocket client.
+            user_message : UserMessage
+                Message received from the Websocket client.
 
         Returns:
             final_output : CatMessage
@@ -413,7 +414,6 @@ class StrayCat:
         """
 
         # Parse websocket message into UserMessage obj
-        user_message = UserMessage.model_validate(message_dict)
         log.info(user_message)
 
         # set a few easy access variables
@@ -443,13 +443,7 @@ class StrayCat:
             log.error(e)
             traceback.print_exc()
 
-            err_message = "An error occurred while recalling relevant memories."
-
-            return {
-                "type": "error",
-                "name": "VectorMemoryError",
-                "description": err_message,
-            }
+            raise VectorMemoryError("An error occurred while recalling relevant memories.")
 
         # reply with agent
         try:
@@ -500,7 +494,7 @@ class StrayCat:
 
         # prepare final cat message
         final_output = CatMessage(
-            user_id=self.user.id, content=str(agent_output.output), why=why
+            user_id=self.user.id, content=str(agent_output.output), why=why, agent_id=self.agent_id
         )
 
         # run message through plugins
@@ -517,9 +511,9 @@ class StrayCat:
 
         return final_output
 
-    def run(self, user_message_json, return_message: bool | None = False):
+    def run(self, user_message: UserMessage, return_message: bool | None = False):
         try:
-            cat_message = self.loop.run_until_complete(self.__call__(user_message_json))
+            cat_message = self.loop.run_until_complete(self.__call__(user_message))
             if return_message:
                 # return the message for HTTP usage
                 return cat_message

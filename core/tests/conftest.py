@@ -13,6 +13,7 @@ import time
 from cat.auth import auth_utils
 from cat.auth.permissions import AuthUserInfo, get_base_permissions
 from cat.bill_the_lizard import BillTheLizard
+from cat.convo.messages import UserMessage
 from cat.db.database import Database
 from cat.db.vector_database import VectorDatabase, LOCAL_FOLDER_PATH
 from cat.env import get_env
@@ -262,25 +263,31 @@ def memory(client, cheshire_cat):
     yield cheshire_cat.memory
 
 
-# fixture to have available an instance of StrayCat
-@pytest.fixture
-def stray(client, cheshire_cat):
-    user = AuthUserInfo(id="user_alice", name="Alice", permissions=get_base_permissions())
-    stray_cat = StrayCat(user_data=user, main_loop=asyncio.new_event_loop(), agent_id=cheshire_cat.id)
-    stray_cat.working_memory.user_message_json = {"user_id": user.id, "text": "meow"}
-
-    cheshire_cat.add_stray(stray_cat)
-
-    yield stray_cat
-
-
 @pytest.fixture
 def stray_no_memory(client, cheshire_cat) -> StrayCat:
-    yield StrayCat(
+    stray_cat = StrayCat(
         user_data=AuthUserInfo(id="user_alice", name="Alice", permissions=get_base_permissions()),
         main_loop=asyncio.new_event_loop(),
         agent_id=cheshire_cat.id
     )
+
+    cheshire_cat.add_stray(stray_cat)
+
+    # install plugin
+    new_plugin_zip_path = create_mock_plugin_zip(flat=True)
+    stray_cat.mad_hatter.install_plugin(new_plugin_zip_path)
+
+    yield stray_cat
+
+
+# fixture to have available an instance of StrayCat
+@pytest.fixture
+def stray(stray_no_memory):
+    stray_no_memory.working_memory.user_message_json = UserMessage(
+        user_id=stray_no_memory.user.id, text="meow", agent_id=stray_no_memory.agent_id
+    )
+
+    yield stray_no_memory
 
 
 # autouse fixture will be applied to *all* the tests

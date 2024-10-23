@@ -20,10 +20,6 @@ class FakeLLMConfig(LLMSettings):
         }
     )
 
-    @property
-    def pyclass(self) -> Type:
-        return self._pyclass
-
 @hook
 def factory_allowed_llms(allowed, cat) -> List:
     allowed.append(FakeLLMConfig)
