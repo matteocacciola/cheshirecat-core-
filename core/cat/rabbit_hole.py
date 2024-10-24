@@ -357,8 +357,7 @@ class RabbitHole:
             doc.metadata["source"] = source
             doc.metadata["when"] = time.time()
             # add custom metadata (sent via endpoint)
-            for k,v in metadata.items():
-                doc.metadata[k] = v
+            doc.metadata = {**doc.metadata, **{k: v for k, v in metadata.items()}}
 
             doc = mad_hatter.execute_hook(
                 "before_rabbithole_insert_memory", doc, cat=stray
