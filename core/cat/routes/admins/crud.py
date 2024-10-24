@@ -1,6 +1,6 @@
-from pydantic import BaseModel, Field, ConfigDict
+from pydantic import BaseModel, Field, ConfigDict, field_validator
 from typing import List, Dict
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Query
 
 from cat.auth.permissions import AdminAuthResource, AuthPermission, get_full_admin_permissions
 from cat.auth.auth_utils import hash_password
@@ -16,6 +16,19 @@ class AdminBase(BaseModel):
     username: str = Field(min_length=2)
     permissions: Dict[str, List[str]] = get_full_admin_permissions()
 
+    @field_validator("permissions")
+    def validate_permissions(cls, v):
+        if not v:
+            raise ValueError("Permissions cannot be empty")
+        for k_, v_ in v.items():
+            if not v_:
+                raise ValueError(f"Permissions for {k_} cannot be empty")
+            if k_ not in AdminAuthResource:
+                raise ValueError(f"Invalid resource: {k_}")
+            if any([p not in AuthPermission for p in v_]):
+                raise ValueError(f"Invalid permissions for {k_}")
+        return v
+
 
 class AdminCreate(AdminBase):
     password: str = Field(min_length=5)
@@ -28,6 +41,12 @@ class AdminUpdate(AdminBase):
     password: str = Field(default=None, min_length=4)
     permissions: Dict[str, List[str]] = None
     model_config = ConfigDict(extra="forbid")
+
+    @field_validator("permissions")
+    def validate_permissions(cls, v):
+        if v is None:
+            return v
+        return super().validate_permissions(v)
 
 
 class AdminResponse(AdminBase):
@@ -48,13 +67,13 @@ def create_admin(
 
 @router.get("/", response_model=List[AdminResponse])
 def read_admins(
-    skip: int = 0,
-    limit: int = 100,
+    skip: int = Query(default=0, description="How many admins to skip."),
+    limit: int = Query(default=100, description="How many admins to return."),
     lizard: BillTheLizard = Depends(AdminConnectionAuth(AdminAuthResource.ADMINS, AuthPermission.LIST)),
 ):
     users_db = crud_users.get_users(lizard.config_key)
 
-    users = list(users_db.values())[skip: skip + limit]
+    users = list(users_db.values())[skip:(skip + limit)]
     return users
 
 

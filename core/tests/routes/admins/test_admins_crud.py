@@ -1,8 +1,29 @@
+import pytest
+from pydantic import ValidationError
+
 from cat.auth.permissions import get_full_admin_permissions
 from cat.env import get_env
+from cat.routes.admins.crud import AdminBase, AdminUpdate
 
 from tests.utils import create_new_user, check_user_fields, get_client_admin_headers, new_user_password
 
+
+def test_validation_errors():
+    with pytest.raises(ValidationError) as e:
+        AdminBase(username="Alice", permissions={})
+
+    admin = AdminUpdate(username="Alice")
+    assert isinstance(admin, AdminUpdate)
+    assert admin.username == "Alice"
+
+    with pytest.raises(ValidationError) as e:
+        AdminUpdate(username="Alice", permissions={})
+    with pytest.raises(ValidationError) as e:
+        AdminUpdate(username="Alice", permissions={"READ": []})
+    with pytest.raises(ValidationError) as e:
+        AdminUpdate(username="Alice", permissions={"CHESHIRE_CATS": []})
+    with pytest.raises(ValidationError) as e:
+        AdminUpdate(username="Alice", permissions={"CHESHIRE_CATS": ["WRITE", "WRONG"]})
 
 def test_create_admin(client):
     # create admin

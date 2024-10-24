@@ -1,6 +1,28 @@
+import pytest
+from pydantic import ValidationError
+
 from cat.auth.permissions import get_base_permissions
+from cat.routes.users import UserBase, UserUpdate
 
 from tests.utils import agent_id, api_key, create_new_user, check_user_fields, new_user_password
+
+
+def test_validation_errors():
+    with pytest.raises(ValidationError) as e:
+        UserBase(username="A", permissions={})
+
+    user = UserUpdate(username="Alice")
+    assert isinstance(user, UserUpdate)
+    assert user.username == "Alice"
+
+    with pytest.raises(ValidationError) as e:
+        UserUpdate(username="Alice", permissions={})
+    with pytest.raises(ValidationError) as e:
+        UserUpdate(username="Alice", permissions={"READ": []})
+    with pytest.raises(ValidationError) as e:
+        UserUpdate(username="Alice", permissions={"STATUS": []})
+    with pytest.raises(ValidationError) as e:
+        UserUpdate(username="Alice", permissions={"STATUS": ["WRITE", "WRONG"]})
 
 
 def test_create_user(secure_client, secure_client_headers):
