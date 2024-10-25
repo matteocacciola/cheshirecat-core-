@@ -9,7 +9,11 @@ def format_key(agent_id: str, plugin_id: str) -> str:
 
 def get_setting(agent_id: str, plugin_id: str) -> Dict[str, Any]:
     settings = crud.read(format_key(agent_id, plugin_id))
-    return settings if settings else []
+
+    if isinstance(settings, list):
+        settings = settings[0]
+
+    return settings if settings else {}
 
 
 def set_setting(agent_id: str, plugin_id: str, settings: Dict[str, Any]) -> Dict[str, Any]:

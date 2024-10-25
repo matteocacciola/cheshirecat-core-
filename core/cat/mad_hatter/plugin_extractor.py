@@ -9,7 +9,7 @@ from slugify import slugify
 class PluginExtractor:
     admitted_mime_types = ["application/zip", "application/x-tar"]
 
-    def __init__(self, path: str, agent_id: str):
+    def __init__(self, path: str):
         content_type = mimetypes.guess_type(path)[0]
         if content_type == "application/x-tar":
             self._extension = "tar"
@@ -21,7 +21,6 @@ class PluginExtractor:
             )
 
         self._path = path
-        self._agent_id = agent_id
 
         # this will be plugin folder name (its id for the mad hatter)
         self._id = self.create_plugin_id()

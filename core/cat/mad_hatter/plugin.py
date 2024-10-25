@@ -81,10 +81,10 @@ class Plugin:
         self._load_decorated_functions()
 
         # by default, plugin settings are saved inside the Redis database
-        settings_file_path = os.path.join(self._path, "settings.json")
+        setting = crud_plugins.get_setting(self._agent_id, self._id)
 
-        # Try to create setting.json
-        if not os.path.isfile(settings_file_path):
+        # Try to create the setting into the Redis database
+        if not setting:
             self._create_settings_from_model()
 
         self._active = True
@@ -133,21 +133,20 @@ class Plugin:
             return ph.function()
 
         # by default, plugin settings are saved inside the Redis database
-        settings_file_path = os.path.join(self._path, "settings.json")
-
-        if not os.path.isfile(settings_file_path) and not self._create_settings_from_model():
+        settings = crud_plugins.get_setting(self._agent_id, self._id)
+        if not settings and not self._create_settings_from_model():
             return {}
 
-        # load settings.json if exists
-        if os.path.isfile(settings_file_path):
-            try:
-                with open(settings_file_path, "r") as json_file:
-                    settings = json.load(json_file)
-                    return settings
-            except Exception as e:
-                log.error(f"Unable to load plugin {self._id} settings: {e}")
-                log.warning(self.plugin_specific_error_message())
-                raise e
+        # load settings from Redis database, in case of new settings, the already grabbed values are loaded otherwise
+        settings = settings if settings else crud_plugins.get_setting(self._agent_id, self._id)
+        try:
+            # Validate the settings
+            self.settings_model().model_validate(settings)
+            return settings
+        except Exception as e:
+            log.error(f"Unable to load plugin {self._id} settings: {e}")
+            log.warning(self.plugin_specific_error_message())
+            raise e
 
     # save plugin settings
     def save_settings(self, settings: Dict):
@@ -156,20 +155,10 @@ class Plugin:
         if ph is not None:
             return ph.function(settings)
 
-        # by default, plugin settings are saved inside the Redis database
-        settings_file_path = os.path.join(self._path, "settings.json")
-
-        # load already saved settings
-        old_settings = self.load_settings()
-
-        # overwrite settings over old ones
-        updated_settings = {**old_settings, **settings}
-
-        # write settings.json in plugin folder
         try:
-            with open(settings_file_path, "w") as json_file:
-                json.dump(updated_settings, json_file, indent=4)
-            return updated_settings
+            # overwrite settings over old ones
+            # write settings into the Redis database
+            return crud_plugins.update_setting(self._agent_id, self._id, settings)
         except Exception as e:
             log.error(f"Unable to save plugin {self._id} settings: {e}")
             log.warning(self.plugin_specific_error_message())
@@ -177,26 +166,22 @@ class Plugin:
             return {}
 
     def _create_settings_from_model(self) -> bool:
-        # by default, plugin settings are saved inside the Redis database
-        settings_file_path = os.path.join(self._path, "settings.json")
-
         try:
             model = self.settings_model()
             # if some settings have no default value this will raise a ValidationError
-            settings = model().model_dump_json(indent=4)
+            settings = model().model_dump()
 
             # If each field have a default value and the model is correct,
-            # create the settings.json with default values
-            with open(settings_file_path, "x") as json_file:
-                json_file.write(settings)
-                log.debug(
-                    f"{self.id} have no settings.json, created with settings model default values"
-                )
+            # create the settings with default values
+            crud_plugins.set_setting(self._agent_id, self._id, settings)
+            log.debug(
+                f"{self.id} have no settings, created with settings model default values"
+            )
 
             return True
         except ValidationError:
             log.debug(
-                f"{self.id} settings model have missing defaut values, no settings.json created"
+                f"{self.id} settings model have missing default values, no settings created"
             )
             return False
 

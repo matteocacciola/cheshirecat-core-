@@ -51,7 +51,7 @@ class MadHatter:
 
     def install_plugin(self, package_plugin):
         # extract zip/tar file into plugin folder
-        extractor = PluginExtractor(package_plugin, self.__config_key)
+        extractor = PluginExtractor(package_plugin)
         plugin_path = extractor.extract(self.plugins_folder)
 
         # remove zip after extraction
