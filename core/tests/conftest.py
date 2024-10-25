@@ -310,7 +310,7 @@ def patch_time_now(monkeypatch):
 # (and having the `client` fixture, a clean setup every unit)
 @pytest.fixture
 def plugin(client, cheshire_cat):
-    p = Plugin(mock_plugin_path)
+    p = Plugin(mock_plugin_path, cheshire_cat.id)
     yield p
 
 

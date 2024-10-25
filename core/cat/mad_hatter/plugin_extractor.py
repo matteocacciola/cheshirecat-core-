@@ -9,24 +9,37 @@ from slugify import slugify
 class PluginExtractor:
     admitted_mime_types = ["application/zip", "application/x-tar"]
 
-    def __init__(self, path):
+    def __init__(self, path: str, agent_id: str):
         content_type = mimetypes.guess_type(path)[0]
         if content_type == "application/x-tar":
-            self.extension = "tar"
+            self._extension = "tar"
         elif content_type == "application/zip":
-            self.extension = "zip"
+            self._extension = "zip"
         else:
             raise Exception(
                 f"Invalid package extension. Valid extensions are: {self.admitted_mime_types}"
             )
 
-        self.path = path
+        self._path = path
+        self._agent_id = agent_id
 
         # this will be plugin folder name (its id for the mad hatter)
-        self.id = self.create_plugin_id()
+        self._id = self.create_plugin_id()
+
+    @property
+    def path(self):
+        return self._path
+
+    @property
+    def id(self):
+        return self._id
+
+    @property
+    def extension(self):
+        return self._extension
 
     def create_plugin_id(self):
-        file_name = os.path.basename(self.path)
+        file_name = os.path.basename(self._path)
         file_name_no_extension = os.path.splitext(file_name)[0]
         return slugify(file_name_no_extension, separator="_")
 
@@ -36,7 +49,7 @@ class PluginExtractor:
         os.mkdir(tmp_folder_name)
 
         # extract into tmp directory
-        shutil.unpack_archive(self.path, tmp_folder_name, self.extension)
+        shutil.unpack_archive(self._path, tmp_folder_name, self._extension)
         # what was extracted?
         contents = os.listdir(tmp_folder_name)
 
@@ -49,7 +62,7 @@ class PluginExtractor:
             folder_to_copy = tmp_folder_name
 
         # move plugin folder to cat plugins folder
-        extracted_path = os.path.join(to, self.id)
+        extracted_path = os.path.join(to, self._id)
         # if folder exists, delete it as it will be replaced
         if os.path.exists(extracted_path):
             settings_file_path = os.path.join(extracted_path, "settings.json")
@@ -67,9 +80,3 @@ class PluginExtractor:
 
         # return extracted dir path
         return extracted_path
-
-    def get_extension(self):
-        return self.extension
-
-    def get_plugin_id(self):
-        return self.id

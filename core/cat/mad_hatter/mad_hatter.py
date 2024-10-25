@@ -51,7 +51,7 @@ class MadHatter:
 
     def install_plugin(self, package_plugin):
         # extract zip/tar file into plugin folder
-        extractor = PluginExtractor(package_plugin)
+        extractor = PluginExtractor(package_plugin, self.__config_key)
         plugin_path = extractor.extract(self.plugins_folder)
 
         # remove zip after extraction
@@ -125,7 +125,7 @@ class MadHatter:
         #   If the plugin is inactive, only manifest will be loaded
         #   If active, also settings, tools and hooks
         try:
-            plugin = Plugin(plugin_path)
+            plugin = Plugin(plugin_path, self.__config_key)
             # if plugin is valid, keep a reference
             self.plugins[plugin.id] = plugin
         except Exception as e:

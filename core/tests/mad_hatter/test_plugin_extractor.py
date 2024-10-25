@@ -10,11 +10,11 @@ from tests.utils import create_mock_plugin_zip
 # plugin_is_flat is False: zip file contains just one folder, inside that folder we find the plugin
 # plugin_is_flat is True: zip file does not contain a folder, but the plugin files directly
 @pytest.mark.parametrize("plugin_is_flat", [True, False])
-def test_unpackage_zip(client, plugin_is_flat):
+def test_unpackage_zip(client, cheshire_cat, plugin_is_flat):
     plugins_folder = "tests/mocks/mock_plugin_folder"
 
     zip_path = create_mock_plugin_zip(flat=plugin_is_flat)
-    extractor = PluginExtractor(zip_path)
+    extractor = PluginExtractor(zip_path, cheshire_cat.id)
     extracted = extractor.extract(plugins_folder)
     assert extracted == plugins_folder + "/mock_plugin"
     assert os.path.exists(f"{plugins_folder}/mock_plugin")
@@ -25,17 +25,17 @@ def test_unpackage_zip(client, plugin_is_flat):
 
 
 @pytest.mark.parametrize("plugin_is_flat", [True, False])
-def test_get_id_and_extension(client, plugin_is_flat):
+def test_get_id_and_extension(client, cheshire_cat, plugin_is_flat):
     zip_path = create_mock_plugin_zip(flat=plugin_is_flat)
-    extractor = PluginExtractor(zip_path)
-    assert extractor.get_plugin_id() == "mock_plugin"
-    assert extractor.get_extension() == "zip"
+    extractor = PluginExtractor(zip_path, cheshire_cat.id)
+    assert extractor.id == "mock_plugin"
+    assert extractor.extension == "zip"
     os.remove(zip_path)
 
 
-def test_raise_exception_if_a_wrong_extension_is_provided(client):
+def test_raise_exception_if_a_wrong_extension_is_provided(client, cheshire_cat):
     try:
-        PluginExtractor("./tests/infrastructure/plugin.wrong")
+        PluginExtractor("./tests/infrastructure/plugin.wrong", cheshire_cat.id)
     except Exception as e:
         assert (
             str(e)

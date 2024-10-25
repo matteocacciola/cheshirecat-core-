@@ -19,7 +19,7 @@ def settings_schema():
     The standard used is JSON SCHEMA, so a client can auto-generate html forms (see https://json-schema.org/ ).
 
     Schema can be created in several ways:
-    1. auto-generarted with pydantic (see below)
+    1. auto-generated with pydantic (see below)
     2. python dictionary
     3. json loaded from current folder or from another place
 
@@ -60,7 +60,7 @@ def load_settings():
 
     Default behavior is defined in:
        `cat.mad_hatter.plugin.Plugin::load_settings`
-       It loads the settings.json in current folder
+       It loads the settings from the Redis database.
 
     Returns:
         settings : Dict
@@ -79,7 +79,7 @@ def save_settings(settings):
 
     Default behavior is defined in:
        `cat.mad_hatter.plugin.Plugin::save_settings`
-       It just saves contents in a settings.json in the plugin folder
+       It just saves contents into the Redis database
 
     Args:
         settings : Dict

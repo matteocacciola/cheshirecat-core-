@@ -8,24 +8,24 @@ from cat.mad_hatter.mad_hatter import Plugin
 from cat.mad_hatter.decorators.hook import CatHook
 from cat.mad_hatter.decorators.tool import CatTool
 
-from tests.conftest import clean_up
-from tests.utils import mock_plugin_path
+from tests.conftest import clean_up, cheshire_cat
+from tests.utils import mock_plugin_path, agent_id
 
 
-def test_create_plugin_wrong_folder():
+def test_create_plugin_wrong_folder(cheshire_cat):
     with pytest.raises(Exception) as e:
-        Plugin("/non/existent/folder")
+        Plugin("/non/existent/folder", cheshire_cat.id)
 
     assert "Cannot create" in str(e.value)
 
 
-def test_create_plugin_empty_folder():
+def test_create_plugin_empty_folder(cheshire_cat):
     path = "tests/mocks/empty_folder"
 
     os.mkdir(path)
 
     with pytest.raises(Exception) as e:
-        Plugin(path)
+        Plugin(path, cheshire_cat.id)
 
     assert "Cannot create" in str(e.value)
 
@@ -123,14 +123,16 @@ def test_save_settings(plugin):
 # ATTENTION: not using `plugin` fixture here, we instantiate and cleanup manually
 #           to use the unmocked Plugin class
 @pytest.mark.skip_encapsulation
-def test_install_plugin_dependencies():
+def test_install_plugin_dependencies(lizard):
     # manual cleanup
     clean_up()
     # Uninstall mock plugin requirements
     os.system("pip uninstall -y pip-install-test")
 
+    cheshire_cat = lizard.get_or_create_cheshire_cat(agent_id)
+
     # Install mock plugin
-    p = Plugin(mock_plugin_path)
+    p = Plugin(mock_plugin_path, cheshire_cat.id)
 
     # Dependencies are installed on plugin activation
     p.activate()

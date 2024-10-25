@@ -11,6 +11,7 @@ from inspect import getmembers, isclass
 from pydantic import BaseModel, ValidationError
 from packaging.requirements import Requirement
 
+from cat.db.cruds import plugins as crud_plugins
 from cat.experimental.form.cat_form import CatForm
 from cat.mad_hatter.decorators.hook import CatHook
 from cat.mad_hatter.decorators.plugin_decorator import CatPluginDecorator
@@ -30,7 +31,7 @@ class PluginSettingsModel(BaseModel):
 
 
 class Plugin:
-    def __init__(self, plugin_path: str):
+    def __init__(self, plugin_path: str, agent_id: str):
         # does folder exist?
         if not os.path.exists(plugin_path) or not os.path.isdir(plugin_path):
             raise Exception(
@@ -39,12 +40,13 @@ class Plugin:
 
         # where the plugin is on disk
         self._path: str = plugin_path
+        self._agent_id = agent_id
 
         # search for .py files in folder
         py_files_path = os.path.join(self._path, "**/*.py")
-        self.py_files = glob.glob(py_files_path, recursive=True)
+        self._py_files = glob.glob(py_files_path, recursive=True)
 
-        if len(self.py_files) == 0:
+        if len(self._py_files) == 0:
             raise Exception(
                 f"{plugin_path} does not contain any python files. Cannot create Plugin."
             )
@@ -78,8 +80,7 @@ class Plugin:
         # Load of hooks and tools
         self._load_decorated_functions()
 
-        # by default, plugin settings are saved inside the plugin folder
-        #   in a JSON file called settings.json
+        # by default, plugin settings are saved inside the Redis database
         settings_file_path = os.path.join(self._path, "settings.json")
 
         # Try to create setting.json
@@ -90,7 +91,7 @@ class Plugin:
 
     def deactivate(self):
         # Remove the imported modules
-        for py_file in self.py_files:
+        for py_file in self._py_files:
             py_filename = py_file.replace("/", ".").replace(".py", "")
 
             # If the module is imported it is removed
@@ -131,8 +132,7 @@ class Plugin:
         if ph is not None:
             return ph.function()
 
-        # by default, plugin settings are saved inside the plugin folder
-        #   in a JSON file called settings.json
+        # by default, plugin settings are saved inside the Redis database
         settings_file_path = os.path.join(self._path, "settings.json")
 
         if not os.path.isfile(settings_file_path) and not self._create_settings_from_model():
@@ -156,8 +156,7 @@ class Plugin:
         if ph is not None:
             return ph.function(settings)
 
-        # by default, plugin settings are saved inside the plugin folder
-        #   in a JSON file called settings.json
+        # by default, plugin settings are saved inside the Redis database
         settings_file_path = os.path.join(self._path, "settings.json")
 
         # load already saved settings
@@ -178,8 +177,7 @@ class Plugin:
             return {}
 
     def _create_settings_from_model(self) -> bool:
-        # by default, plugin settings are saved inside the plugin folder
-        #   in a JSON file called settings.json
+        # by default, plugin settings are saved inside the Redis database
         settings_file_path = os.path.join(self._path, "settings.json")
 
         try:
@@ -291,7 +289,7 @@ class Plugin:
         forms = []
         plugin_overrides = []
 
-        for py_file in self.py_files:
+        for py_file in self._py_files:
             py_filename = py_file.replace(".py", "").replace("/", ".")
 
             log.debug(f"Import module {py_filename}")
