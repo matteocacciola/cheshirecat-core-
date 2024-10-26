@@ -165,11 +165,7 @@ class MadHatter:
 
     def load_active_plugins_from_db(self):
         active_plugins = crud_settings.get_setting_by_name(self.__config_key, "active_plugins")
-
-        if active_plugins is None:
-            active_plugins = []
-        else:
-            active_plugins = active_plugins["value"]
+        active_plugins = [] if active_plugins is None else active_plugins["value"]
 
         # core_plugin is always active
         if "core_plugin" not in active_plugins:
