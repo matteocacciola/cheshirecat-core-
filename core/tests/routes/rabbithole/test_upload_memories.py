@@ -44,7 +44,7 @@ def test_upload_memory_check_mimetype(secure_client, secure_client_headers):
 
 
 # upload memory with a different embedder
-def test_upload_memory_check_embedder(secure_client, secure_client_headers):
+def test_upload_memory_check_embedder(secure_client, secure_client_headers, cheshire_cat):
     # Create fake memory
     another_embedder = "AnotherEmbedder"
     fake_memory = get_fake_memory_export(embedder_name=another_embedder)
@@ -69,7 +69,7 @@ def test_upload_memory_check_embedder(secure_client, secure_client_headers):
     assert collections_n_points["declarative"] == 0
 
 
-def test_upload_memory_check_dimensionality(secure_client, secure_client_headers):
+def test_upload_memory_check_dimensionality(secure_client, secure_client_headers, cheshire_cat):
     # Create fake memory
     wrong_dim = 9
     fake_memory = get_fake_memory_export(dim=wrong_dim)

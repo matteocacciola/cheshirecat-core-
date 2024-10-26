@@ -20,7 +20,6 @@ from cat.agents.base_agent import AgentOutput
 from cat.agents.main_agent import MainAgent
 from cat.auth.permissions import AuthUserInfo
 from cat.convo.messages import CatMessage, UserMessage, MessageWhy, Role, EmbedderModelInteraction
-from cat.db.cruds import users as crud_users
 from cat.env import get_env
 from cat.exceptions import VectorMemoryError
 from cat.log import log
@@ -657,7 +656,8 @@ Allowed classes are:
 
     async def shutdown(self):
         await self.close_connection()
-        crud_users.delete_user(self.agent_id, self.user.id)
+        self.__loop.stop()
+        self.__loop.close()
 
     @property
     def user(self) -> AuthUserInfo:

@@ -13,8 +13,8 @@ def factory_allowed_llms(allowed: List[LLMSettings], cat) -> List:
     Args:
         allowed : List of LLMSettings classes
             list of allowed language models
-        cat : Cat
-            Cat instance
+        cat : CheshireCat
+            Cheshire Cat instance
 
     Returns:
         supported : List of LLMSettings classes
@@ -30,8 +30,8 @@ def factory_allowed_embedders(allowed: List[EmbedderSettings], cat) -> List:
     Args:
         allowed : embedder of EmbedderSettings classes
             list of allowed embedders
-        cat : Cat
-            Cat instance
+        cat : CheshireCat
+            Cheshire Cat instance
 
     Returns:
         supported : List of EmbedderSettings classes
@@ -47,8 +47,8 @@ def factory_allowed_auth_handlers(allowed: List[AuthHandlerConfig], cat) -> List
     Args:
         allowed : List of AuthHandlerConfig classes
             list of allowed auth_handlers
-        cat : Cat
-            Cat instance
+        cat : CheshireCat
+            Cheshire Cat instance
 
     Returns:
         supported : List of AuthHandlerConfig classes

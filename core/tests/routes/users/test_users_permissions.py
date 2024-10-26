@@ -39,21 +39,12 @@ from tests.utils import agent_id
 
 
 def test_users_permissions(secure_client, secure_client_headers, endpoint):
-    credentials = {"username": "user", "password": "user"}
-
     # create new user that will be edited by calling the endpoints
     # we create it using directly CCAT_API_KEY
     response = secure_client.post(
         "/users",
-        json={
-            "username": "Caterpillar",
-            "password": "U R U"
-        },
-        headers={
-            "Authorization": f"Bearer {api_key}",
-            "user_id": "admin",
-            "agent_id": agent_id
-        }
+        json={"username": "Caterpillar", "password": "U R U"},
+        headers={"Authorization": f"Bearer {api_key}", "agent_id": agent_id}
     )
     assert response.status_code == 200
     target_user_id = response.json()["id"]
@@ -71,6 +62,7 @@ def test_users_permissions(secure_client, secure_client_headers, endpoint):
     assert res.json()["detail"]["error"] == "Invalid Credentials"
     
     # obtain JWT
+    credentials = {"username": "user", "password": "user"}
     res = secure_client.post("/auth/token", json=credentials, headers=secure_client_headers)
     assert res.status_code == 200
     jwt = res.json()["access_token"]

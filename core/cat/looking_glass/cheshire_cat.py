@@ -14,7 +14,7 @@ from langchain_core.runnables import RunnableLambda
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.output_parsers.string import StrOutputParser
 
-from cat.auth.auth_utils import hash_password
+from cat.auth.auth_utils import hash_password, DEFAULT_USER_USERNAME
 from cat.auth.permissions import get_base_permissions
 from cat.db.cruds import settings as crud_settings
 from cat.db.cruds import users as crud_users
@@ -121,8 +121,8 @@ class CheshireCat:
         crud_users.update_users(self.id, {
             user_id: {
                 "id": user_id,
-                "username": "user",
-                "password": hash_password("user"),
+                "username": DEFAULT_USER_USERNAME,
+                "password": hash_password(DEFAULT_USER_USERNAME),
                 # user has minor permissions
                 "permissions": get_base_permissions(),
             }
@@ -391,11 +391,7 @@ class CheshireCat:
         """
 
         adapter = FactoryAdapter(LLMFactory(self.mad_hatter))
-
         updater = adapter.upsert_factory_config_by_settings(self.id, language_model_name, settings)
-        # if the llm is the same, return the old one, i.e. there is no new factory llm
-        if not updater.new_factory:
-            return ReplacedNLPConfig(name=language_model_name, value=updater.old_factory.get("value"))
 
         try:
             # try to reload the llm of the cat
@@ -430,10 +426,6 @@ class CheshireCat:
         updater = FactoryAdapter(
             AuthHandlerFactory(self.mad_hatter)
         ).upsert_factory_config_by_settings(self.id, auth_handler_name, settings)
-
-        # if the auth handler is the same, return the old one, i.e. there is no new factory auth handler
-        if not updater.new_factory:
-            return ReplacedNLPConfig(name=auth_handler_name, value=updater.old_factory.get("value"))
 
         self.load_auth()
 

@@ -44,14 +44,8 @@ def test_admins_permissions(secure_client, endpoint):
     # we create it using directly CCAT_API_KEY
     response = secure_client.post(
         "/admins",
-        json={
-            "username": "Caterpillar",
-            "password": "U R U"
-        },
-        headers={
-            "Authorization": f"Bearer {get_env('CCAT_API_KEY')}",
-            "user_id": "admin"
-        }
+        json={"username": "Caterpillar", "password": "U R U"},
+        headers={"Authorization": f"Bearer {get_env('CCAT_API_KEY')}"},
     )
     assert response.status_code == 200
     target_admin_id = response.json()["id"]

@@ -335,7 +335,7 @@ class RabbitHole:
 
         # hook the docs before they are stored in the vector memory
         docs = mad_hatter.execute_hook(
-            "before_rabbithole_stores_documents", docs, cat=stray
+            "before_rabbithole_stores_documents", docs, cat=ccat
         )
 
         metadata = metadata or {}
@@ -360,7 +360,7 @@ class RabbitHole:
             doc.metadata = {**doc.metadata, **{k: v for k, v in metadata.items()}}
 
             doc = mad_hatter.execute_hook(
-                "before_rabbithole_insert_memory", doc, cat=stray
+                "before_rabbithole_insert_memory", doc, cat=ccat
             )
             inserting_info = f"{d + 1}/{len(docs)}):    {doc.page_content}"
             if doc.page_content != "":
@@ -381,7 +381,7 @@ class RabbitHole:
 
         # hook the points after they are stored in the vector memory
         mad_hatter.execute_hook(
-            "after_rabbithole_stored_documents", source, stored_points, cat=stray
+            "after_rabbithole_stored_documents", source, stored_points, cat=ccat
         )
 
         # notify client
@@ -428,11 +428,12 @@ class RabbitHole:
         any modification.
         """
 
-        mad_hatter = stray.cheshire_cat.mad_hatter
+        ccat = stray.cheshire_cat
+        mad_hatter = ccat.mad_hatter
 
         # do something on the text before it is split
         text = mad_hatter.execute_hook(
-            "before_rabbithole_splits_text", text, cat=stray
+            "before_rabbithole_splits_text", text, cat=ccat
         )
 
         # hooks decide the test splitter (see @property .text_splitter)
@@ -451,7 +452,7 @@ class RabbitHole:
 
         # do something on the text after it is split
         docs = mad_hatter.execute_hook(
-            "after_rabbithole_splitted_text", docs, cat=stray
+            "after_rabbithole_splitted_text", docs, cat=ccat
         )
 
         return docs

@@ -1,19 +1,30 @@
 from cat.convo.messages import Role
-from cat.db import models
 from cat.looking_glass.stray_cat import StrayCat
 
-from tests.utils import send_websocket_message, api_key, agent_id
+from tests.utils import send_websocket_message, api_key, agent_id, create_new_user, new_user_password
 
 
-def test_session_creation_from_websocket(secure_client, cheshire_cat):
-    user_id = models.generate_uuid()
+def test_session_creation_from_websocket(secure_client, secure_client_headers, client, cheshire_cat):
+    # create a new user with username CCC
+    username = "Alice"
+    data = create_new_user(secure_client, "/users", username=username, headers=secure_client_headers)
+
+    # get the token, to be used in the websocket connection
+    res = client.post(
+        "/auth/token",
+        json={"username": data["username"], "password": new_user_password},
+        headers={"agent_id": agent_id}
+    )
+    received_token = res.json()["access_token"]
 
     # send websocket message
     mex = {"text": "Where do I go?"}
-    res = send_websocket_message(mex, secure_client, user_id=user_id)
+    res = send_websocket_message(mex, client, query_params={"token": received_token})
 
     # check response
     assert "You did not configure" in res["content"]
+
+    user_id = data["id"]
 
     # verify session
     strays_user_ids = [s.user.id for s in cheshire_cat.strays]
@@ -27,8 +38,11 @@ def test_session_creation_from_websocket(secure_client, cheshire_cat):
     assert convo[0].message == mex["text"]
 
 
-def test_session_creation_from_http(secure_client, cheshire_cat):
-    user_id = models.generate_uuid()
+def test_session_creation_from_http(secure_client, secure_client_headers, cheshire_cat):
+    # create a new user with username CCC
+    username = "Alice"
+    data = create_new_user(secure_client, "/users", username=username, headers=secure_client_headers)
+    user_id = data["id"]
 
     content_type = "text/plain"
     file_name = "sample.txt"
@@ -40,7 +54,7 @@ def test_session_creation_from_http(secure_client, cheshire_cat):
         response = secure_client.post(
             "/rabbithole/",
             files=files,
-            headers={"user_id": user_id, "access_token": api_key, "agent_id": agent_id},
+            headers={"user_id": user_id, "Authorization": f"Bearer {api_key}", "agent_id": agent_id},
         )
 
     # check response

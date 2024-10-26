@@ -1,4 +1,4 @@
-import pytest
+from cat.db.cruds import users as crud_users
 
 from tests.utils import get_client_admin_headers
 
@@ -10,7 +10,8 @@ def test_ping_success(secure_client, secure_client_headers):
 
 
 def test_ping_success_by_admin_with_api_key(secure_client, secure_client_headers):
-    headers = secure_client_headers | {"user_id": "admin"}
+    admin = crud_users.get_user_by_username("system", "admin")
+    headers = secure_client_headers | {"user_id": admin["id"]}
 
     response = secure_client.get("/", headers=headers)
     assert response.status_code == 200

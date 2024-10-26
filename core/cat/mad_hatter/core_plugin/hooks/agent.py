@@ -16,8 +16,8 @@ def before_agent_starts(agent_input: Dict, cat) -> Dict:
     Args:
         agent_input: Dict
             Input that is about to be passed to the agent.
-        cat : CheshireCat
-            Cheshire Cat instance.
+        cat : StrayCat
+            Stray Cat instance.
 
     Returns:
         Agent Input as Dictionary
@@ -34,8 +34,8 @@ def agent_fast_reply(fast_reply: Dict, cat) -> Dict | None:
     Args:
         fast_reply: Dict
             Input is a dictionary (initially empty), which can be enriched with an "output" key with the shortcut response.
-        cat : CheshireCat
-            Cheshire Cat instance.
+        cat : StrayCat
+            Stray Cat instance.
 
     Returns:
         response : Dict | None
@@ -79,8 +79,8 @@ def agent_allowed_tools(allowed_tools: List[str], cat) -> List[str]:
     Args:
         allowed_tools : List[str]
             List of tools that are allowed to be used by the *
-        cat : CheshireCat
-            Cheshire Cat instance.
+        cat : StrayCat
+            Stray Cat instance.
 
     Returns:
         tools : List[str]

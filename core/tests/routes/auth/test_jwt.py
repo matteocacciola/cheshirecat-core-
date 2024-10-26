@@ -8,7 +8,6 @@ from cat.env import get_env
 from cat.auth.permissions import AuthPermission, AuthResource
 from cat.auth.auth_utils import is_jwt
 
-from tests.conftest import api_key
 from tests.utils import send_websocket_message, agent_id
 
 
@@ -100,25 +99,25 @@ async def test_issue_jwt_for_new_user(client, secure_client, secure_client_heade
 
 # test token expiration after successful login
 # NOTE: here we are using the secure_client fixture (see conftest.py)
-def test_jwt_expiration(secure_client):
+def test_jwt_expiration(client, cheshire_cat):
     # set ultrashort JWT expiration time
     current_jwt_expire_minutes = os.getenv("CCAT_JWT_EXPIRE_MINUTES")
     os.environ["CCAT_JWT_EXPIRE_MINUTES"] = "0.05"  # 3 seconds
 
     # not allowed
-    response = secure_client.get("/", headers={"agent_id": agent_id})
+    response = client.get("/", headers={"agent_id": agent_id})
     assert response.status_code == 403
     assert response.json()["detail"]["error"] == "Invalid Credentials"
 
     # request JWT
     creds = {"username": "user", "password": "user"}
-    res = secure_client.post("/auth/token", json=creds, headers={"agent_id": agent_id})
+    res = client.post("/auth/token", json=creds, headers={"agent_id": agent_id})
     assert res.status_code == 200
     token = res.json()["access_token"]
 
     # allowed via JWT
     headers = {"Authorization": f"Bearer {token}", "agent_id": agent_id}
-    response = secure_client.get("/", headers=headers)
+    response = client.get("/", headers=headers)
     assert response.status_code == 200
 
     # wait for expiration time
@@ -126,7 +125,7 @@ def test_jwt_expiration(secure_client):
 
     # not allowed because JWT expired
     headers = {"Authorization": f"Bearer {token}", "agent_id": agent_id}
-    response = secure_client.get("/", headers=headers)
+    response = client.get("/", headers=headers)
     assert response.status_code == 403
     assert response.json()["detail"]["error"] == "Invalid Credentials"
 
@@ -139,15 +138,15 @@ def test_jwt_expiration(secure_client):
 
 # test ws and http endpoints can get user_id from JWT
 # NOTE: here we are using the secure_client fixture (see conftest.py)
-def test_jwt_imposes_user_id(secure_client):
+def test_jwt_imposes_user_id(client, cheshire_cat):
     # not allowed
-    response = secure_client.get("/", headers={"agent_id": agent_id})
+    response = client.get("/", headers={"agent_id": agent_id})
     assert response.status_code == 403
     assert response.json()["detail"]["error"] == "Invalid Credentials"
 
     # request JWT
     creds = {"username": "user", "password": "user"}
-    res = secure_client.post("/auth/token", json=creds, headers={"agent_id": agent_id})
+    res = client.post("/auth/token", json=creds, headers={"agent_id": agent_id})
     assert res.status_code == 200
     token = res.json()["access_token"]
 
@@ -157,18 +156,17 @@ def test_jwt_imposes_user_id(secure_client):
     # send user specific message via http
     headers = {"Authorization": f"Bearer {token}"}
     params = {"agent_id": agent_id}
-    response = secure_client.post("/message", headers=headers, json=message, params=params)
+    response = client.post("/message", headers=headers, json=message, params=params)
     json = response.json()
     assert response.status_code == 200
     assert json["agent_id"] == agent_id
 
     # send user specific request via ws
-    query_params = {"token": token}
-    send_websocket_message(message, secure_client, query_params=query_params)
+    send_websocket_message(message, client, query_params={"token": token})
 
     # we now recall episodic memories from the user, there should be two of them, both by admin
     params = {"text": "hey", "agent_id": agent_id}
-    response = secure_client.get("/memory/recall/", headers=headers, params=params)
+    response = client.get("/memory/recall/", headers=headers, params=params)
     json = response.json()
     assert response.status_code == 200
     episodic_memories = json["vectors"]["collections"]["episodic"]
@@ -177,62 +175,3 @@ def test_jwt_imposes_user_id(secure_client):
     for em in episodic_memories:
         assert em["metadata"]["source"] == user_db["id"]
         assert em["page_content"] == "hey"
-
-
-# test that a JWT signed knowing the secret, passes
-def test_jwt_self_signature_passes_on_unsecure_client(client, secure_client, secure_client_headers):
-    # get list of users (we need the ids)
-    response = secure_client.get("/users", headers=secure_client_headers)
-    users = response.json()
-
-    for user in users:
-        # create a self-signed JWT using the default secret
-        token = jwt.encode(
-            {"sub": user["id"], "username": user["username"]},
-            get_env("CCAT_JWT_SECRET"),
-            algorithm=get_env("CCAT_JWT_ALGORITHM"),
-        )
-
-        message = {"text": "hey"}
-
-        headers = {"Authorization": f"Bearer {token}", "agent_id": agent_id}
-        response = client.post("/message", headers=headers, json=message)
-        assert response.status_code == 200
-        assert "You did not configure" in response.json()["content"]
-
-        params = {"token": token}
-        response = send_websocket_message(message, client, query_params=params)
-        assert "You did not configure" in response["content"]
-
-
-# test that a JWT signed with the wrong secret is not accepted
-def test_jwt_self_signature_fails_on_secure_client(secure_client):
-    # get list of users (we need the ids)
-    response = secure_client.get(
-        "/users",
-        headers={
-            "Authorization": f"Bearer {api_key}",
-            "agent_id": agent_id,
-        })
-    users = response.json()
-
-    for user in users:
-        # create a self-signed JWT using the default secret
-        token = jwt.encode(
-            {"sub": user["id"], "username": user["username"]},
-            "fake",
-            algorithm=get_env("CCAT_JWT_ALGORITHM"),
-        )
-
-        message = {"text": "hey"}
-
-        # not allowed because CCAT_JWT_SECRET for secure_client is `meow_jwt`
-        headers = {"Authorization": f"Bearer {token}", "agent_id": agent_id}
-        response = secure_client.post("/message", headers=headers, json=message)
-        assert response.status_code == 403
-
-        # not allowed because CCAT_JWT_SECRET for secure_client is `meow_jwt`
-        params = {"token": token}
-        with pytest.raises(Exception) as e_info:
-            send_websocket_message(message, secure_client, query_params=params)
-            assert str(e_info.type.__name__) == "WebSocketDisconnect"

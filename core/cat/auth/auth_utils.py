@@ -2,9 +2,18 @@ import bcrypt
 import jwt
 from jwt.exceptions import InvalidTokenError
 from fastapi.requests import HTTPConnection
+from pydantic import BaseModel
 
 from cat.log import log
-from cat.db.database import DEFAULT_AGENT_KEY
+from cat.db.database import DEFAULT_AGENT_KEY, DEFAULT_SYSTEM_KEY
+
+DEFAULT_ADMIN_USERNAME = "admin"
+DEFAULT_USER_USERNAME = "user"
+
+
+class UserInfo(BaseModel):
+    user_id: str
+    username: str
 
 
 def is_jwt(token: str) -> bool:
@@ -49,14 +58,20 @@ def extract_agent_id_from_request(request: HTTPConnection) -> str:
     )
 
 
-def extract_user_id_from_request(request: HTTPConnection) -> str:
-    return request.headers.get(
-        "user_id",
-        request.path_params.get(
-            "user_id",
-            request.query_params.get("user_id", "user")
-        )
-    )
+def extract_user_info(agent_key: str, user_id: str | None = None) -> UserInfo | None:
+    from cat.db.cruds import users as crud_users
+
+    if user_id:
+        user = crud_users.get_user(agent_key, user_id)
+    else:
+        # backward compatibility
+        default = DEFAULT_ADMIN_USERNAME if agent_key == DEFAULT_SYSTEM_KEY else DEFAULT_USER_USERNAME
+        user = crud_users.get_user_by_username(agent_key, default)
+
+    if not user:
+        return None
+
+    return UserInfo(user_id=user["id"], username=user["username"])
 
 
 def extract_token(request: HTTPConnection) -> str | None:

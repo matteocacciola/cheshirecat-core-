@@ -27,9 +27,9 @@ def get_class_from_decorated_singleton(singleton):
 
 
 # utility function to communicate with the cat via websocket
-def send_websocket_message(msg, client, user_id="user", query_params=None):
+def send_websocket_message(msg, client, query_params=None):
     query_params = query_params if query_params is not None else {"apikey": api_key_ws}
-    url = f"/ws/{user_id}/{agent_id}?" + urlencode(query_params)
+    url = f"/ws/{agent_id}?" + urlencode(query_params)
 
     with client.websocket_connect(url) as websocket:
         # sed ws message
@@ -44,7 +44,7 @@ def send_websocket_message(msg, client, user_id="user", query_params=None):
 def send_n_websocket_messages(num_messages, client):
     responses = []
 
-    url = f"/ws/user/{agent_id}?" + urlencode({"token": api_key_ws})
+    url = f"/ws/{agent_id}?" + urlencode({"token": api_key_ws})
 
     with client.websocket_connect(url) as websocket:
         for m in range(num_messages):
@@ -111,8 +111,8 @@ def get_collections_names_and_point_count(client, headers=None):
     return collections_n_points
 
 
-def create_new_user(client, route: str, headers=None, permissions=None):
-    new_user = {"username": "Alice", "password": new_user_password}
+def create_new_user(client, route: str, username="Alice", headers=None, permissions=None):
+    new_user = {"username": username, "password": new_user_password}
     if permissions:
         new_user["permissions"] = permissions
     response = client.post(route, json=new_user, headers=headers)
@@ -171,13 +171,14 @@ def create_basic_user(agent_id: str) -> None:
 
 
 def get_fake_memory_export(embedder_name="DumbEmbedder", dim=2367):
+    user = crud_users.get_user_by_username(agent_id, "user")
     return {
         "embedder": embedder_name,
         "collections": {
             "declarative": [
                 {
                     "page_content": "test_memory",
-                    "metadata": {"source": "user", "when": time.time()},
+                    "metadata": {"source": user["id"], "when": time.time()},
                     "id": str(uuid.uuid4()),
                     "vector": [random.random() for _ in range(dim)],
                 }

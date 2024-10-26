@@ -69,8 +69,8 @@ def before_cat_reads_message(user_message_json: Dict, cat) -> Dict:
     Args:
         user_message_json : Dict
             JSON dictionary with the message received from the chat.
-        cat : CheshireCat
-            Cheshire Cat instance.
+        cat : StrayCat
+            Stray Cat instance.
 
     Returns:
         user_message_json : Dict
@@ -102,8 +102,8 @@ def cat_recall_query(user_message: str, cat) -> str:
     Args:
         user_message : str
             String with the text received from the user.
-        cat : CheshireCat
-            Cheshire Cat instance to exploit the Cat's methods.
+        cat : StrayCat
+            Stray Cat instance to exploit the Cat's methods.
 
     Returns:
         Edited string to be used for context retrieval in memory. The returned string is further stored in the
@@ -138,8 +138,8 @@ def before_cat_recalls_memories(cat) -> None:
     and stores it in the *Working Memory*.
 
     Args:
-        cat : CheshireCat
-            Cheshire Cat instance.
+        cat : StrayCat
+            Stray Cat instance.
 
     """
     pass  # do nothing
@@ -161,8 +161,8 @@ def before_cat_recalls_episodic_memories(episodic_recall_config: RecallSettings,
     Args:
         episodic_recall_config : Dict | RecallSettings
             Data needed to recall episodic memories
-        cat : CheshireCat
-            Cheshire Cat instance.
+        cat : StrayCat
+            Stray Cat instance.
 
     Returns:
         episodic_recall_config: Dict
@@ -188,8 +188,8 @@ def before_cat_recalls_declarative_memories(declarative_recall_config: RecallSet
     Args:
         declarative_recall_config : Dict | RecallSettings
             Data needed to recall declarative memories
-        cat : CheshireCat
-            Cheshire Cat instance.
+        cat : StrayCat
+            Stray Cat instance.
 
     Returns:
         declarative_recall_config: Dict
@@ -215,8 +215,8 @@ def before_cat_recalls_procedural_memories(procedural_recall_config: RecallSetti
     Args:
         procedural_recall_config : Dict | RecallSettings
             Data needed to recall tools from procedural memory
-        cat : CheshireCat
-            Cheshire Cat instance.
+        cat : StrayCat
+            Stray Cat instance.
 
     Returns:
         procedural_recall_config: Dict
@@ -235,8 +235,8 @@ def after_cat_recalls_memories(cat) -> None:
     and stores it in the *Working Memory*.
 
     Args:
-        cat : CheshireCat
-            Cheshire Cat instance.
+        cat : StrayCat
+            Stray Cat instance.
 
     """
     pass  # do nothing
@@ -254,8 +254,8 @@ def before_cat_sends_message(message: Dict, cat) -> Dict:
     Args:
         message : Dict
             JSON dictionary to be sent to the WebSocket client.
-        cat : CheshireCat
-            Cheshire Cat instance.
+        cat : StrayCat
+            Stray Cat instance.
 
     Returns:
         message : Dict
@@ -296,8 +296,8 @@ def before_cat_stores_episodic_memory(doc: Document, cat) -> Document:
     Args:
         doc : Document
             Langchain `Document` to be inserted in memory.
-        cat : CheshireCat
-            Cheshire Cat instance.
+        cat : StrayCat
+            Stray Cat instance.
 
     Returns:
         doc : Document

@@ -21,7 +21,7 @@ def agent_prompt_prefix(prefix, cat) -> str:
         prefix : str
             Main / System prompt with personality and general task to be accomplished.
         cat : StrayCat
-            StrayCat instance.
+            Stray Cat instance.
 
     Returns:
         prefix : str
@@ -45,7 +45,7 @@ def agent_prompt_instructions(instructions: str, cat) -> str:
         instructions : str
             Instructions prompt to select tool or form.
         cat : StrayCat
-            StrayCat instance.
+            Stray Cat instance.
 
     Returns:
         instructions : str
@@ -71,7 +71,7 @@ def agent_prompt_suffix(prompt_suffix: str, cat) -> str:
         prompt_suffix : str
             The suffix string to be concatenated to the *Main Prompt* (prefix
         cat : StrayCat
-            StrayCat instance.
+            Stray Cat instance.
 
     Returns:
         prompt_suffix : str

@@ -4,7 +4,7 @@ from uuid import uuid4
 
 from cat import utils
 from cat.agents.main_agent import MainAgent
-from cat.auth.auth_utils import hash_password
+from cat.auth.auth_utils import hash_password, DEFAULT_ADMIN_USERNAME
 from cat.auth.permissions import get_full_admin_permissions
 from cat.db.cruds import users as crud_users
 from cat.db.database import DEFAULT_SYSTEM_KEY
@@ -84,7 +84,7 @@ class BillTheLizard:
         crud_users.update_users(self.__key, {
             admin_id: {
                 "id": admin_id,
-                "username": "admin",
+                "username": DEFAULT_ADMIN_USERNAME,
                 "password": hash_password(get_env("CCAT_ADMIN_DEFAULT_PASSWORD")),
                 # admin has all permissions
                 "permissions": get_full_admin_permissions()
@@ -115,11 +115,7 @@ class BillTheLizard:
         """
 
         adapter = FactoryAdapter(EmbedderFactory(self.mad_hatter))
-
         updater = adapter.upsert_factory_config_by_settings(self.__key, language_embedder_name, settings)
-        # if the embedder is the same, return the old one, i.e. there is no new factory embedder
-        if not updater.new_factory:
-            return ReplacedNLPConfig(name=language_embedder_name, value=updater.old_factory.get("value"))
 
         # reload the embedder of the cat
         self.load_language_embedder()
@@ -209,6 +205,7 @@ class BillTheLizard:
         self.__cheshire_cats = {}
 
         self.white_rabbit.remove_job(self.__check_idle_strays_job_id)
+        self.white_rabbit.shutdown()
 
         self.white_rabbit = None
         self.core_auth_handler = None

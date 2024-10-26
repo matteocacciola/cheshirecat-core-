@@ -47,11 +47,6 @@ class FactoryAdapter:
             crud_settings.get_setting_by_name(key_id, current_setting["value"]["name"]) if current_setting else None
         )
 
-        # check if the factory is the same; if so, return the current settings, factory, and None as the new factory's
-        # settings
-        if current_setting is not None and current_setting["value"]["name"] == new_factory_name:
-            return UpdaterFactory(old_setting=current_setting, old_factory=current_factory)
-
         # upsert the settings for the factory
         final_setting = crud_settings.upsert_setting_by_name(key_id, models.Setting(
             name=new_factory_name, category=self._factory.setting_factory_category, value=new_factory_settings,

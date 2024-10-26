@@ -186,7 +186,7 @@ def secure_client(client):
 
 @pytest.fixture(scope="function")
 def secure_client_headers(secure_client):
-    yield {"agent_id": agent_id, "access_token": api_key}
+    yield {"agent_id": agent_id, "Authorization": f"Bearer {api_key}"}
 
 
 # This fixture is useful to write tests in which

@@ -61,8 +61,10 @@ class WhiteRabbit:
         try:
             self.scheduler.start()
             log.info("WhiteRabbit: Scheduler started")
+            self._is_running = True
         except Exception as e:
             log.error("WhiteRabbit: Error during scheduler start: ", e)
+            self._is_running = False
 
     def _job_ended_listener(self, event):
         """
@@ -80,6 +82,12 @@ class WhiteRabbit:
             log.info(
                 f"WhiteRabbit: executed job {event.job_id} started at {event.scheduled_run_time}. Value returned: {event.retval}"
             )
+
+    def shutdown(self):
+        if self._is_running:
+            log.info("WhiteRabbit: Scheduler stopped")
+            self.scheduler.shutdown(wait=False)
+            self._is_running = False
 
     def get_job(self, job_id: str) -> Dict[str, str] | None:
         """

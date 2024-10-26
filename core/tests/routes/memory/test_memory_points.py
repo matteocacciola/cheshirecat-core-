@@ -1,23 +1,28 @@
 import pytest
 
-from tests.utils import send_websocket_message, get_declarative_memory_contents, agent_id, fake_timestamp
+from cat.db.cruds import users as crud_users
+
+from tests.utils import send_websocket_message, get_declarative_memory_contents, agent_id, fake_timestamp, api_key
 
 
-def create_point_wrong_collection(secure_client, secure_client_headers):
+def create_point_wrong_collection(secure_client, secure_client_headers, cheshire_cat):
+    user = crud_users.get_user_by_username(agent_id, "user")
+    headers = {"agent_id": agent_id, "Authorization": f"Bearer {api_key}", "user_id": user["id"]}
+
     req_json = {
         "content": "Hello dear"
     }
 
     # wrong collection
     res = secure_client.post(
-        "/memory/collections/wrongcollection/points", json=req_json, headers=secure_client_headers
+        "/memory/collections/wrongcollection/points", json=req_json, headers=headers
     )
     assert res.status_code == 404
     assert "Collection does not exist" in res.json()["detail"]["error"]
 
     # cannot write procedural point
     res = secure_client.post(
-        "/memory/collections/procedural/points", json=req_json, headers=secure_client_headers
+        "/memory/collections/procedural/points", json=req_json, headers=headers
     )
     assert res.status_code == 404
     assert "Procedural memory is read-only" in res.json()["detail"]["error"]
@@ -131,7 +136,10 @@ def test_points_deleted_by_metadata(secure_client, secure_client_headers):
 
 
 @pytest.mark.parametrize("collection", ["episodic", "declarative"])
-def test_create_memory_point(secure_client, secure_client_headers, patch_time_now, collection):
+def test_create_memory_point(secure_client, secure_client_headers, cheshire_cat, patch_time_now, collection):
+    user = crud_users.get_user_by_username(agent_id, "user")
+    headers = {"agent_id": agent_id, "Authorization": f"Bearer {api_key}", "user_id": user["id"]}
+
     # create a point
     content = "Hello dear"
     metadata = {"custom_key": "custom_value"}
@@ -140,12 +148,12 @@ def test_create_memory_point(secure_client, secure_client_headers, patch_time_no
         "metadata": metadata,
     }
     res = secure_client.post(
-        f"/memory/collections/{collection}/points", json=req_json, headers=secure_client_headers
+        f"/memory/collections/{collection}/points", json=req_json, headers=headers
     )
     assert res.status_code == 200
     json = res.json()
     assert json["content"] == content
-    expected_metadata = {"when": fake_timestamp, "source": "user", **metadata}
+    expected_metadata = {"when": fake_timestamp, "source": headers["user_id"], **metadata}
     assert json["metadata"] == expected_metadata
     assert "id" in json
     assert "vector" in json
@@ -154,7 +162,7 @@ def test_create_memory_point(secure_client, secure_client_headers, patch_time_no
 
     # check memory contents
     params = {"text": "dear, hello"}
-    response = secure_client.get("/memory/recall/", params=params, headers=secure_client_headers)
+    response = secure_client.get("/memory/recall/", params=params, headers=headers)
     json = response.json()
     assert response.status_code == 200
     assert len(json["vectors"]["collections"][collection]) == 1
@@ -176,7 +184,10 @@ def test_get_collection_points_wrong_collection(secure_client, secure_client_hea
 
 
 @pytest.mark.parametrize("collection", ["episodic", "declarative"])
-def test_get_collection_points(secure_client, secure_client_headers, patch_time_now, collection):
+def test_get_collection_points(secure_client, secure_client_headers, cheshire_cat, patch_time_now, collection):
+    user = crud_users.get_user_by_username(agent_id, "user")
+    headers = {"agent_id": agent_id, "Authorization": f"Bearer {api_key}", "user_id": user["id"]}
+
     # create 100 points
     n_points = 100
     new_points = [{"content": f"MIAO {i}!", "metadata": {"custom_key": f"custom_key_{i}"}} for i in range(n_points)]
@@ -184,12 +195,12 @@ def test_get_collection_points(secure_client, secure_client_headers, patch_time_
     # Add points
     for req_json in new_points:
         res = secure_client.post(
-            f"/memory/collections/{collection}/points", json=req_json, headers=secure_client_headers
+            f"/memory/collections/{collection}/points", json=req_json, headers=headers
         )
         assert res.status_code == 200
 
     # get all the points no limit, by default is 100
-    res = secure_client.get(f"/memory/collections/{collection}/points", headers=secure_client_headers)
+    res = secure_client.get(f"/memory/collections/{collection}/points", headers=headers)
     assert res.status_code == 200
     json = res.json()
 
@@ -203,7 +214,7 @@ def test_get_collection_points(secure_client, secure_client_headers, patch_time_
             "page_content": p["content"],
             "metadata": {
                 "when": fake_timestamp,
-                "source": "user",
+                "source": headers["user_id"],
                 **p["metadata"]
             },
             "group_id": agent_id,
@@ -225,7 +236,10 @@ def test_get_collection_points(secure_client, secure_client_headers, patch_time_
 
 
 @pytest.mark.parametrize("collection", ["episodic", "declarative"])
-def test_get_collection_points_offset(secure_client, secure_client_headers, patch_time_now, collection):
+def test_get_collection_points_offset(secure_client, secure_client_headers, cheshire_cat, patch_time_now, collection):
+    user = crud_users.get_user_by_username(agent_id, "user")
+    headers = {"agent_id": agent_id, "Authorization": f"Bearer {api_key}", "user_id": user["id"]}
+
     # create 200 points
     n_points = 200
     new_points = [{"content": f"MIAO {i}!", "metadata": {"custom_key": f"custom_key_{i}"}} for i in range(n_points)]
@@ -233,7 +247,7 @@ def test_get_collection_points_offset(secure_client, secure_client_headers, patc
     # Add points
     for req_json in new_points:
         res = secure_client.post(
-            f"/memory/collections/{collection}/points", json=req_json, headers=secure_client_headers
+            f"/memory/collections/{collection}/points", json=req_json, headers=headers
         )
         assert res.status_code == 200
 
@@ -245,7 +259,7 @@ def test_get_collection_points_offset(secure_client, secure_client_headers, patc
     while True:
         res = secure_client.get(
             f"/memory/collections/{collection}/points?limit={limit}&offset={next_offset}",
-            headers = secure_client_headers
+            headers = headers
         )
         assert res.status_code == 200
         json = res.json()
@@ -265,7 +279,7 @@ def test_get_collection_points_offset(secure_client, secure_client_headers, patc
             "page_content": p["content"],
             "metadata": {
                 "when": fake_timestamp,
-                "source": "user",
+                "source": headers["user_id"],
                 **p["metadata"]
             },
             "group_id": agent_id,

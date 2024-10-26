@@ -256,7 +256,7 @@ async def get_points_in_collection(
     if offset == "":
         offset = None
 
-    memory_collection = cats.stray_cat.memory.vectors.collections[collection_id]
+    memory_collection = cats.cheshire_cat.memory.vectors.collections[collection_id]
     points, next_offset = memory_collection.get_all_points(limit=limit, offset=offset)
 
     return GetPointsInCollectionResponse(points=points, next_offset=next_offset)

@@ -93,7 +93,7 @@ class VectorMemoryCollection:
             # dump collection on disk before deleting
             asyncio.get_event_loop().run_until_complete(self.save_dump())
 
-        self.wipe()
+        self.client.delete_collection(self.collection_name)
         log.warning(f"Collection \"{self.collection_name}\" deleted")
         self.create_collection()
 
@@ -424,5 +424,5 @@ class VectorMemoryCollection:
             self.client.delete(collection_name=self.collection_name, points_selector=tenant_filter)
             return True
         except Exception as e:
-            log.error(f"Error deleting collection {self.collection_name}: {e}")
+            log.error(f"Error deleting collection {self.collection_name}, agent {self.agent_id}: {e}")
             return False

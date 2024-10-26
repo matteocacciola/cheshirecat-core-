@@ -73,7 +73,7 @@ def test_get_users(secure_client, secure_client_headers):
         assert d["permissions"] == get_base_permissions()
 
 
-def test_get_user(secure_client, secure_client_headers):
+def test_get_user(secure_client, secure_client_headers, cheshire_cat):
     # get unexisting user
     response = secure_client.get("/users/wrong_user_id", headers=secure_client_headers)
     assert response.status_code == 404
