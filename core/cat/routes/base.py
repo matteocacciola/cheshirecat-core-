@@ -18,7 +18,10 @@ class HomeResponse(BaseModel):
 
 # server status
 @router.get(
-    "/", dependencies=[Depends(HTTPAuth(AuthResource.STATUS, AuthPermission.READ))], response_model=HomeResponse
+    "/",
+    dependencies=[Depends(HTTPAuth(AuthResource.STATUS, AuthPermission.READ))],
+    response_model=HomeResponse,
+    tags=["Home"]
 )
 async def home() -> HomeResponse:
     """Server status"""
@@ -28,7 +31,7 @@ async def home() -> HomeResponse:
     return HomeResponse(status="We're all mad here, dear!", version=project_toml["version"])
 
 
-@router.post("/message", response_model=CatMessage)
+@router.post("/message", response_model=CatMessage, tags=["Message"])
 async def message_with_cat(
     payload: Dict = Body(...),
     cats: ContextualCats = Depends(HTTPAuth(AuthResource.CONVERSATION, AuthPermission.WRITE)),

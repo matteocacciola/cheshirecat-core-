@@ -70,8 +70,11 @@ def custom_generate_unique_id(route: APIRoute):
 
 # REST API
 cheshire_cat_api = FastAPI(
-    lifespan=lifespan, generate_unique_id_function=custom_generate_unique_id,
-    docs_url=None, redoc_url=None, title="Cheshire-Cat API",
+    lifespan=lifespan,
+    generate_unique_id_function=custom_generate_unique_id,
+    docs_url=None,
+    redoc_url=None,
+    title="Cheshire-Cat API",
     license_info={"name": "GPL-3", "url": "https://www.gnu.org/licenses/gpl-3.0.en.html"},
 )
 
@@ -87,17 +90,17 @@ cheshire_cat_api.add_middleware(
 )
 
 # Add routers to the middleware stack.
-cheshire_cat_api.include_router(base.router, tags=["Home"])
+cheshire_cat_api.include_router(base.router)
 cheshire_cat_api.include_router(admins.router, prefix="/admins")
+cheshire_cat_api.include_router(auth_handler.router, tags=["AuthHandler"], prefix="/auth_handler")
+cheshire_cat_api.include_router(embedder.router, tags=["Embedder"], prefix="/embedder")
+cheshire_cat_api.include_router(llm.router, tags=["Large Language Model"], prefix="/llm")
+cheshire_cat_api.include_router(memory.router, prefix="/memory")
+cheshire_cat_api.include_router(plugins.router, tags=["Plugins"], prefix="/plugins")
+cheshire_cat_api.include_router(upload.router, tags=["Rabbit Hole"], prefix="/rabbithole")
+cheshire_cat_api.include_router(settings.router, tags=["Settings"], prefix="/settings")
 cheshire_cat_api.include_router(auth.router, tags=["User Auth"], prefix="/auth")
 cheshire_cat_api.include_router(users.router, tags=["Users"], prefix="/users")
-cheshire_cat_api.include_router(settings.router, tags=["Settings"], prefix="/settings")
-cheshire_cat_api.include_router(llm.router, tags=["Large Language Model"], prefix="/llm")
-cheshire_cat_api.include_router(embedder.router, tags=["Embedder"], prefix="/embedder")
-cheshire_cat_api.include_router(plugins.router, tags=["Plugins"], prefix="/plugins")
-cheshire_cat_api.include_router(memory.router, prefix="/memory")
-cheshire_cat_api.include_router(upload.router, tags=["Rabbit Hole"], prefix="/rabbithole")
-cheshire_cat_api.include_router(auth_handler.router, tags=["AuthHandler"], prefix="/auth_handler")
 cheshire_cat_api.include_router(websocket.router, tags=["Websocket"])
 
 # mount static files
