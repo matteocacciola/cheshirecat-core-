@@ -1,5 +1,5 @@
 # endpoint to get settings and settings schema
-def test_get_all_plugin_settings(secure_client, secure_client_headers, lizard, just_installed_plugin):
+def test_get_all_plugin_settings(secure_client, secure_client_headers, just_installed_plugin):
     response = secure_client.get("/plugins/settings", headers=secure_client_headers)
     json = response.json()
 

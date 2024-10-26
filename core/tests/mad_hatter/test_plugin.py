@@ -4,31 +4,28 @@ import fnmatch
 import subprocess
 from inspect import isfunction
 
-from cat import utils
-from cat.bill_the_lizard import BillTheLizard
-from cat.db.database import Database
 from cat.mad_hatter.mad_hatter import Plugin
 from cat.mad_hatter.decorators.hook import CatHook
 from cat.mad_hatter.decorators.tool import CatTool
 
-from tests.conftest import clean_up, cheshire_cat, redis_client
-from tests.utils import mock_plugin_path, agent_id, get_class_from_decorated_singleton
+from tests.conftest import clean_up
+from tests.utils import mock_plugin_path, agent_id
 
 
-def test_create_plugin_wrong_folder(cheshire_cat):
+def test_create_plugin_wrong_folder():
     with pytest.raises(Exception) as e:
-        Plugin("/non/existent/folder", cheshire_cat.id)
+        Plugin("/non/existent/folder", agent_id)
 
     assert "Cannot create" in str(e.value)
 
 
-def test_create_plugin_empty_folder(cheshire_cat):
+def test_create_plugin_empty_folder():
     path = "tests/mocks/empty_folder"
 
     os.mkdir(path)
 
     with pytest.raises(Exception) as e:
-        Plugin(path, cheshire_cat.id)
+        Plugin(path, agent_id)
 
     assert "Cannot create" in str(e.value)
 
@@ -126,25 +123,14 @@ def test_save_settings(plugin):
 # ATTENTION: not using `plugin` fixture here, we instantiate and cleanup manually
 #           to use the unmocked Plugin class
 @pytest.mark.skip_encapsulation
-def test_install_plugin_dependencies(monkeypatch):
-    # Use a different redis client
-    def mock_get_redis_client(self, *args, **kwargs):
-        return redis_client
-    monkeypatch.setattr(get_class_from_decorated_singleton(Database), "get_redis_client", mock_get_redis_client)
-
+def test_install_plugin_dependencies():
     # manual cleanup
     clean_up()
     # Uninstall mock plugin requirements
     os.system("pip uninstall -y pip-install-test")
 
-    # delete all singletons!!!
-    utils.singleton.instances = {}
-
-    lizard = BillTheLizard()
-    cheshire_cat = lizard.get_or_create_cheshire_cat(agent_id)
-
     # Install mock plugin
-    p = Plugin(mock_plugin_path, cheshire_cat.id)
+    p = Plugin(mock_plugin_path, agent_id)
 
     # Dependencies are installed on plugin activation
     p.activate()
