@@ -1,12 +1,11 @@
 import asyncio
-import os
-import shutil
-import uuid
 from typing import Dict, List
 from uuid import uuid4
 from langchain_core.embeddings import Embeddings
 
 from cat import utils
+from cat.adapters.factory_adapter import FactoryAdapter
+from cat.adapters.plugin_transfer_adapter import PluginTransferAdapter
 from cat.agents.main_agent import MainAgent
 from cat.auth.auth_utils import hash_password, DEFAULT_ADMIN_USERNAME
 from cat.auth.permissions import get_full_admin_permissions
@@ -14,7 +13,6 @@ from cat.db.cruds import users as crud_users
 from cat.db.database import DEFAULT_SYSTEM_KEY
 from cat.env import get_env
 from cat.exceptions import LoadMemoryException
-from cat.factory.adapter import FactoryAdapter
 from cat.factory.base_factory import ReplacedNLPConfig
 from cat.factory.custom_auth_handler import CoreAuthHandler
 from cat.factory.custom_plugin_uploader import BaseUploader
@@ -181,19 +179,8 @@ class BillTheLizard:
         self.load_plugin_uploader()
 
         try:
-            # create tmp directory
-            tmp_folder_name = f"/tmp/{uuid.uuid1()}"
-            os.mkdir(tmp_folder_name)
-
-            # try to download the files from the old uploader
-            current_uploader.download_directory(updater.old_setting["value"]["destination_path"], tmp_folder_name)
-
-            # now, try to upload the files to the new storage
-            self.plugin_uploader.upload_directory(tmp_folder_name, updater.new_setting["value"]["destination_path"])
-
-            # cleanup
-            if os.path.exists(tmp_folder_name):
-                shutil.rmtree(tmp_folder_name)
+            transfer_adapter = PluginTransferAdapter(current_uploader, self.plugin_uploader, updater)
+            transfer_adapter.transfer()
         except ValueError as e:
             log.error(f"Error while loading the new Plugin Uploader: {e}")
 

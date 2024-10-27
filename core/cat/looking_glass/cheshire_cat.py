@@ -15,6 +15,7 @@ from langchain_core.runnables import RunnableLambda
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.output_parsers.string import StrOutputParser
 
+from cat.adapters.factory_adapter import FactoryAdapter
 from cat.auth.auth_utils import hash_password, DEFAULT_USER_USERNAME
 from cat.auth.permissions import get_base_permissions
 from cat.db.cruds import (
@@ -23,7 +24,6 @@ from cat.db.cruds import (
     plugins as crud_plugins,
     users as crud_users,
 )
-from cat.factory.adapter import FactoryAdapter
 from cat.factory.auth_handler import CoreOnlyAuthConfig, AuthHandlerFactory
 from cat.factory.base_factory import ReplacedNLPConfig
 from cat.factory.custom_auth_handler import BaseAuthHandler
