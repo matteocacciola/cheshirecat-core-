@@ -49,7 +49,7 @@ class MadHatter:
 
         self.find_plugins()
 
-    def install_plugin(self, package_plugin):
+    def install_plugin(self, package_plugin: str):
         # extract zip/tar file into plugin folder
         extractor = PluginExtractor(package_plugin)
         plugin_path = extractor.extract(self.plugins_folder)
@@ -120,7 +120,7 @@ class MadHatter:
 
         self.sync_hooks_tools_and_forms()
 
-    def load_plugin(self, plugin_path):
+    def load_plugin(self, plugin_path: str):
         # Instantiate plugin.
         #   If the plugin is inactive, only manifest will be loaded
         #   If active, also settings, tools and hooks
