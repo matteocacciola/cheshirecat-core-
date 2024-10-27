@@ -4,7 +4,7 @@ import uuid
 from typing import Final
 
 from cat.adapters.factory_adapter import UpdaterFactory
-from cat.factory.custom_plugin_uploader import BaseUploader
+from cat.factory.custom_uploader import BaseUploader
 
 
 class PluginTransferAdapter:

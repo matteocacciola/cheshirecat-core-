@@ -5,7 +5,6 @@ from langchain_core.embeddings import Embeddings
 
 from cat import utils
 from cat.adapters.factory_adapter import FactoryAdapter
-from cat.adapters.plugin_transfer_adapter import PluginTransferAdapter
 from cat.agents.main_agent import MainAgent
 from cat.auth.auth_utils import hash_password, DEFAULT_ADMIN_USERNAME
 from cat.auth.permissions import get_full_admin_permissions
