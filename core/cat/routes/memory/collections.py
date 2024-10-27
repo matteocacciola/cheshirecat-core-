@@ -40,14 +40,14 @@ async def get_collections(
 
 # DELETE all collections
 @router.delete("/collections", response_model=WipeCollectionsResponse)
-async def wipe_collections(
+async def destroy_collections(
     cats: ContextualCats = Depends(HTTPAuth(AuthResource.MEMORY, AuthPermission.DELETE)),
 ) -> WipeCollectionsResponse:
     """Delete and create all collections"""
 
     ccat = cats.cheshire_cat
 
-    to_return = {str(c): ccat.memory.vectors.collections[str(c)].wipe() for c in VectoryMemoryCollectionTypes}
+    to_return = {str(c): ccat.memory.vectors.collections[str(c)].destroy() for c in VectoryMemoryCollectionTypes}
 
     ccat.load_memory()  # recreate the long term memories
     ccat.mad_hatter.find_plugins()
@@ -57,7 +57,7 @@ async def wipe_collections(
 
 # DELETE one collection
 @router.delete("/collections/{collection_id}", response_model=WipeCollectionsResponse)
-async def wipe_single_collection(
+async def destroy_single_collection(
     collection_id: str,
     cats: ContextualCats = Depends(HTTPAuth(AuthResource.MEMORY, AuthPermission.DELETE)),
 ) -> WipeCollectionsResponse:
@@ -68,7 +68,7 @@ async def wipe_single_collection(
         raise CustomNotFoundException("Collection does not exist.")
 
     ccat = cats.cheshire_cat
-    ret = ccat.memory.vectors.collections[collection_id].wipe()
+    ret = ccat.memory.vectors.collections[collection_id].destroy()
 
     ccat.load_memory()  # recreate the long term memories
     ccat.mad_hatter.find_plugins()

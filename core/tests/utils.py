@@ -6,8 +6,6 @@ import random
 from urllib.parse import urlencode
 from concurrent.futures import ThreadPoolExecutor
 
-from cat.auth.auth_utils import hash_password
-from cat.auth.permissions import get_base_permissions
 from cat.db.cruds import users as crud_users
 from cat.env import get_env
 
@@ -152,22 +150,6 @@ async def async_run(loop, fnc, *args):
         return await fnc(*args)
 
     return await loop.run_in_executor(None, run_in_thread, fnc, *args)
-
-
-def create_basic_user(agent_id: str) -> None:
-    user_id = str(uuid.uuid4())
-
-    basic_user = {
-        user_id: {
-            "id": user_id,
-            "username": "user",
-            "password": hash_password("user"),
-            # user has minor permissions
-            "permissions": get_base_permissions(),
-        }
-    }
-
-    crud_users.update_users(agent_id, basic_user)
 
 
 def get_fake_memory_export(embedder_name="DumbEmbedder", dim=2367):

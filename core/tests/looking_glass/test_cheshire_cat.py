@@ -1,6 +1,8 @@
+import pytest
 from langchain.base_language import BaseLanguageModel
 from langchain_core.embeddings import Embeddings
 
+from cat.db.database import DEFAULT_SYSTEM_KEY
 from cat.mad_hatter.mad_hatter import MadHatter
 from cat.memory.long_term_memory import LongTermMemory
 from cat.factory.custom_embedder import DumbEmbedder
@@ -55,3 +57,8 @@ def test_procedures_embedded(embedder, memory):
         expected_embed = embedder.embed_query(content)
         assert len(p.vector) == len(expected_embed)  # same embed
         # assert p.vector == expected_embed TODO: Qdrant does unwanted normalization
+
+
+def test_cheshire_cat_created_with_system_key(lizard):
+    with pytest.raises(ValueError) as e:
+        lizard.get_or_create_cheshire_cat(DEFAULT_SYSTEM_KEY)

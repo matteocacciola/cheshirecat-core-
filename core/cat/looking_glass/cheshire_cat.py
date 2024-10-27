@@ -7,6 +7,7 @@ from langchain_community.document_loaders.parsers.html.bs4 import BS4HTMLParser
 from langchain_community.document_loaders.parsers.txt import TextParser
 from langchain_core.embeddings import Embeddings
 from langchain.text_splitter import RecursiveCharacterTextSplitter
+from langchain_core.language_models import BaseLanguageModel
 from pydantic import BaseModel
 from typing_extensions import Protocol
 from langchain_core.messages import SystemMessage
@@ -16,11 +17,16 @@ from langchain_core.output_parsers.string import StrOutputParser
 
 from cat.auth.auth_utils import hash_password, DEFAULT_USER_USERNAME
 from cat.auth.permissions import get_base_permissions
-from cat.db.cruds import settings as crud_settings
-from cat.db.cruds import users as crud_users
+from cat.db.cruds import (
+    settings as crud_settings,
+    history as crud_history,
+    plugins as crud_plugins,
+    users as crud_users,
+)
 from cat.factory.adapter import FactoryAdapter
 from cat.factory.auth_handler import CoreOnlyAuthConfig, AuthHandlerFactory
 from cat.factory.base_factory import ReplacedNLPConfig
+from cat.factory.custom_auth_handler import BaseAuthHandler
 from cat.factory.embedder import EmbedderFactory
 from cat.factory.llm import LLMDefaultConfig, LLMFactory
 from cat.log import log
@@ -70,9 +76,9 @@ class CheshireCat:
         # bootstrap the Cat! ^._.^
         self.id = agent_id
 
-        self.llm = None
-        self.memory = None
-        self.custom_auth_handler = None
+        self.llm: BaseLanguageModel | None = None
+        self.memory: LongTermMemory | None = None
+        self.custom_auth_handler: BaseAuthHandler | None = None
 
         self.__strays: set = set()  # set of StrayCat instances
 
@@ -118,7 +124,7 @@ class CheshireCat:
     def __initialize_users(self):
         user_id = str(uuid4())
 
-        crud_users.update_users(self.id, {
+        crud_users.set_users(self.id, {
             user_id: {
                 "id": user_id,
                 "username": DEFAULT_USER_USERNAME,
@@ -183,13 +189,16 @@ class CheshireCat:
         self.mad_hatter = None
         self.llm = None
 
-    def wipe(self):
-        """Wipe all data from the cat."""
+    def destroy(self):
+        """Destroy all data from the cat."""
 
-        self.memory.wipe()
-        crud_settings.wipe_settings(self.id)
+        self.memory.destroy()
+        self.shutdown()
 
-        # self.memory = None
+        crud_settings.destroy_all(self.id)
+        crud_history.destroy_all(self.id)
+        crud_plugins.destroy_all(self.id)
+        crud_users.destroy_all(self.id)
 
     def load_language_model(self):
         """Large Language Model (LLM) selection."""
@@ -202,7 +211,7 @@ class CheshireCat:
             # return default LLM
             llm = LLMDefaultConfig.get_llm_from_config({})
         else:
-            llm = llm_factory.get_from_config_name(self.id, selected_llm["value"]["name"], )
+            llm = llm_factory.get_from_config_name(self.id, selected_llm["value"]["name"])
 
         embedder_config = EmbedderFactory(
             self.lizard.mad_hatter
@@ -403,14 +412,14 @@ class CheshireCat:
             adapter.rollback_factory_config(self.id)
 
             if updater.old_setting is not None:
-                self.replace_llm(updater.old_setting["value"]["name"], updater.new_factory["value"])
+                self.replace_llm(updater.old_setting["value"]["name"], updater.new_setting["value"])
 
             raise e
 
         # recreate tools embeddings
         self.mad_hatter.find_plugins()
 
-        return ReplacedNLPConfig(name=language_model_name, value=updater.new_factory["value"])
+        return ReplacedNLPConfig(name=language_model_name, value=updater.new_setting["value"])
 
     def replace_auth_handler(self, auth_handler_name: str, settings: Dict) -> ReplacedNLPConfig:
         """
@@ -429,7 +438,7 @@ class CheshireCat:
 
         self.load_auth()
 
-        return ReplacedNLPConfig(name=auth_handler_name, value=updater.new_factory["value"])
+        return ReplacedNLPConfig(name=auth_handler_name, value=updater.new_setting["value"])
 
     @property
     def lizard(self) -> "BillTheLizard":

@@ -5,10 +5,7 @@ from cat.db.database import DEFAULT_AGENT_KEY, DEFAULT_SYSTEM_KEY
 
 
 def format_key(key: str) -> str:
-    if key == DEFAULT_SYSTEM_KEY:
-        return key
-
-    return f"{DEFAULT_AGENT_KEY}:{key}"
+    return f"{key}:{DEFAULT_AGENT_KEY}"
 
 
 def get_settings(key_id: str, search: str = "") -> List[Dict]:
@@ -96,5 +93,5 @@ def upsert_setting_by_name(key_id: str, payload: models.Setting) -> Dict:
     return value
 
 
-def wipe_settings(key_id: str) -> None:
-    crud.wipe(format_key(key_id))
+def destroy_all(key_id: str) -> None:
+    crud.destroy(format_key(key_id))

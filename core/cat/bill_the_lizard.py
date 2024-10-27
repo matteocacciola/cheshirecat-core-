@@ -1,6 +1,10 @@
 import asyncio
+import os
+import shutil
+import uuid
 from typing import Dict, List
 from uuid import uuid4
+from langchain_core.embeddings import Embeddings
 
 from cat import utils
 from cat.agents.main_agent import MainAgent
@@ -13,7 +17,9 @@ from cat.exceptions import LoadMemoryException
 from cat.factory.adapter import FactoryAdapter
 from cat.factory.base_factory import ReplacedNLPConfig
 from cat.factory.custom_auth_handler import CoreAuthHandler
+from cat.factory.custom_plugin_uploader import BaseUploader
 from cat.factory.embedder import EmbedderDumbConfig, EmbedderFactory
+from cat.factory.plugin_uploader import LocalPluginUploaderConfig, PluginUploaderFactory
 from cat.jobs import job_on_idle_strays
 from cat.log import log
 from cat.looking_glass.cheshire_cat import CheshireCat
@@ -53,7 +59,8 @@ class BillTheLizard:
         self.__cheshire_cats: Dict[str, CheshireCat] = {}
         self.__key = DEFAULT_SYSTEM_KEY
 
-        self.embedder = None
+        self.embedder: Embeddings | None = None
+        self.plugin_uploader: BaseUploader | None = None
 
         # Start scheduling system
         self.white_rabbit = WhiteRabbit()
@@ -81,7 +88,7 @@ class BillTheLizard:
     def __initialize_users(self):
         admin_id = str(uuid4())
 
-        crud_users.update_users(self.__key, {
+        crud_users.set_users(self.__key, {
             admin_id: {
                 "id": admin_id,
                 "username": DEFAULT_ADMIN_USERNAME,
@@ -93,7 +100,7 @@ class BillTheLizard:
 
     def load_language_embedder(self):
         """
-        Hook into the embedder selection. Allows to modify how the Cats select the embedder at bootstrap time.
+        Hook into the embedder selection. Allows to modify how the Lizard selects the embedder at bootstrap time.
         """
 
         factory = EmbedderFactory(self.mad_hatter)
@@ -101,6 +108,18 @@ class BillTheLizard:
         selected_config = FactoryAdapter(factory).get_factory_config_by_settings(self.__key, EmbedderDumbConfig)
 
         self.embedder = factory.get_from_config_name(self.__key, selected_config["value"]["name"])
+
+    def load_plugin_uploader(self):
+        """
+        Hook into the plugin uploader selection. Allows to modify how the Lizard selects the plugin uploader at
+        bootstrap time.
+        """
+
+        factory = PluginUploaderFactory(self.mad_hatter)
+
+        selected_config = FactoryAdapter(factory).get_factory_config_by_settings(self.__key, LocalPluginUploaderConfig)
+
+        self.plugin_uploader = factory.get_from_config_name(self.__key, selected_config["value"]["name"])
 
     def replace_embedder(self, language_embedder_name: str, settings: Dict) -> ReplacedNLPConfig:
         """
@@ -117,7 +136,7 @@ class BillTheLizard:
         adapter = FactoryAdapter(EmbedderFactory(self.mad_hatter))
         updater = adapter.upsert_factory_config_by_settings(self.__key, language_embedder_name, settings)
 
-        # reload the embedder of the cat
+        # reload the embedder of the cats
         self.load_language_embedder()
 
         for ccat in self.__cheshire_cats.values():
@@ -138,7 +157,55 @@ class BillTheLizard:
         # recreate tools embeddings
         self.mad_hatter.find_plugins()
 
-        return ReplacedNLPConfig(name=language_embedder_name, value=updater.new_factory["value"])
+        return ReplacedNLPConfig(name=language_embedder_name, value=updater.new_setting["value"])
+
+    def replace_plugin_uploader(self, plugin_uploader_name: str, settings: Dict) -> ReplacedNLPConfig:
+        """
+        Replace the current plugin uploader with a new one. This method is used to change the plugin uploader of the
+        cats.
+
+        Args:
+            plugin_uploader_name: name of the new plugin uploader
+            settings: settings of the new plugin uploader
+
+        Returns:
+            The dictionary resuming the new name and settings of the plugin uploader
+        """
+
+        adapter = FactoryAdapter(PluginUploaderFactory(self.mad_hatter))
+        updater = adapter.upsert_factory_config_by_settings(self.__key, plugin_uploader_name, settings)
+
+        current_uploader = self.plugin_uploader
+
+        # reload the plugin uploader of the cat
+        self.load_plugin_uploader()
+
+        try:
+            # create tmp directory
+            tmp_folder_name = f"/tmp/{uuid.uuid1()}"
+            os.mkdir(tmp_folder_name)
+
+            # try to download the files from the old uploader
+            current_uploader.download_directory(updater.old_setting["value"]["destination_path"], tmp_folder_name)
+
+            # now, try to upload the files to the new storage
+            self.plugin_uploader.upload_directory(tmp_folder_name, updater.new_setting["value"]["destination_path"])
+
+            # cleanup
+            if os.path.exists(tmp_folder_name):
+                shutil.rmtree(tmp_folder_name)
+        except ValueError as e:
+            log.error(f"Error while loading the new Plugin Uploader: {e}")
+
+            # something went wrong: rollback
+            adapter.rollback_factory_config(self.__key)
+
+            if updater.old_setting is not None:
+                self.replace_plugin_uploader(updater.old_setting["value"]["name"], updater.new_setting["value"])
+
+            raise e
+
+        return ReplacedNLPConfig(name=plugin_uploader_name, value=updater.new_setting["value"])
 
     async def remove_cheshire_cat(self, agent_id: str) -> None:
         """
@@ -186,6 +253,9 @@ class BillTheLizard:
         current_cat = self.get_cheshire_cat(agent_id)
         if current_cat:  # agent already exists
             return current_cat
+
+        if agent_id == DEFAULT_SYSTEM_KEY:
+            raise ValueError(f"{DEFAULT_SYSTEM_KEY} is a reserved name for agents")
 
         new_cat = CheshireCat(agent_id)
         self.__cheshire_cats[agent_id] = new_cat

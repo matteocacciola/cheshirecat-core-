@@ -19,7 +19,7 @@ class GetConversationHistoryResponse(BaseModel):
 
 # DELETE conversation history from working memory
 @router.delete("/conversation_history", response_model=DeleteConversationHistoryResponse)
-async def wipe_conversation_history(
+async def destroy_conversation_history(
     cats: ContextualCats = Depends(HTTPAuth(AuthResource.MEMORY, AuthPermission.DELETE)),
 ) -> DeleteConversationHistoryResponse:
     """Delete the specified user's conversation history from working memory"""

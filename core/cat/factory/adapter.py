@@ -9,7 +9,7 @@ from cat.factory.base_factory import BaseFactory
 class UpdaterFactory(BaseModel):
     old_setting: Dict | None = None
     old_factory: Dict | None = None
-    new_factory: Dict | None = None
+    new_setting: Dict | None = None
 
 
 class FactoryAdapter:
@@ -57,7 +57,7 @@ class FactoryAdapter:
             name=self._factory.setting_name, category=self._factory.setting_category, value={"name": new_factory_name}),
         )
 
-        return UpdaterFactory(old_setting=current_setting, old_factory=current_factory, new_factory=final_setting)
+        return UpdaterFactory(old_setting=current_setting, old_factory=current_factory, new_setting=final_setting)
 
     def rollback_factory_config(self, key_id: str) -> None:
         crud_settings.delete_settings_by_category(key_id, self._factory.setting_category)

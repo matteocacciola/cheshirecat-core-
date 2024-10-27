@@ -4,7 +4,7 @@ from cat.db import crud
 
 
 def format_key(agent_id: str, plugin_id: str) -> str:
-    return f"plugin:{agent_id}:{plugin_id}"
+    return f"{agent_id}:plugin:{plugin_id}"
 
 
 def get_setting(agent_id: str, plugin_id: str) -> Dict[str, Any]:
@@ -30,3 +30,7 @@ def update_setting(agent_id: str, plugin_id: str, updated_settings: Dict) -> Dic
 
 def delete_setting(agent_id: str, plugin_id: str) -> None:
     crud.delete(format_key(agent_id, plugin_id))
+
+
+def destroy_all(agent_id: str) -> None:
+    crud.delete(format_key(agent_id, "*"))

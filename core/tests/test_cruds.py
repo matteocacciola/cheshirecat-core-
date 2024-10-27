@@ -57,15 +57,6 @@ def test_get_setting_by_category(cheshire_cat):
 
 
 def test_get_setting_by_name(cheshire_cat):
-    value = crud_settings.get_setting_by_name(DEFAULT_SYSTEM_KEY, "users")
-    assert isinstance(value, dict)
-    # assert that key name exists in value
-    assert value["name"] == "users"
-
-    users = list(value["value"].values())
-    assert len(users) == 1
-    assert users[0]["username"] == "admin"
-
     value = crud_settings.get_setting_by_name(agent_id, AuthHandlerFactory(cheshire_cat.mad_hatter).setting_name)
     assert isinstance(value, dict)
     assert value["value"]["name"] == "CoreOnlyAuthConfig"

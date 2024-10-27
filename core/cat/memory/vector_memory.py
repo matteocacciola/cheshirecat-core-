@@ -34,6 +34,6 @@ class VectorMemory:
             # (i.e. do things like cat.memory.vectors.declarative.something())
             setattr(self, str(collection_name), collection)
 
-    def wipe_collections(self) -> None:
+    def destroy_collections(self) -> None:
         for c in VectoryMemoryCollectionTypes:
-            self.collections[str(c)].wipe()
+            self.collections[str(c)].destroy()

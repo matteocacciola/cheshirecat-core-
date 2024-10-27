@@ -24,8 +24,8 @@ class LongTermMemory:
         # What type of memory is coming next?
         # Surprise surprise, my dear!
 
-    def wipe(self) -> None:
+    def destroy(self) -> None:
         """Wipe all data from the long term memory."""
 
-        self.vectors.wipe_collections()
+        self.vectors.destroy_collections()
         self.vectors = None

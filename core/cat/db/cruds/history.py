@@ -5,7 +5,7 @@ from cat.db import crud
 
 
 def format_key(agent_id: str, user_id: str) -> str:
-    return f"history:{agent_id}:{user_id}"
+    return f"{agent_id}:history:{user_id}"
 
 
 def get_history(agent_id: str, user_id: str) -> List[Dict[str, Any]]:
@@ -32,3 +32,7 @@ def update_history(agent_id: str, user_id: str, updated_info: ConversationHistor
 
 def delete_history(agent_id: str, user_id: str) -> None:
     crud.delete(format_key(agent_id, user_id))
+
+
+def destroy_all(agent_id: str) -> None:
+    crud.delete(format_key(agent_id, "*"))
