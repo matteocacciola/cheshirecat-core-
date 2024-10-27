@@ -15,9 +15,7 @@ from cat.env import get_env
 from cat.exceptions import LoadMemoryException
 from cat.factory.base_factory import ReplacedNLPConfig
 from cat.factory.custom_auth_handler import CoreAuthHandler
-from cat.factory.custom_plugin_uploader import BaseUploader
 from cat.factory.embedder import EmbedderDumbConfig, EmbedderFactory
-from cat.factory.plugin_uploader import LocalPluginUploaderConfig, PluginUploaderFactory
 from cat.jobs import job_on_idle_strays
 from cat.log import log
 from cat.looking_glass.cheshire_cat import CheshireCat
@@ -58,7 +56,6 @@ class BillTheLizard:
         self.__key = DEFAULT_SYSTEM_KEY
 
         self.embedder: Embeddings | None = None
-        self.plugin_uploader: BaseUploader | None = None
 
         # Start scheduling system
         self.white_rabbit = WhiteRabbit()
@@ -107,18 +104,6 @@ class BillTheLizard:
 
         self.embedder = factory.get_from_config_name(self.__key, selected_config["value"]["name"])
 
-    def load_plugin_uploader(self):
-        """
-        Hook into the plugin uploader selection. Allows to modify how the Lizard selects the plugin uploader at
-        bootstrap time.
-        """
-
-        factory = PluginUploaderFactory(self.mad_hatter)
-
-        selected_config = FactoryAdapter(factory).get_factory_config_by_settings(self.__key, LocalPluginUploaderConfig)
-
-        self.plugin_uploader = factory.get_from_config_name(self.__key, selected_config["value"]["name"])
-
     def replace_embedder(self, language_embedder_name: str, settings: Dict) -> ReplacedNLPConfig:
         """
         Replace the current embedder with a new one. This method is used to change the embedder of the cats.
@@ -156,43 +141,6 @@ class BillTheLizard:
         self.mad_hatter.find_plugins()
 
         return ReplacedNLPConfig(name=language_embedder_name, value=updater.new_setting["value"])
-
-    def replace_plugin_uploader(self, plugin_uploader_name: str, settings: Dict) -> ReplacedNLPConfig:
-        """
-        Replace the current plugin uploader with a new one. This method is used to change the plugin uploader of the
-        cats.
-
-        Args:
-            plugin_uploader_name: name of the new plugin uploader
-            settings: settings of the new plugin uploader
-
-        Returns:
-            The dictionary resuming the new name and settings of the plugin uploader
-        """
-
-        adapter = FactoryAdapter(PluginUploaderFactory(self.mad_hatter))
-        updater = adapter.upsert_factory_config_by_settings(self.__key, plugin_uploader_name, settings)
-
-        current_uploader = self.plugin_uploader
-
-        # reload the plugin uploader of the cat
-        self.load_plugin_uploader()
-
-        try:
-            transfer_adapter = PluginTransferAdapter(current_uploader, self.plugin_uploader, updater)
-            transfer_adapter.transfer()
-        except ValueError as e:
-            log.error(f"Error while loading the new Plugin Uploader: {e}")
-
-            # something went wrong: rollback
-            adapter.rollback_factory_config(self.__key)
-
-            if updater.old_setting is not None:
-                self.replace_plugin_uploader(updater.old_setting["value"]["name"], updater.new_setting["value"])
-
-            raise e
-
-        return ReplacedNLPConfig(name=plugin_uploader_name, value=updater.new_setting["value"])
 
     async def remove_cheshire_cat(self, agent_id: str) -> None:
         """
