@@ -229,6 +229,22 @@ def cheshire_cat(lizard):
 
 
 @pytest.fixture
+def march_hare(lizard):
+    march_hare = lizard.march_hare
+
+    # install plugin
+    new_plugin_zip_path = create_mock_plugin_zip(flat=True)
+    march_hare.install_plugin(new_plugin_zip_path)
+
+    yield march_hare
+
+
+@pytest.fixture
+def march_hare_no_plugins(lizard):
+    yield lizard.march_hare
+
+
+@pytest.fixture
 def mad_hatter(cheshire_cat):
     mad_hatter = cheshire_cat.mad_hatter
 

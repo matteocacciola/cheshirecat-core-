@@ -2,7 +2,7 @@ from abc import ABC, abstractmethod
 from typing import Type, List, Dict, Any
 from pydantic import BaseModel
 
-from cat.mad_hatter.mad_hatter import MadHatter
+from cat.mad_hatter.march_hare import MarchHare
 
 
 class ReplacedNLPConfig(BaseModel):
@@ -11,8 +11,8 @@ class ReplacedNLPConfig(BaseModel):
 
 
 class BaseFactory(ABC):
-    def __init__(self, mad_hatter: MadHatter):
-        self._mad_hatter = mad_hatter
+    def __init__(self, march_hare: MarchHare):
+        self._mad_hatter = march_hare
 
     def get_config_class_from_adapter(self, cls: Type) -> Type[BaseModel] | None:
         return next(
