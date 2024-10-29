@@ -20,7 +20,7 @@ def get_embedders_settings(
 ) -> GetSettingsResponse:
     """Get the list of the Embedders"""
 
-    factory = EmbedderFactory(lizard.mad_hatter)
+    factory = EmbedderFactory(lizard.march_hare)
 
     selected = crud_settings.get_setting_by_name(lizard.config_key, factory.setting_name)
     if selected is not None:
@@ -38,7 +38,6 @@ def get_embedders_settings(
     return GetSettingsResponse(settings=settings, selected_configuration=selected)
 
 
-# get Embedder settings and its scheme
 @router.get("/settings/{embedder_name}", response_model=GetSettingResponse)
 def get_embedder_settings(
     embedder_name: str,
@@ -46,8 +45,8 @@ def get_embedder_settings(
 ) -> GetSettingResponse:
     """Get settings and scheme of the specified Embedder"""
 
-    embedder_schemas = EmbedderFactory(lizard.mad_hatter).get_schemas()
-    # check that language_embedder_name is a valid name
+    embedder_schemas = EmbedderFactory(lizard.march_hare).get_schemas()
+    # check that embedder_name is a valid name
     allowed_configurations = list(embedder_schemas.keys())
     if embedder_name not in allowed_configurations:
         raise CustomValidationException(f"{embedder_name} not supported. Must be one of {allowed_configurations}")
@@ -68,8 +67,8 @@ def upsert_embedder_setting(
 ) -> ReplacedNLPConfig:
     """Upsert the Embedder setting"""
 
-    embedder_schemas = EmbedderFactory(lizard.mad_hatter).get_schemas()
-    # check that language_embedder_name is a valid name
+    embedder_schemas = EmbedderFactory(lizard.march_hare).get_schemas()
+    # check that embedder_name is a valid name
     allowed_configurations = list(embedder_schemas.keys())
     if embedder_name not in allowed_configurations:
         raise CustomValidationException(f"{embedder_name} not supported. Must be one of {allowed_configurations}")

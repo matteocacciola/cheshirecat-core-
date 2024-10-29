@@ -20,6 +20,7 @@ class AuthResource(Enum):
 class AdminAuthResource(Enum):
     ADMINS = "ADMINS"
     EMBEDDER = "EMBEDDER"
+    UPLOADER = "UPLOADER"
     CHESHIRE_CATS = "CHESHIRE_CATS"
 
 

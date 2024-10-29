@@ -14,12 +14,14 @@ from cat.env import get_env
 from cat.exceptions import LoadMemoryException
 from cat.factory.base_factory import ReplacedNLPConfig
 from cat.factory.custom_auth_handler import CoreAuthHandler
+from cat.factory.custom_uploader import BaseUploader
 from cat.factory.embedder import EmbedderDumbConfig, EmbedderFactory
+from cat.factory.plugin_uploader import LocalPluginUploaderConfig, PluginUploaderFactory
 from cat.jobs import job_on_idle_strays
 from cat.log import log
 from cat.looking_glass.cheshire_cat import CheshireCat
 from cat.looking_glass.white_rabbit import WhiteRabbit
-from cat.mad_hatter.mad_hatter import MadHatter
+from cat.mad_hatter.march_hare import MarchHare
 from cat.rabbit_hole import RabbitHole
 from cat.utils import singleton
 
@@ -55,6 +57,7 @@ class BillTheLizard:
         self.__key = DEFAULT_SYSTEM_KEY
 
         self.embedder: Embeddings | None = None
+        self.plugin_uploader: BaseUploader | None = None
 
         # Start scheduling system
         self.white_rabbit = WhiteRabbit()
@@ -62,10 +65,13 @@ class BillTheLizard:
             lambda: job_on_idle_strays(self, asyncio.new_event_loop()), second=int(get_env("CCAT_STRAYCAT_TIMEOUT"))
         )
 
-        self.mad_hatter = MadHatter(self.__key)
+        self.march_hare = MarchHare()
 
         # load embedder
         self.load_language_embedder()
+
+        # load plugin uploader
+        self.load_plugin_uploader()
 
         # Rabbit Hole Instance
         self.rabbit_hole = RabbitHole()
@@ -97,11 +103,25 @@ class BillTheLizard:
         Hook into the embedder selection. Allows to modify how the Lizard selects the embedder at bootstrap time.
         """
 
-        factory = EmbedderFactory(self.mad_hatter)
+        factory = EmbedderFactory(self.march_hare)
 
         selected_config = FactoryAdapter(factory).get_factory_config_by_settings(self.__key, EmbedderDumbConfig)
 
         self.embedder = factory.get_from_config_name(self.__key, selected_config["value"]["name"])
+
+    def load_plugin_uploader(self):
+        """
+        Hook into the plugin uploader selection. Allows to modify how the Lizard selects the plugin uploader at
+        bootstrap time.
+        """
+
+        factory = PluginUploaderFactory(self.march_hare)
+
+        selected_config = FactoryAdapter(factory).get_factory_config_by_settings(
+            self.__key, LocalPluginUploaderConfig, {"storage_dir": utils.get_plugins_path()}
+        )
+
+        self.plugin_uploader = factory.get_from_config_name(self.__key, selected_config["value"]["name"])
 
     def replace_embedder(self, language_embedder_name: str, settings: Dict) -> ReplacedNLPConfig:
         """
@@ -115,7 +135,7 @@ class BillTheLizard:
             The dictionary resuming the new name and settings of the embedder
         """
 
-        adapter = FactoryAdapter(EmbedderFactory(self.mad_hatter))
+        adapter = FactoryAdapter(EmbedderFactory(self.march_hare))
         updater = adapter.upsert_factory_config_by_settings(self.__key, language_embedder_name, settings)
 
         # reload the embedder of the cats
@@ -137,9 +157,45 @@ class BillTheLizard:
                 raise LoadMemoryException(f"Load memory exception: {utils.explicit_error_message(e)}")
 
         # recreate tools embeddings
-        self.mad_hatter.find_plugins()
+        self.march_hare.find_plugins()
 
         return ReplacedNLPConfig(name=language_embedder_name, value=updater.new_setting["value"])
+
+    def replace_plugin_uploader(self, plugin_uploader_name: str, settings: Dict) -> ReplacedNLPConfig:
+        """
+        Replace the current plugin uploader with a new one. This method is used to change the plugin uploader of the
+        cats.
+
+        Args:
+            plugin_uploader_name: name of the new plugin uploader
+            settings: settings of the new plugin uploader
+
+        Returns:
+            The dictionary resuming the new name and settings of the plugin uploader
+        """
+
+        adapter = FactoryAdapter(PluginUploaderFactory(self.march_hare))
+        updater = adapter.upsert_factory_config_by_settings(self.__key, plugin_uploader_name, settings)
+
+        try:
+            old_uploader = self.plugin_uploader
+
+            # reload the plugin uploader of the cat
+            self.load_plugin_uploader()
+
+            self.plugin_uploader.transfer(old_uploader)
+        except ValueError as e:
+            log.error(f"Error while loading the new Plugin Uploader: {e}")
+
+            # something went wrong: rollback
+            adapter.rollback_factory_config(self.__key)
+
+            if updater.old_setting is not None:
+                self.replace_plugin_uploader(updater.old_setting["value"]["name"], updater.new_setting["value"])
+
+            raise e
+
+        return ReplacedNLPConfig(name=plugin_uploader_name, value=updater.new_setting["value"])
 
     async def remove_cheshire_cat(self, agent_id: str) -> None:
         """
@@ -151,7 +207,7 @@ class BillTheLizard:
         Returns:
             None
         """
-        
+
         if agent_id in self.__cheshire_cats.keys():
             ccat = self.__cheshire_cats[agent_id]
             await ccat.shutdown()
@@ -213,10 +269,11 @@ class BillTheLizard:
 
         self.white_rabbit = None
         self.core_auth_handler = None
-        self.mad_hatter = None
+        self.march_hare = None
         self.rabbit_hole = None
         self.main_agent = None
         self.embedder = None
+        self.plugin_uploader = None
 
     @property
     def cheshire_cats(self):

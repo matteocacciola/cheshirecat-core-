@@ -1,4 +1,4 @@
-from typing import Type, List, Dict
+from typing import Type, List
 from langchain_core.embeddings import Embeddings
 from pydantic import BaseModel, ConfigDict, Field
 from langchain_cohere import CohereEmbeddings
@@ -199,25 +199,6 @@ class EmbedderFactory(BaseFactory):
         )
         return list_embedder
 
-    def get_schemas(self) -> Dict:
-        # embedder_schemas contains metadata to let any client know which fields are required to create the language embedder.
-        embedder_schemas = {}
-        for config_class in self.get_allowed_classes():
-            schema = config_class.model_json_schema()
-            # useful for clients in order to call the correct config endpoints
-            schema["languageEmbedderName"] = schema["title"]
-            embedder_schemas[schema["title"]] = schema
-
-        return embedder_schemas
-
-    def get_config_class_from_adapter(self, cls: Type[Embeddings]) -> Type[EmbedderSettings] | None:
-        """Find the class of the embedder adapter"""
-
-        return next(
-            (config_class for config_class in self.get_allowed_classes() if config_class.pyclass() == cls),
-            None
-        )
-
     def get_from_config_name(self, agent_id: str, config_name: str) -> Embeddings:
         """
         Get Embedder from configuration name. This function is used to get the Embedder from the configuration name
@@ -232,8 +213,7 @@ class EmbedderFactory(BaseFactory):
         """
 
         # get Embedder factory class
-        list_embedders = self.get_allowed_classes()
-        factory_class = next((cls for cls in list_embedders if cls.__name__ == config_name), None)
+        factory_class = next((cls for cls in self.get_allowed_classes() if cls.__name__ == config_name), None)
         if factory_class is None:
             log.warning(f"Embedder class {config_name} not found in the list of allowed embedders")
             return EmbedderDumbConfig.get_embedder_from_config({})
@@ -260,3 +240,7 @@ class EmbedderFactory(BaseFactory):
     @property
     def setting_factory_category(self) -> str:
         return "embedder_factory"
+
+    @property
+    def schema_name(self) -> str:
+        return "languageEmbedderName"

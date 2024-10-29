@@ -14,16 +14,28 @@ class BaseFactory(ABC):
     def __init__(self, mad_hatter: MadHatter):
         self._mad_hatter = mad_hatter
 
-    @abstractmethod
-    def get_allowed_classes(self) -> List[Type]:
-        pass
+    def get_config_class_from_adapter(self, cls: Type) -> Type[BaseModel] | None:
+        return next(
+            (config_class for config_class in self.get_allowed_classes() if config_class.pyclass() == cls),
+            None
+        )
 
-    @abstractmethod
     def get_schemas(self) -> Dict:
-        pass
+        # schemas contains metadata to let any client know which fields are required to create the class.
+        schemas = {}
+        for config_class in self.get_allowed_classes():
+            schema = config_class.model_json_schema()
+            # useful for clients in order to call the correct config endpoints
+            schema[self.schema_name] = schema["title"]
+            schemas[schema["title"]] = schema
+
+        return schemas
+
+    def _get_factory_class(self, config_name: str) -> Type[BaseModel] | None:
+        return next((cls for cls in self.get_allowed_classes() if cls.__name__ == config_name), None)
 
     @abstractmethod
-    def get_config_class_from_adapter(self, cls: Type) -> Type | None:
+    def get_allowed_classes(self) -> List[Type[BaseModel]]:
         pass
 
     @abstractmethod
@@ -43,4 +55,9 @@ class BaseFactory(ABC):
     @property
     @abstractmethod
     def setting_factory_category(self) -> str:
+        pass
+
+    @property
+    @abstractmethod
+    def schema_name(self) -> str:
         pass

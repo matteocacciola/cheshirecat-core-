@@ -16,7 +16,9 @@ class FactoryAdapter:
     def __init__(self, factory: BaseFactory):
         self._factory = factory
 
-    def get_factory_config_by_settings(self, key_id: str, default_factory: Type) -> Dict:
+    def get_factory_config_by_settings(
+            self, key_id: str, default_factory: Type, default_factory_config: Dict | None = None
+    ) -> Dict:
         selected_config = crud_settings.get_setting_by_name(key_id, self._factory.setting_name)
         if selected_config:
             return selected_config
@@ -27,7 +29,11 @@ class FactoryAdapter:
         # create the settings for the factory
         crud_settings.upsert_setting_by_name(
             key_id,
-            models.Setting(name=default_factory_name, category=self._factory.setting_factory_category, value={}),
+            models.Setting(
+                name=default_factory_name,
+                category=self._factory.setting_factory_category,
+                value=default_factory_config or {},
+            ),
         )
         # create the settings to set the class of the factory
         crud_settings.upsert_setting_by_name(key_id, models.Setting(

@@ -78,6 +78,7 @@ def clean_up():
         "tests/mocks/mock_plugin.zip",
         "tests/mocks/mock_plugin/settings.json",
         "tests/mocks/mock_plugin_folder/mock_plugin",
+        "tests/mocks/mock_plugin_folder_new/mock_plugin",
         "tests/mocks/empty_folder",
     ]
     for tbr in to_be_removed:
@@ -241,11 +242,6 @@ def mad_hatter(cheshire_cat):
 @pytest.fixture
 def mad_hatter_no_plugins(cheshire_cat):
     yield cheshire_cat.mad_hatter
-
-
-@pytest.fixture
-def mad_hatter_lizard(lizard):
-    yield lizard.mad_hatter
 
 
 @pytest.fixture

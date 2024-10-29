@@ -1,4 +1,4 @@
-from typing import Type, Dict
+from typing import Type
 from pydantic import BaseModel, ConfigDict
 
 from cat.db.cruds import settings as crud_settings
@@ -64,30 +64,9 @@ class AuthHandlerFactory(BaseFactory):
 
         return list_auth_handler
 
-
-    def get_schemas(self) -> Dict:
-        auth_handler_schemas = {}
-        for config_class in self.get_allowed_classes():
-            schema = config_class.model_json_schema()
-            schema["authorizatorName"] = schema["title"]
-            auth_handler_schemas[schema["title"]] = schema
-
-        return auth_handler_schemas
-
-    def get_config_class_from_adapter(self, cls: Type[BaseAuthHandler]) -> Type[AuthHandlerConfig] | None:
-        """Find the class of the auth handler adapter"""
-
-        return next(
-            (config_class for config_class in self.get_allowed_classes() if config_class.pyclass() == cls),
-            None
-        )
-
     def get_from_config_name(self, agent_id: str, config_name: str) -> BaseAuthHandler:
         # get AuthHandler factory class
-        list_auth_handlers = self.get_allowed_classes()
-        factory_class = next(
-            (auth_handler for auth_handler in list_auth_handlers if auth_handler.__name__ == config_name), None
-        )
+        factory_class = next((cls for cls in self.get_allowed_classes() if cls.__name__ == config_name), None)
         if factory_class is None:
             log.warning(f"Auth Handler class {config_name} not found in the list of allowed auth handlers")
             return CoreOnlyAuthConfig.get_auth_handler_from_config({})
@@ -115,3 +94,7 @@ class AuthHandlerFactory(BaseFactory):
     @property
     def setting_factory_category(self) -> str:
         return "auth_handler_factory"
+
+    @property
+    def schema_name(self) -> str:
+        return "authorizatorName"

@@ -8,7 +8,7 @@ from langchain_community.llms import (
 from langchain_openai import ChatOpenAI, OpenAI
 from langchain_cohere import ChatCohere
 from langchain_google_genai import ChatGoogleGenerativeAI
-from typing import Type, Dict, List
+from typing import Type, List
 import json
 from pydantic import BaseModel, ConfigDict
 
@@ -318,26 +318,6 @@ class LLMFactory(BaseFactory):
         )
         return list_llms
 
-    def get_schemas(self) -> Dict:
-        # llm_schemas contains metadata to let any client know
-        # which fields are required to create the language model.
-        llm_schemas = {}
-        for config_class in self.get_allowed_classes():
-            schema = config_class.model_json_schema()
-            # useful for clients in order to call the correct config endpoints
-            schema["languageModelName"] = schema["title"]
-            llm_schemas[schema["title"]] = schema
-
-        return llm_schemas
-
-    def get_config_class_from_adapter(self, cls: Type[BaseLanguageModel]) -> Type[LLMSettings] | None:
-        """Find the class of the llm adapter"""
-
-        return next(
-            (config_class for config_class in self.get_allowed_classes() if config_class.pyclass() == cls),
-            None
-        )
-
     def get_from_config_name(self, agent_id: str, config_name: str) -> BaseLanguageModel:
         """
         Get the language model from the configuration name.
@@ -351,8 +331,7 @@ class LLMFactory(BaseFactory):
         """
 
         # get LLM factory class
-        list_llms = self.get_allowed_classes()
-        factory_class = next((cls for cls in list_llms if cls.__name__ == config_name), None)
+        factory_class = next((cls for cls in self.get_allowed_classes() if cls.__name__ == config_name), None)
         if not factory_class:
             log.warning(f"LLM class {config_name} not found in the list of allowed LLMs")
             return LLMDefaultConfig.get_llm_from_config({})
@@ -380,3 +359,7 @@ class LLMFactory(BaseFactory):
     @property
     def setting_factory_category(self) -> str:
         return "llm_factory"
+
+    @property
+    def schema_name(self) -> str:
+        return "languageModelName"

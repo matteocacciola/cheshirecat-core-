@@ -22,7 +22,7 @@ def test_get_all_llm_settings(secure_client, secure_client_headers, cheshire_cat
         expected_schema = llms_schemas[setting["name"]]
         assert dumps(jsonable_encoder(expected_schema)) == dumps(setting["scheme"])
 
-    assert json["selected_configuration"] is None  # no llm configured at startup
+    assert json["selected_configuration"] == "LLMDefaultConfig"
 
 
 def test_get_llm_settings_non_existent(secure_client, secure_client_headers):

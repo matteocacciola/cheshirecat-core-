@@ -29,7 +29,7 @@ class MadHatter:
     # - exposes functionality to the cat
 
     def __init__(self, config_key: str):
-        self.__config_key = config_key
+        self._config_key = config_key
         self.skip_folders = ["__pycache__", "lost+found"]
 
         self.plugins: Dict[str, Plugin] = {}  # plugins dictionary
@@ -125,7 +125,7 @@ class MadHatter:
         #   If the plugin is inactive, only manifest will be loaded
         #   If active, also settings, tools and hooks
         try:
-            plugin = Plugin(plugin_path, self.__config_key)
+            plugin = Plugin(plugin_path, self._config_key)
             # if plugin is valid, keep a reference
             self.plugins[plugin.id] = plugin
         except Exception as e:
@@ -164,7 +164,7 @@ class MadHatter:
         return plugin_id in self.plugins.keys()
 
     def load_active_plugins_from_db(self):
-        active_plugins = crud_settings.get_setting_by_name(self.__config_key, "active_plugins")
+        active_plugins = crud_settings.get_setting_by_name(self._config_key, "active_plugins")
         active_plugins = [] if active_plugins is None else active_plugins["value"]
 
         # core_plugin is always active
@@ -217,7 +217,7 @@ class MadHatter:
 
         # update DB with list of active plugins, delete duplicate plugins
         active_plugins = list(set(self.active_plugins))
-        crud_settings.upsert_setting_by_name(self.__config_key, Setting(name="active_plugins", value=active_plugins))
+        crud_settings.upsert_setting_by_name(self._config_key, Setting(name="active_plugins", value=active_plugins))
 
         # update cache and embeddings
         self.sync_hooks_tools_and_forms()

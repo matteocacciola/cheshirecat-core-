@@ -39,7 +39,6 @@ def get_llms_settings(
     return GetSettingsResponse(settings=settings, selected_configuration=selected)
 
 
-# get LLM settings and its scheme
 @router.get("/settings/{language_model_name}", response_model=GetSettingResponse)
 def get_llm_settings(
     language_model_name: str,

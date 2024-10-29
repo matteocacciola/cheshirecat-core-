@@ -1,88 +1,219 @@
+import uuid
 from abc import ABC, abstractmethod
 import os
 from typing import List
+import shutil
+
+from cat.log import log
 
 
 class BaseUploader(ABC):
     """
-    Base class for cloud uploaders. It defines the interface that all cloud uploaders must implement. It is used to
-    upload files and folders composing an installed plugin to a cloud storage service.
+    Base class for storage uploaders. It defines the interface that all storage uploaders must implement. It is used to
+    upload files and folders composing an installed plugin to a storage service.
     Method `upload_directory`, `download_file`, `download_directory`, `list_files`
     MUST be implemented by subclasses.
     """
 
+    def __init__(self, storage_dir: str):
+        self.storage_dir = storage_dir
+        self._excluded_dirs = ["__pycache__"]
+        self._excluded_files = [".gitignore", ".DS_Store", ".gitkeep", ".git", ".dockerignore"]
+
     @abstractmethod
-    def upload_file(self, file_path: str, destination_path: str) -> str:
-        """Upload a single file on the cloud"""
+    def upload_file_to_storage(self, file_path: str, local_dir: str) -> str | None:
+        """
+        Upload a single file on the storage, within the directory specified by `self.storage_dir`.
+
+        Args:
+            file_path: The path of the file to upload
+            local_dir: The local directory where the file is contained
+
+        Returns:
+            The path of the file on the storage, None if the file has not been uploaded
+        """
         pass
 
     @abstractmethod
-    def download_file(self, cloud_path: str, local_path: str) -> str:
-        """Download a single file from the cload to the local_path"""
+    def download_file_from_storage(self, file_path: str, local_dir: str) -> str | None:
+        """
+        Download a single file from the storage to the `local_path`.
+
+        Args:
+            file_path: The path of the file to download, contained on the storage within the directory specified by
+                `self.storage_dir`
+            local_dir: The directory where the file will be downloaded locally
+
+        Returns:
+            The path of the file locally if the file has been downloaded, None otherwise
+        """
         pass
 
     @abstractmethod
-    def download_directory(self, cloud_dir: str, local_dir: str):
-        """Download a directory with all the contained files from the cloud to local_dir"""
+    def remove_file_from_storage(self, file_path: str) -> bool:
+        """
+        Remove a single file with `file_path` path from the `storage_dir` of the storage.
+
+        Args:
+            file_path: The name/path of the file to remove, contained on the storage within the directory specified by
+                `self.storage_dir`
+
+        Returns:
+            True if the file has been removed, False otherwise
+        """
         pass
 
     @abstractmethod
-    def list_files(self, cloud_dir: str) -> List[str]:
-        """Lista tutti i file in una directory del cloud"""
+    def remove_storage(self) -> bool:
+        """
+        Remove the `self.storage_dir` directory from the storage.
+
+        Returns:
+            True if the storage has been removed, False otherwise
+        """
         pass
 
-    def upload_directory(self, local_dir: str, destination_dir: str) -> List[str]:
-        """Upload a directory with all the contained files on the cloud"""
-        uploaded_files = []
-        for root, _, files in os.walk(local_dir):
-            for file in files:
-                local_path = os.path.join(root, file)
-                relative_path = os.path.relpath(local_path, local_dir)
-                destination_path = os.path.join(destination_dir, relative_path)
-                uploaded_files.append(self.upload_file(local_path, destination_path))
-        return uploaded_files
+    @abstractmethod
+    def list_files(self, all_results: bool = True) -> List[str]:
+        """
+        List of all the files contained into the `self.storage_dir` on the storage.
+
+        Args:
+            all_results: If True, return all the files, otherwise return only the files that are not excluded by the
+                rules identified within the `_excluded_dirs` and `_excluded_files` attributes
+
+        Returns:
+            List of the paths of the files on the storage
+        """
+        pass
+
+    def upload_to_storage(self, local_dir: str) -> List[str]:
+        """
+        Upload a directory with all the contained files on the storage, within the directory specified by
+        `self.storage_dir`.
+
+        Args:
+            local_dir: The path of the directory locally, containing the files to upload to the storage
+
+        Returns:
+            List of the paths of the files on the storage
+        """
+
+        return [
+            self.upload_file_to_storage(os.path.join(root, file), root)
+            for root, _, files in os.walk(local_dir)
+            for file in files
+        ]
+
+    def download_from_storage(self, local_dir: str) -> List[str]:
+        """
+        Download the directory specified by `self.storage_dir` with all the contained files from the storage to
+        `local_dir`.
+
+        Args:
+            local_dir: The path where the directory will be downloaded locally
+
+        Returns:
+            List of the paths of the files locally
+        """
+
+        files = self.list_files(False)
+        return [self.download_file_from_storage(file_path, local_dir) for file_path in files]
+
+    def transfer(self, uploader_from: "BaseUploader") -> bool:
+        """
+        Transfer files from the current uploader to the one specified in the argument `uploader_to`.
+
+        Args:
+            uploader_from: The uploader to transfer the files from
+        """
+
+        try:
+            # create tmp directory
+            tmp_folder_name = f"/tmp/{uuid.uuid1()}"
+            os.mkdir(tmp_folder_name)
+
+            # try to download the files from the old uploader to the `tmp_folder_name`
+            uploader_from.download_from_storage(tmp_folder_name)
+
+            # now, try to upload the files to the new storage
+            self.upload_to_storage(tmp_folder_name)
+
+            # cleanup
+            if os.path.exists(tmp_folder_name):
+                shutil.rmtree(tmp_folder_name)
+            uploader_from.remove_storage()
+            return True
+        except Exception as e:
+            log.error(f"Error while transferring files from the old uploader to the new one: {e}")
+            return False
+
+    def _build_destination_path_for_download(self, file_path: str, local_dir: str) -> str | None:
+        local_path = os.path.join(local_dir, os.path.relpath(file_path, self.storage_dir))
+        if any([ex_file in local_path for ex_file in self._excluded_files]):
+            return None
+        os.makedirs(os.path.dirname(local_path), exist_ok=True)
+        return local_path
+
+    def _build_destination_path_for_upload(self, file_path: str, local_dir: str) -> str | None:
+        destination_path = os.path.join(self.storage_dir, os.path.relpath(file_path, local_dir))
+        if any([ex_file in destination_path for ex_file in self._excluded_files]):
+            return None
+        return destination_path
+
+    def _build_destination_path_for_removal(self, file_path: str) -> str:
+        return os.path.join(self.storage_dir, os.path.relpath(file_path, self.storage_dir))
+
+    def _filter_excluded(self, files: List[str]) -> List[str]:
+        excluded_paths = self._excluded_dirs + self._excluded_files
+        return [file for file in files if not any([ex in files for ex in excluded_paths])]
 
 
 class LocalUploader(BaseUploader):
-    def __init__(self):
-        import shutil
-        self.move = shutil.move
-        pass
-
-    def upload_file(self, file_path: str, destination_path: str) -> str:
-        if file_path == destination_path:
-            return destination_path
-
-        # move the file from file_path to destination_path
-        self.move(file_path, destination_path)
+    def upload_file_to_storage(self, file_path: str, local_dir: str) -> str | None:
+        destination_path = self._build_destination_path_for_upload(file_path, local_dir)
+        if destination_path and file_path != destination_path:
+            # move the file from file_path to destination_path
+            shutil.move(file_path, destination_path)
         return destination_path
 
-    def download_file(self, cloud_path: str, local_path: str) -> str:
-        if cloud_path == local_path:
-            return local_path
+    def download_file_from_storage(self, file_path: str, local_dir: str) -> str | None:
+        destination_path = self._build_destination_path_for_download(file_path, local_dir)
+        if destination_path and file_path != destination_path:
+            # move the file from origin_path to destination_path
+            shutil.move(file_path, destination_path)
+        return destination_path
 
-        # move the file from cloud_path to local_path
-        os.makedirs(os.path.dirname(local_path), exist_ok=True)
-        self.move(cloud_path, local_path)
-        return local_path
+    def remove_file_from_storage(self, file_path: str) -> bool:
+        final_path = self._build_destination_path_for_removal(file_path)
+        if os.path.exists(file_path) and os.path.isfile(file_path):
+            try:
+                os.remove(file_path)
+            except Exception as e:
+                log.error(f"Error while removing file {final_path} from storage: {e}")
+                return False
+        return True
 
-    def download_directory(self, cloud_dir: str, local_dir: str):
-        """Upload a directory with all the contained files on the cloud"""
-        downloaded_files = []
-        for root, _, files in os.walk(cloud_dir):
-            for file in files:
-                cloud_path = os.path.join(root, file)
-                relative_path = os.path.relpath(cloud_path, local_dir)
-                local_path = os.path.join(local_dir, relative_path)
-                downloaded_files.append(self.download_file(cloud_path, local_path))
-        return downloaded_files
+    def list_files(self, all_results: bool = True) -> List[str]:
+        results = [
+            os.path.join(root, file)
+            for root, _, files in os.walk(self.storage_dir)
+            for file in files
+        ]
+        return results if all_results else self._filter_excluded(results)
 
-    def list_files(self, cloud_dir: str) -> List[str]:
-        return [os.path.join(root, file) for root, _, files in os.walk(cloud_dir) for file in files]
+    def remove_storage(self) -> bool:
+        if os.path.exists(self.storage_dir) and os.path.isdir(self.storage_dir):
+            try:
+                shutil.rmtree(self.storage_dir)
+            except Exception as e:
+                log.error(f"Error while removing storage: {e}")
+                return False
+        return True
 
 
 class AWSUploader(BaseUploader):
-    def __init__(self, bucket_name: str, aws_access_key: str, aws_secret_key: str):
+    def __init__(self, bucket_name: str, aws_access_key: str, aws_secret_key: str, storage_dir: str):
         import boto3
         self.s3 = boto3.client(
             's3',
@@ -90,97 +221,147 @@ class AWSUploader(BaseUploader):
             aws_secret_access_key=aws_secret_key
         )
         self.bucket_name = bucket_name
+        super().__init__(storage_dir)
 
-    def upload_file(self, file_path: str, destination_path: str) -> str:
-        self.s3.upload_file(file_path, self.bucket_name, destination_path)
-        return f"s3://{self.bucket_name}/{destination_path}"
+    def upload_file_to_storage(self, file_path: str, local_dir: str) -> str | None:
+        bucket_key = self._build_destination_path_for_upload(file_path, local_dir)
+        if bucket_key:
+            self.s3.upload_file(file_path, self.bucket_name, bucket_key)
+            return os.path.join("s3://", self.bucket_name, bucket_key)
+        return None
 
-    def download_file(self, cloud_path: str, local_path: str) -> str:
-        os.makedirs(os.path.dirname(local_path), exist_ok=True)
-        self.s3.download_file(self.bucket_name, cloud_path, local_path)
+    def download_file_from_storage(self, file_path: str, local_dir: str) -> str | None:
+        local_path = self._build_destination_path_for_download(file_path, local_dir)
+        if local_path:
+            self.s3.download_file(self.bucket_name, file_path, local_path)
         return local_path
 
-    def download_directory(self, cloud_dir: str, local_dir: str) -> List[str]:
-        downloaded_files = []
-        cloud_files = self.list_files(cloud_dir)
+    def remove_file_from_storage(self, file_path: str) -> bool:
+        bucket_key = self._build_destination_path_for_removal(file_path)
+        try:
+            self.s3.head_object(Bucket=self.bucket_name, Key=bucket_key)
+            self.s3.delete_object(Bucket=self.bucket_name, Key=bucket_key)
+            return True
+        except Exception as e:
+            log.error(f"Error while removing file {file_path} from storage: {e}")
+            return False
 
-        for cloud_path in cloud_files:
-            relative_path = os.path.relpath(cloud_path, cloud_dir)
-            local_path = os.path.join(local_dir, relative_path)
-            downloaded_files.append(self.download_file(cloud_path, local_path))
-
-        return downloaded_files
-
-    def list_files(self, cloud_dir: str) -> List[str]:
+    def list_files(self, all_results: bool = True) -> List[str]:
         files = []
         paginator = self.s3.get_paginator("list_objects_v2")
-        for page in paginator.paginate(Bucket=self.bucket_name, Prefix=cloud_dir):
+        for page in paginator.paginate(Bucket=self.bucket_name, Prefix=self.storage_dir):
             if "Contents" in page:
                 files.extend([obj["Key"] for obj in page["Contents"]])
-        return files
+        return files if all_results else self._filter_excluded(files)
+
+    def remove_storage(self) -> bool:
+        try:
+            files_to_delete = self.list_files()
+            if files_to_delete:
+                objects_to_delete = [{'Key': key} for key in files_to_delete]
+                self.s3.delete_objects(
+                    Bucket=self.bucket_name,
+                    Delete={'Objects': objects_to_delete}
+                )
+            return True
+        except Exception as e:
+            log.error(f"Error while removing storage: {e}")
+            return False
 
 
 class AzureUploader(BaseUploader):
-    def __init__(self, connection_string: str, container_name: str):
+    def __init__(self, connection_string: str, container_name: str, storage_dir: str):
         from azure.storage.blob import BlobServiceClient
         self.blob_service = BlobServiceClient.from_connection_string(connection_string)
         self.container = self.blob_service.get_container_client(container_name)
+        super().__init__(storage_dir)
 
-    def upload_file(self, file_path: str, destination_path: str) -> str:
-        with open(file_path, "rb") as data:
-            self.container.upload_blob(name=destination_path, data=data, overwrite=True)
-        return f"azure://{self.container.container_name}/{destination_path}"
+    def upload_file_to_storage(self, file_path: str, local_dir: str) -> str | None:
+        blob_key = self._build_destination_path_for_upload(file_path, local_dir)
+        if blob_key:
+            with open(file_path, "rb") as data:
+                self.container.upload_blob(name=blob_key, data=data, overwrite=True)
+            return os.path.join("azure://", self.container.container_name, blob_key)
+        return None
 
-    def download_file(self, cloud_path: str, local_path: str) -> str:
-        os.makedirs(os.path.dirname(local_path), exist_ok=True)
-        blob_client = self.container.get_blob_client(cloud_path)
-        with open(local_path, "wb") as file:
-            data = blob_client.download_blob()
-            file.write(data.readall())
+    def download_file_from_storage(self, file_path: str, local_dir: str) -> str | None:
+        local_path = self._build_destination_path_for_download(file_path, local_dir)
+        if local_path:
+            blob_client = self.container.get_blob_client(file_path)
+            with open(local_path, "wb") as file:
+                data = blob_client.download_blob()
+                file.write(data.readall())
         return local_path
 
-    def download_directory(self, cloud_dir: str, local_dir: str) -> List[str]:
-        downloaded_files = []
-        cloud_files = self.list_files(cloud_dir)
+    def remove_file_from_storage(self, file_path: str) -> bool:
+        blob_key = self._build_destination_path_for_removal(file_path)
+        try:
+            blob_client = self.container.get_blob_client(blob_key)
+            if blob_client.exists():
+                blob_client.delete_blob()
+            return True
+        except Exception as e:
+            log.error(f"Error while removing file {file_path} from storage: {e}")
+            return False
 
-        for cloud_path in cloud_files:
-            relative_path = os.path.relpath(cloud_path, cloud_dir)
-            local_path = os.path.join(local_dir, relative_path)
-            downloaded_files.append(self.download_file(cloud_path, local_path))
+    def list_files(self, all_results: bool = True) -> List[str]:
+        files = [blob.name for blob in self.container.list_blobs(name_starts_with=self.storage_dir)]
+        return files if all_results else self._filter_excluded(files)
 
-        return downloaded_files
-
-    def list_files(self, cloud_dir: str) -> List[str]:
-        return [blob.name for blob in self.container.list_blobs(name_starts_with=cloud_dir)]
+    def remove_storage(self) -> bool:
+        try:
+            for file_path in self.list_files():
+                blob_client = self.container.get_blob_client(file_path)
+                blob_client.delete_blob()
+            return True
+        except Exception as e:
+            log.error(f"Error while removing storage: {e}")
+            return False
 
 
 class GoogleCloudUploader(BaseUploader):
-    def __init__(self, bucket_name: str, credentials_path: str):
+    def __init__(self, bucket_name: str, credentials_path: str, storage_dir: str):
         from google.cloud import storage
         self.storage_client = storage.Client.from_service_account_json(credentials_path)
         self.bucket = self.storage_client.bucket(bucket_name)
+        super().__init__(storage_dir)
 
-    def upload_file(self, file_path: str, destination_path: str) -> str:
-        blob = self.bucket.blob(destination_path)
-        blob.upload_from_filename(file_path)
-        return f"gs://{self.bucket.name}/{destination_path}"
+    def upload_file_to_storage(self, file_path: str, local_dir: str) -> str | None:
+        blob_key = self._build_destination_path_for_upload(file_path, local_dir)
+        if blob_key:
+            blob = self.bucket.blob(blob_key)
+            blob.upload_from_filename(file_path)
+            return os.path.join("gs://", self.bucket.name, blob_key)
+        return None
 
-    def download_file(self, cloud_path: str, local_path: str) -> str:
-        os.makedirs(os.path.dirname(local_path), exist_ok=True)
-        blob = self.bucket.blob(cloud_path)
-        blob.download_to_filename(local_path)
+    def download_file_from_storage(self, file_path: str, local_dir: str) -> str | None:
+        local_path = self._build_destination_path_for_download(file_path, local_dir)
+        if local_path:
+            blob = self.bucket.blob(file_path)
+            blob.download_to_filename(local_path)
         return local_path
 
-    def download_directory(self, cloud_dir: str, local_dir: str) -> List[str]:
-        downloaded_files = []
-        cloud_files = self.list_files(cloud_dir)
+    def remove_file_from_storage(self, file_path: str) -> bool:
+        blob_key = self._build_destination_path_for_removal(file_path)
+        try:
+            blob = self.bucket.blob(blob_key)
+            if blob.exists():
+                blob.delete()
+            return True
+        except Exception as e:
+            log.error(f"Error while removing file {file_path} from storage: {e}")
+            return False
 
-        for cloud_path in cloud_files:
-            relative_path = os.path.relpath(cloud_path, cloud_dir)
-            local_path = os.path.join(local_dir, relative_path)
-            downloaded_files.append(self.download_file(cloud_path, local_path))
+    def list_files(self, all_results: bool = True) -> List[str]:
+        files = [blob.name for blob in self.bucket.list_blobs(prefix=self.storage_dir)]
+        return files if all_results else self._filter_excluded(files)
 
-        return downloaded_files
-
-    def list_files(self, cloud_dir: str) -> List[str]:
-        return [blob.name for blob in self.bucket.list_blobs(prefix=cloud_dir)]
+    def remove_storage(self) -> bool:
+        try:
+            for file_path in self.list_files():
+                blob = self.bucket.blob(file_path)
+                blob.delete()
+            return True
+        except Exception as e:
+            log.error(f"Error while removing storage: {e}")
+            return False

@@ -203,25 +203,17 @@ class CheshireCat:
     def load_language_model(self):
         """Large Language Model (LLM) selection."""
 
-        llm_factory = LLMFactory(self.mad_hatter)
+        factory = LLMFactory(self.mad_hatter)
 
-        selected_llm = crud_settings.get_setting_by_name(self.id, llm_factory.setting_name)
+        # Custom llm
+        selected_config = FactoryAdapter(factory).get_factory_config_by_settings(self.id, LLMDefaultConfig)
 
-        if selected_llm is None:
-            # return default LLM
-            llm = LLMDefaultConfig.get_llm_from_config({})
-        else:
-            llm = llm_factory.get_from_config_name(self.id, selected_llm["value"]["name"])
+        llm = factory.get_from_config_name(self.id, selected_config["value"]["name"])
 
-        embedder_config = EmbedderFactory(
-            self.lizard.mad_hatter
-        ).get_config_class_from_adapter(self.lizard.embedder.__class__)
-        llm_config = llm_factory.get_config_class_from_adapter(llm.__class__)
-        if not embedder_config or not llm_config:
-            raise ValueError(
-                f"Embedder or LLM not found in the list of allowed models."
-                f" Embedder: {self.lizard.embedder.__class__}, LLM: {llm.__class__}"
-            )
+        embedder_config = EmbedderFactory(self.lizard.march_hare).get_config_class_from_adapter(
+            self.lizard.embedder.__class__
+        )
+        llm_config = factory.get_config_class_from_adapter(llm.__class__)
 
         if embedder_config.is_multimodal() != llm_config.is_multimodal():
             raise ValueError(
