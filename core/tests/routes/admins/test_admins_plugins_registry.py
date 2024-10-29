@@ -11,7 +11,7 @@ async def mock_registry_download_plugin(url: str):
 
 
 def test_list_registry_plugins(secure_client, secure_client_headers):
-    response = secure_client.get("/plugins", headers=secure_client_headers)
+    response = secure_client.get("/admins/plugins", headers=secure_client_headers)
     json = response.json()
 
     assert response.status_code == 200
@@ -30,7 +30,7 @@ def test_list_registry_plugins(secure_client, secure_client_headers):
 
 def test_list_registry_plugins_by_query(secure_client, secure_client_headers):
     params = {"query": "podcast"}
-    response = secure_client.get("/plugins", params=params, headers=secure_client_headers)
+    response = secure_client.get("/admins/plugins", params=params, headers=secure_client_headers)
     json = response.json()
 
     assert response.status_code == 200
@@ -44,7 +44,7 @@ def test_list_registry_plugins_by_query(secure_client, secure_client_headers):
 def test_plugin_install_from_registry(secure_client, secure_client_headers, monkeypatch):
     # Mock the download from the registry creating a zip on-the-fly
     monkeypatch.setattr(
-        "cat.routes.plugins.registry_download_plugin", mock_registry_download_plugin
+        "cat.routes.admins.plugins.registry_download_plugin", mock_registry_download_plugin
     )
 
     # during tests, the cat uses a different folder for plugins
@@ -56,14 +56,14 @@ def test_plugin_install_from_registry(secure_client, secure_client_headers, monk
 
     # install plugin from registry
     payload = {"url": "https://mockup_url.com"}
-    response = secure_client.post("/plugins/upload/registry", json=payload, headers=secure_client_headers)
+    response = secure_client.post("/admins/plugins/upload/registry", json=payload, headers=secure_client_headers)
 
     assert response.status_code == 200
     assert response.json()["url"] == payload["url"]
     assert response.json()["info"] == "Plugin is being installed asynchronously"
 
     # GET plugin endpoint responds
-    response = secure_client.get("/plugins/mock_plugin", headers=secure_client_headers)
+    response = secure_client.get("/admins/plugins/mock_plugin", headers=secure_client_headers)
     assert response.status_code == 200
     json = response.json()
     assert json["data"]["id"] == "mock_plugin"
@@ -71,7 +71,7 @@ def test_plugin_install_from_registry(secure_client, secure_client_headers, monk
     assert json["data"]["active"]
 
     # GET plugins endpoint lists the plugin
-    response = secure_client.get("/plugins", headers=secure_client_headers)
+    response = secure_client.get("/admins/plugins", headers=secure_client_headers)
     assert response.status_code == 200
     installed_plugins = response.json()["installed"]
     installed_plugins_names = list(map(lambda p: p["id"], installed_plugins))
@@ -94,7 +94,7 @@ def test_list_registry_plugins_without_duplicating_installed_plugins(secure_clie
 
     # 2. get available plugins searching for the one just installed
     params = {"query": "podcast"}
-    response = secure_client.get("/plugins", params=params, headers=secure_client_headers)
+    response = secure_client.get("/admins/plugins", params=params, headers=secure_client_headers)
     #json = response.json()
 
     # 3. plugin should show up among installed by not among registry ones
@@ -108,7 +108,7 @@ def test_list_registry_plugins_by_author(secure_client, secure_client_headers):
     params = {
         "author": "Nicola Corbellini"
     }
-    response = secure_client.get("/plugins", params=params, headers=secure_client_headers)
+    response = secure_client.get("/admins/plugins", params=params, headers=secure_client_headers)
     json = response.json()
 
     assert response.status_code == 200
@@ -123,7 +123,7 @@ def test_list_registry_plugins_by_tag(secure_client, secure_client_headers):
     params = {
         "tag": "llm"
     }
-    response = secure_client.get("/plugins", params=params, headers=secure_client_headers)
+    response = secure_client.get("/admins/plugins", params=params, headers=secure_client_headers)
     json = response.json()
 
     assert response.status_code == 200

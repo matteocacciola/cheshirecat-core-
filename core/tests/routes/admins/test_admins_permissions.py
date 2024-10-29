@@ -11,27 +11,27 @@ from cat.env import get_env
 @pytest.mark.parametrize("endpoint", [
     {
         "method": "GET",
-        "path": "/admins",
+        "path": "/admins/users",
         "payload": None
     },
     {
         "method": "GET",
-        "path": "/admins/ID_PLACEHOLDER",
+        "path": "/admins/users/ID_PLACEHOLDER",
         "payload": None
     },
     {
         "method": "POST",
-        "path": "/admins",
+        "path": "/admins/users",
         "payload": {"username": "Alice", "password": "12345"}
     },
     {
         "method": "PUT",
-        "path": "/admins/ID_PLACEHOLDER",
+        "path": "/admins/users/ID_PLACEHOLDER",
         "payload": {"username": "Alice2"}
     },
     {
         "method": "DELETE",
-        "path": "/admins/ID_PLACEHOLDER",
+        "path": "/admins/users/ID_PLACEHOLDER",
         "payload": None
     }
 ])
@@ -43,7 +43,7 @@ def test_admins_permissions(secure_client, endpoint):
     # create new admin that will be edited by calling the endpoints
     # we create it using directly CCAT_API_KEY
     response = secure_client.post(
-        "/admins",
+        "/admins/users",
         json={"username": "Caterpillar", "password": "U R U"},
         headers={"Authorization": f"Bearer {get_env('CCAT_API_KEY')}"},
     )

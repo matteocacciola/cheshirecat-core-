@@ -2,7 +2,6 @@ import os
 from json import dumps
 from fastapi.encoders import jsonable_encoder
 
-from cat.factory.custom_uploader import LocalUploader
 from cat.factory.plugin_uploader import PluginUploaderFactory
 import cat.utils as utils
 
@@ -51,11 +50,8 @@ def test_get_uploader_settings(secure_client, secure_client_headers):
     assert json["scheme"]["type"] == "object"
 
 
-def test_upsert_plugin_uploader_settings(secure_client, secure_client_headers, monkeypatch):
-    def mock_uploader_remove_storage(self, *args, **kwargs):
-        pass
-
-    monkeypatch.setattr(LocalUploader, "remove_storage", mock_uploader_remove_storage)
+def test_upsert_plugin_uploader_settings(secure_client, secure_client_headers):
+    plugins_folder = "tests/mocks/mock_plugin_folder/"
 
     # set the same Plugin Uploader with a different folder name as `storage_dir`
     new_plugin_uploader = "LocalPluginUploaderConfig"
@@ -85,3 +81,8 @@ def test_upsert_plugin_uploader_settings(secure_client, secure_client_headers, m
     assert json["name"] == new_plugin_uploader
     assert json["value"]["storage_dir"] == plugin_uploader_config["storage_dir"]
     assert json["scheme"]["pluginUploaderName"] == new_plugin_uploader
+
+    # restore the original folder
+    os.system(f"cp -r tests/mocks/mock_plugin_folder_new/ {plugins_folder}")
+    os.system(f"chown -R 1000:1000 {plugins_folder}")
+    os.system(f"chmod g+rwx,u+rwx,o+rx,o-w {plugins_folder}")

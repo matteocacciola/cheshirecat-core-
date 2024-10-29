@@ -9,6 +9,7 @@ from cat.factory.custom_uploader import (
     AWSUploader,
     AzureUploader,
     GoogleCloudUploader,
+    DigitalOceanUploader,
 )
 from cat.log import log
 import cat.utils as utils
@@ -91,6 +92,18 @@ class GoogleCloudPluginUploaderConfig(PluginUploaderConfig):
     )
 
 
+class DigitalOceanPluginUploaderConfig(AWSPluginUploaderConfig):
+    _pyclass: Type = DigitalOceanUploader
+
+    model_config = ConfigDict(
+        json_schema_extra={
+            "humanReadableName": "Digital Ocean API Plugin Uploader",
+            "description": "Configuration for Plugin Uploader to be used with Digital Ocean Spaces service",
+            "link": "",
+        }
+    )
+
+
 class PluginUploaderFactory(BaseFactory):
     def get_allowed_classes(self) -> List[Type[PluginUploaderConfig]]:
         list_uploaders_default = [
@@ -98,6 +111,7 @@ class PluginUploaderFactory(BaseFactory):
             AWSPluginUploaderConfig,
             AzurePluginUploaderConfig,
             GoogleCloudPluginUploaderConfig,
+            DigitalOceanPluginUploaderConfig,
         ]
 
         list_uploaders_default = self._mad_hatter.execute_hook(

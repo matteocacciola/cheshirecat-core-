@@ -140,13 +140,13 @@ def encapsulate_each_test(request, monkeypatch):
 
 
 @pytest.fixture(scope="function")
-def lizard(monkeypatch):
+def lizard():
     yield BillTheLizard()
 
 
 # Main fixture for the FastAPI app
 @pytest.fixture(scope="function")
-def client(monkeypatch, lizard) -> Generator[TestClient, Any, None]:
+def client(lizard) -> Generator[TestClient, Any, None]:
     """
     Create a new FastAPI TestClient.
     """
@@ -204,7 +204,7 @@ def just_installed_plugin(secure_client, secure_client_headers):
     # upload plugin via endpoint
     with open(zip_path, "rb") as f:
         response = secure_client.post(
-            "/plugins/upload/",
+            "/admins/plugins/upload/",
             files={"file": (zip_file_name, f, "application/zip")},
             headers=secure_client_headers
         )

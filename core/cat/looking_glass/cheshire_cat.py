@@ -1,5 +1,4 @@
 import time
-from copy import deepcopy
 from typing import List, Dict
 from uuid import uuid4
 from langchain_community.document_loaders.parsers.pdf import PDFMinerParser
@@ -31,7 +30,6 @@ from cat.factory.embedder import EmbedderFactory
 from cat.factory.llm import LLMDefaultConfig, LLMFactory
 from cat.log import log
 from cat.mad_hatter.mad_hatter import MadHatter
-from cat.mad_hatter.registry import registry_search_plugins
 from cat.memory.long_term_memory import LongTermMemory
 from cat.utils import langchain_log_prompt, langchain_log_output, get_caller_info
 
@@ -338,47 +336,6 @@ class CheshireCat:
 
         # in case we need to pass info to the template
         return chain.invoke({})
-
-    async def get_plugins(self, query: str = None) -> Plugins:
-        """
-        Get the plugins related to the current Cheshire Cat
-        Args:
-            query: the query to look for
-
-        Returns:
-            The list of plugins
-        """
-        # retrieve plugins from official repo
-        registry_plugins = await registry_search_plugins(query)
-        # index registry plugins by url
-        registry_plugins_index = {p["url"]: p for p in registry_plugins}
-
-        # get active plugins
-        active_plugins = self.mad_hatter.load_active_plugins_from_db()
-
-        # list installed plugins' manifest
-        installed_plugins = []
-        for p in self.mad_hatter.plugins.values():
-            # get manifest
-            manifest = deepcopy(p.manifest)  # we make a copy to avoid modifying the plugin obj
-            manifest["active"] = (p.id in active_plugins)  # pass along if plugin is active or not
-            manifest["upgrade"] = None
-            manifest["hooks"] = [{"name": hook.name, "priority": hook.priority} for hook in p.hooks]
-            manifest["tools"] = [{"name": tool.name} for tool in p.tools]
-
-            # filter by query
-            plugin_text = [str(field) for field in manifest.values()]
-            plugin_text = " ".join(plugin_text).lower()
-            if query is None or query.lower() in plugin_text:
-                for r in registry_plugins:
-                    if r["plugin_url"] == p.manifest["plugin_url"] and r["version"] != p.manifest["version"]:
-                        manifest["upgrade"] = r["version"]
-                installed_plugins.append(manifest)
-
-            # do not show already installed plugins among registry plugins
-            registry_plugins_index.pop(manifest["plugin_url"], None)
-
-        return Plugins(installed=installed_plugins, registry=list(registry_plugins_index.values()))
 
     def replace_llm(self, language_model_name: str, settings: Dict) -> ReplacedNLPConfig:
         """

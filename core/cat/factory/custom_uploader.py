@@ -21,13 +21,15 @@ class BaseUploader(ABC):
         self._excluded_files = [".gitignore", ".DS_Store", ".gitkeep", ".git", ".dockerignore"]
 
     @abstractmethod
-    def upload_file_to_storage(self, file_path: str, local_dir: str) -> str | None:
+    def upload_file_to_storage(self, file_path: str, root_dir: str | None = None) -> str | None:
         """
         Upload a single file on the storage, within the directory specified by `self.storage_dir`.
 
         Args:
             file_path: The path of the file to upload
-            local_dir: The local directory where the file is contained
+            root_dir: The local directory where the file is contained to consider as root for the definition of the
+                relative path of the file to upload, If not specified, the `root_dir` will be considered as the parent
+                directory of the file to upload
 
         Returns:
             The path of the file on the storage, None if the file has not been uploaded
@@ -149,20 +151,23 @@ class BaseUploader(ABC):
             return False
 
     def _build_destination_path_for_download(self, file_path: str, local_dir: str) -> str | None:
-        local_path = os.path.join(local_dir, os.path.relpath(file_path, self.storage_dir))
+        rel_path = os.path.relpath(file_path, self.storage_dir)
+        local_path = os.path.join(local_dir, rel_path)
         if any([ex_file in local_path for ex_file in self._excluded_files]):
             return None
         os.makedirs(os.path.dirname(local_path), exist_ok=True)
         return local_path
 
-    def _build_destination_path_for_upload(self, file_path: str, local_dir: str) -> str | None:
-        destination_path = os.path.join(self.storage_dir, os.path.relpath(file_path, local_dir))
+    def _build_destination_path_for_upload(self, file_path: str, root_dir: str | None = None) -> str | None:
+        rel_path = os.path.relpath(file_path, root_dir or os.path.dirname(file_path))
+        destination_path = os.path.join(self.storage_dir, rel_path)
         if any([ex_file in destination_path for ex_file in self._excluded_files]):
             return None
         return destination_path
 
     def _build_destination_path_for_removal(self, file_path: str) -> str:
-        return os.path.join(self.storage_dir, os.path.relpath(file_path, self.storage_dir))
+        rel_path = os.path.relpath(file_path, self.storage_dir)
+        return os.path.join(self.storage_dir, rel_path)
 
     def _filter_excluded(self, files: List[str]) -> List[str]:
         excluded_paths = self._excluded_dirs + self._excluded_files
@@ -170,8 +175,8 @@ class BaseUploader(ABC):
 
 
 class LocalUploader(BaseUploader):
-    def upload_file_to_storage(self, file_path: str, local_dir: str) -> str | None:
-        destination_path = self._build_destination_path_for_upload(file_path, local_dir)
+    def upload_file_to_storage(self, file_path: str, root_dir: str | None = None) -> str | None:
+        destination_path = self._build_destination_path_for_upload(file_path, root_dir)
         if destination_path and file_path != destination_path:
             # move the file from file_path to destination_path
             shutil.move(file_path, destination_path)
@@ -223,8 +228,8 @@ class AWSUploader(BaseUploader):
         self.bucket_name = bucket_name
         super().__init__(storage_dir)
 
-    def upload_file_to_storage(self, file_path: str, local_dir: str) -> str | None:
-        bucket_key = self._build_destination_path_for_upload(file_path, local_dir)
+    def upload_file_to_storage(self, file_path: str, root_dir: str | None = None) -> str | None:
+        bucket_key = self._build_destination_path_for_upload(file_path, root_dir)
         if bucket_key:
             self.s3.upload_file(file_path, self.bucket_name, bucket_key)
             return os.path.join("s3://", self.bucket_name, bucket_key)
@@ -276,8 +281,8 @@ class AzureUploader(BaseUploader):
         self.container = self.blob_service.get_container_client(container_name)
         super().__init__(storage_dir)
 
-    def upload_file_to_storage(self, file_path: str, local_dir: str) -> str | None:
-        blob_key = self._build_destination_path_for_upload(file_path, local_dir)
+    def upload_file_to_storage(self, file_path: str, root_dir: str | None = None) -> str | None:
+        blob_key = self._build_destination_path_for_upload(file_path, root_dir)
         if blob_key:
             with open(file_path, "rb") as data:
                 self.container.upload_blob(name=blob_key, data=data, overwrite=True)
@@ -326,8 +331,8 @@ class GoogleCloudUploader(BaseUploader):
         self.bucket = self.storage_client.bucket(bucket_name)
         super().__init__(storage_dir)
 
-    def upload_file_to_storage(self, file_path: str, local_dir: str) -> str | None:
-        blob_key = self._build_destination_path_for_upload(file_path, local_dir)
+    def upload_file_to_storage(self, file_path: str, root_dir: str | None = None) -> str | None:
+        blob_key = self._build_destination_path_for_upload(file_path, root_dir)
         if blob_key:
             blob = self.bucket.blob(blob_key)
             blob.upload_from_filename(file_path)
@@ -365,3 +370,7 @@ class GoogleCloudUploader(BaseUploader):
         except Exception as e:
             log.error(f"Error while removing storage: {e}")
             return False
+
+
+class DigitalOceanUploader(AWSUploader):
+    pass

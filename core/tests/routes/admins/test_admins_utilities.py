@@ -76,7 +76,7 @@ def test_agent_reset_success(client, lizard, cheshire_cat):
 def test_agent_destroy_error_because_of_lack_of_permissions(client, lizard, cheshire_cat):
     # create new admin with wrong permissions
     data = create_new_user(
-        client, "/admins", headers=get_client_admin_headers(client), permissions={"EMBEDDER": ["READ"]}
+        client, "/admins/users", headers=get_client_admin_headers(client), permissions={"EMBEDDER": ["READ"]}
     )
 
     creds = {"username": data["username"], "password": new_user_password}

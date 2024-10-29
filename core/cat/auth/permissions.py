@@ -22,6 +22,7 @@ class AdminAuthResource(Enum):
     EMBEDDER = "EMBEDDER"
     UPLOADER = "UPLOADER"
     CHESHIRE_CATS = "CHESHIRE_CATS"
+    PLUGINS = "PLUGINS"
 
 
 class AuthPermission(Enum):

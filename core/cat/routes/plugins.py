@@ -1,17 +1,12 @@
-import aiofiles
-import mimetypes
-from copy import deepcopy
 from typing import Dict, List
-from fastapi import Body, APIRouter, UploadFile, Depends
+from fastapi import Body, APIRouter, Depends
 from pydantic import ValidationError, BaseModel
 
 from cat.auth.connection import HTTPAuth, ContextualCats
 from cat.auth.permissions import AuthPermission, AuthResource
 from cat.exceptions import CustomValidationException, CustomNotFoundException
-from cat.log import log
 from cat.looking_glass.cheshire_cat import Plugins
-from cat.mad_hatter.registry import registry_download_plugin
-from cat.routes.routes_utils import GetSettingResponse
+from cat.routes.routes_utils import GetSettingResponse, get_plugins
 
 router = APIRouter()
 
@@ -59,7 +54,7 @@ async def get_available_plugins(
 ) -> GetAvailablePluginsResponse:
     """List available plugins"""
 
-    plugins = await cats.cheshire_cat.get_plugins(query)
+    plugins = await get_plugins(cats.cheshire_cat.mad_hatter, query)
 
     return GetAvailablePluginsResponse(
         filters={
@@ -70,57 +65,6 @@ async def get_available_plugins(
         installed=plugins.installed,
         registry=plugins.registry,
     )
-
-
-@router.post("/upload", response_model=InstallPluginResponse)
-async def install_plugin(
-    file: UploadFile,
-    cats: ContextualCats = Depends(HTTPAuth(AuthResource.PLUGINS, AuthPermission.WRITE)),
-) -> InstallPluginResponse:
-    """Install a new plugin from a zip file"""
-
-    # access cat instance
-    ccat = cats.cheshire_cat
-
-    admitted_mime_types = ["application/zip", "application/x-tar"]
-    content_type = mimetypes.guess_type(file.filename)[0]
-    if content_type not in admitted_mime_types:
-        raise CustomValidationException(
-            f'MIME type `{file.content_type}` not supported. Admitted types: {", ".join(admitted_mime_types)}'
-        )
-
-    log.info(f"Uploading {content_type} plugin {file.filename}")
-    plugin_archive_path = f"/tmp/{file.filename}"
-    async with aiofiles.open(plugin_archive_path, "wb+") as f:
-        content = await file.read()
-        await f.write(content)
-    ccat.mad_hatter.install_plugin(plugin_archive_path)
-
-    return InstallPluginResponse(
-        filename=file.filename,
-        content_type=file.content_type,
-        info="Plugin is being installed asynchronously",
-    )
-
-
-@router.post("/upload/registry", response_model=InstallPluginFromRegistryResponse)
-async def install_plugin_from_registry(
-    payload: Dict = Body({"url": "https://github.com/plugin-dev-account/plugin-repo"}),
-    cats: ContextualCats = Depends(HTTPAuth(AuthResource.PLUGINS, AuthPermission.WRITE)),
-) -> InstallPluginFromRegistryResponse:
-    """Install a new plugin from registry"""
-
-    # access cat instance
-    ccat = cats.cheshire_cat
-
-    # download zip from registry
-    try:
-        tmp_plugin_path = await registry_download_plugin(payload["url"])
-        ccat.mad_hatter.install_plugin(tmp_plugin_path)
-    except Exception as e:
-        raise CustomValidationException(f"Could not download plugin form registry: {e}")
-
-    return InstallPluginFromRegistryResponse(url=payload["url"], info="Plugin is being installed asynchronously")
 
 
 @router.put("/toggle/{plugin_id}", status_code=200, response_model=TogglePluginResponse)
@@ -222,50 +166,3 @@ async def upsert_plugin_settings(
     final_settings = plugin.save_settings(payload)
 
     return GetSettingResponse(name=plugin_id, value=final_settings)
-
-
-@router.get("/{plugin_id}", response_model=GetPluginDetailsResponse)
-async def get_plugin_details(
-    plugin_id: str,
-    cats: ContextualCats = Depends(HTTPAuth(AuthResource.PLUGINS, AuthPermission.READ)),
-) -> GetPluginDetailsResponse:
-    """Returns information on a single plugin"""
-
-    # access cat instance
-    ccat = cats.cheshire_cat
-
-    if not ccat.mad_hatter.plugin_exists(plugin_id):
-        raise CustomNotFoundException("Plugin not found")
-
-    active_plugins = ccat.mad_hatter.load_active_plugins_from_db()
-
-    plugin = ccat.mad_hatter.plugins[plugin_id]
-
-    # get manifest and active True/False. We make a copy to avoid modifying the original obj
-    plugin_info = deepcopy(plugin.manifest)
-    plugin_info["active"] = plugin_id in active_plugins
-    plugin_info["hooks"] = [
-        {"name": hook.name, "priority": hook.priority} for hook in plugin.hooks
-    ]
-    plugin_info["tools"] = [{"name": tool.name} for tool in plugin.tools]
-
-    return GetPluginDetailsResponse(data=plugin_info)
-
-
-@router.delete("/{plugin_id}", response_model=DeletePluginResponse)
-async def delete_plugin(
-    plugin_id: str,
-    cats: ContextualCats = Depends(HTTPAuth(AuthResource.PLUGINS, AuthPermission.DELETE)),
-) -> DeletePluginResponse:
-    """Physically remove plugin."""
-
-    # access cat instance
-    ccat = cats.cheshire_cat
-
-    if not ccat.mad_hatter.plugin_exists(plugin_id):
-        raise CustomNotFoundException("Plugin not found")
-
-    # remove folder, hooks and tools
-    ccat.mad_hatter.uninstall_plugin(plugin_id)
-
-    return DeletePluginResponse(deleted=plugin_id)

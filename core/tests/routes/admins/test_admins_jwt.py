@@ -81,7 +81,7 @@ async def test_issue_jwt_for_new_admin(client, secure_client, secure_client_head
     assert res.json()["detail"]["error"] == "Invalid Credentials"
 
     # let's create the user
-    res = secure_client.post("/admins", json=creds, headers=secure_client_headers)
+    res = secure_client.post("/admins/users", json=creds, headers=secure_client_headers)
     assert res.status_code == 200
 
     # now we should get a JWT
