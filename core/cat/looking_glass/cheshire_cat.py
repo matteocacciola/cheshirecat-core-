@@ -23,11 +23,10 @@ from cat.db.cruds import (
     plugins as crud_plugins,
     users as crud_users,
 )
-from cat.factory.auth_handler import CoreOnlyAuthConfig, AuthHandlerFactory
+from cat.factory.auth_handler import AuthHandlerFactory
 from cat.factory.base_factory import ReplacedNLPConfig
 from cat.factory.custom_auth_handler import BaseAuthHandler
-from cat.factory.embedder import EmbedderFactory
-from cat.factory.llm import LLMDefaultConfig, LLMFactory
+from cat.factory.llm import LLMFactory
 from cat.log import log
 from cat.mad_hatter.mad_hatter import MadHatter
 from cat.memory.long_term_memory import LongTermMemory
@@ -204,28 +203,15 @@ class CheshireCat:
         factory = LLMFactory(self.mad_hatter)
 
         # Custom llm
-        selected_config = FactoryAdapter(factory).get_factory_config_by_settings(self.id, LLMDefaultConfig)
+        selected_config = FactoryAdapter(factory).get_factory_config_by_settings(self.id)
 
-        llm = factory.get_from_config_name(self.id, selected_config["value"]["name"])
-
-        embedder_config = EmbedderFactory(self.lizard.march_hare).get_config_class_from_adapter(
-            self.lizard.embedder.__class__
-        )
-        llm_config = factory.get_config_class_from_adapter(llm.__class__)
-
-        if embedder_config.is_multimodal() != llm_config.is_multimodal():
-            raise ValueError(
-                f"Embedder and LLM must be both multimodal or both single modal."
-                f" Embedder: {embedder_config.is_multimodal()}, LLM: {llm_config.is_multimodal()}"
-            )
-
-        self.llm = llm
+        self.llm = factory.get_from_config_name(self.id, selected_config["value"]["name"])
 
     def load_auth(self):
         factory = AuthHandlerFactory(self.mad_hatter)
 
         # Custom auth_handler
-        selected_config = FactoryAdapter(factory).get_factory_config_by_settings(self.id, CoreOnlyAuthConfig)
+        selected_config = FactoryAdapter(factory).get_factory_config_by_settings(self.id)
 
         self.custom_auth_handler = factory.get_from_config_name(self.id, selected_config["value"]["name"])
 

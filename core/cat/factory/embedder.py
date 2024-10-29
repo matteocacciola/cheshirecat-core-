@@ -1,4 +1,5 @@
-from typing import Type, List
+from abc import ABC
+from typing import Type, List, Dict
 from langchain_core.embeddings import Embeddings
 from pydantic import BaseModel, ConfigDict, Field
 from langchain_cohere import CohereEmbeddings
@@ -7,15 +8,13 @@ from langchain_openai import OpenAIEmbeddings, AzureOpenAIEmbeddings
 from langchain_google_genai import GoogleGenerativeAIEmbeddings
 from fastembed import TextEmbedding
 
-from cat.db.cruds import settings as crud_settings
-from cat.factory.base_factory import BaseFactory
+from cat.factory.base_factory import BaseFactory, BaseConfigModel
 from cat.factory.custom_embedder import DumbEmbedder, CustomOpenAIEmbeddings
-from cat.log import log
 from cat.utils import Enum
 
 
 # Base class to manage LLM configuration.
-class EmbedderSettings(BaseModel):
+class EmbedderSettings(BaseConfigModel, ABC):
     _is_multimodal: bool = False
 
     # class instantiating the embedder
@@ -25,16 +24,9 @@ class EmbedderSettings(BaseModel):
     # We deactivate the protection because langchain relies on several "model_*" named attributes
     model_config = ConfigDict(protected_namespaces=())
 
-    # instantiate an Embedder from configuration
     @classmethod
-    def get_embedder_from_config(cls, config) -> Embeddings:
-        if cls._pyclass:
-            return cls._pyclass.default(**config)
-        raise Exception("Embedder configuration class is invalid. It should be a valid Embeddings class")
-
-    @classmethod
-    def pyclass(cls) -> Type[Embeddings]:
-        return cls._pyclass.default
+    def base_class(cls) -> Type:
+        return Embeddings
 
     @classmethod
     def is_multimodal(cls) -> bool:
@@ -212,22 +204,7 @@ class EmbedderFactory(BaseFactory):
             Embeddings: The Embeddings instance
         """
 
-        # get Embedder factory class
-        factory_class = next((cls for cls in self.get_allowed_classes() if cls.__name__ == config_name), None)
-        if factory_class is None:
-            log.warning(f"Embedder class {config_name} not found in the list of allowed embedders")
-            return EmbedderDumbConfig.get_embedder_from_config({})
-
-        # obtain configuration and instantiate Embedder
-        selected_embedder_config = crud_settings.get_setting_by_name(agent_id, config_name)
-        try:
-            embedder = factory_class.get_embedder_from_config(selected_embedder_config["value"])
-        except AttributeError:
-            import traceback
-            traceback.print_exc()
-
-            embedder = EmbedderDumbConfig.get_embedder_from_config({})
-        return embedder
+        return self._get_from_config_name(agent_id, config_name)
 
     @property
     def setting_name(self) -> str:
@@ -240,6 +217,14 @@ class EmbedderFactory(BaseFactory):
     @property
     def setting_factory_category(self) -> str:
         return "embedder_factory"
+
+    @property
+    def default_config_class(self) -> Type[BaseModel]:
+        return EmbedderDumbConfig
+
+    @property
+    def default_config(self) -> Dict:
+        return {}
 
     @property
     def schema_name(self) -> str:

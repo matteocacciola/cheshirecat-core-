@@ -27,7 +27,7 @@ from cat.routes import (
     llm,
     memory_router as memory,
     plugins,
-    plugin_uploader,
+    plugin_filemanager,
     rabbit_hole,
     settings,
     static,
@@ -98,7 +98,7 @@ cheshire_cat_api.include_router(embedder.router, tags=["Embedder"], prefix="/emb
 cheshire_cat_api.include_router(llm.router, tags=["Large Language Model"], prefix="/llm")
 cheshire_cat_api.include_router(memory.router, prefix="/memory")
 cheshire_cat_api.include_router(plugins.router, tags=["Plugins"], prefix="/plugins")
-cheshire_cat_api.include_router(plugin_uploader.router, tags=["Plugin Uploader"], prefix="/plugin_uploader")
+cheshire_cat_api.include_router(plugin_filemanager.router, tags=["Plugin File Manager"], prefix="/plugin_filemanager")
 cheshire_cat_api.include_router(rabbit_hole.router, tags=["Rabbit Hole"], prefix="/rabbithole")
 cheshire_cat_api.include_router(settings.router, tags=["Settings"], prefix="/settings")
 cheshire_cat_api.include_router(auth.router, tags=["User Auth"], prefix="/auth")

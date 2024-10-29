@@ -7,10 +7,10 @@ import shutil
 from cat.log import log
 
 
-class BaseUploader(ABC):
+class BaseFileManager(ABC):
     """
-    Base class for storage uploaders. It defines the interface that all storage uploaders must implement. It is used to
-    upload files and folders composing an installed plugin to a storage service.
+    Base class for file storage managers. It defines the interface that all storage managers must implement. It is used
+    to upload files and folders composing an installed plugin to a storage service.
     Method `upload_directory`, `download_file`, `download_directory`, `list_files`
     MUST be implemented by subclasses.
     """
@@ -122,12 +122,12 @@ class BaseUploader(ABC):
         files = self.list_files(False)
         return [self.download_file_from_storage(file_path, local_dir) for file_path in files]
 
-    def transfer(self, uploader_from: "BaseUploader") -> bool:
+    def transfer(self, file_manager_from: "BaseFileManager") -> bool:
         """
-        Transfer files from the current uploader to the one specified in the argument `uploader_to`.
+        Transfer files from the file manager specified in the `file_manager_from` to the current one.
 
         Args:
-            uploader_from: The uploader to transfer the files from
+            file_manager_from: The file manager to transfer the files from
         """
 
         try:
@@ -135,8 +135,8 @@ class BaseUploader(ABC):
             tmp_folder_name = f"/tmp/{uuid.uuid1()}"
             os.mkdir(tmp_folder_name)
 
-            # try to download the files from the old uploader to the `tmp_folder_name`
-            uploader_from.download_from_storage(tmp_folder_name)
+            # try to download the files from the old file manager to the `tmp_folder_name`
+            file_manager_from.download_from_storage(tmp_folder_name)
 
             # now, try to upload the files to the new storage
             self.upload_to_storage(tmp_folder_name)
@@ -144,10 +144,10 @@ class BaseUploader(ABC):
             # cleanup
             if os.path.exists(tmp_folder_name):
                 shutil.rmtree(tmp_folder_name)
-            uploader_from.remove_storage()
+            file_manager_from.remove_storage()
             return True
         except Exception as e:
-            log.error(f"Error while transferring files from the old uploader to the new one: {e}")
+            log.error(f"Error while transferring files from the old file manager to the new one: {e}")
             return False
 
     def _build_destination_path_for_download(self, file_path: str, local_dir: str) -> str | None:
@@ -174,7 +174,7 @@ class BaseUploader(ABC):
         return [file for file in files if not any([ex in files for ex in excluded_paths])]
 
 
-class LocalUploader(BaseUploader):
+class LocalFileManager(BaseFileManager):
     def upload_file_to_storage(self, file_path: str, root_dir: str | None = None) -> str | None:
         destination_path = self._build_destination_path_for_upload(file_path, root_dir)
         if destination_path and file_path != destination_path:
@@ -217,7 +217,7 @@ class LocalUploader(BaseUploader):
         return True
 
 
-class AWSUploader(BaseUploader):
+class AWSFileManager(BaseFileManager):
     def __init__(self, bucket_name: str, aws_access_key: str, aws_secret_key: str, storage_dir: str):
         import boto3
         self.s3 = boto3.client(
@@ -274,7 +274,7 @@ class AWSUploader(BaseUploader):
             return False
 
 
-class AzureUploader(BaseUploader):
+class AzureFileManager(BaseFileManager):
     def __init__(self, connection_string: str, container_name: str, storage_dir: str):
         from azure.storage.blob import BlobServiceClient
         self.blob_service = BlobServiceClient.from_connection_string(connection_string)
@@ -324,7 +324,7 @@ class AzureUploader(BaseUploader):
             return False
 
 
-class GoogleCloudUploader(BaseUploader):
+class GoogleCloudFileManager(BaseFileManager):
     def __init__(self, bucket_name: str, credentials_path: str, storage_dir: str):
         from google.cloud import storage
         self.storage_client = storage.Client.from_service_account_json(credentials_path)
@@ -372,5 +372,5 @@ class GoogleCloudUploader(BaseUploader):
             return False
 
 
-class DigitalOceanUploader(AWSUploader):
+class DigitalOceanFileManager(AWSFileManager):
     pass

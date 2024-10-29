@@ -3,7 +3,7 @@ from typing import List
 from cat.factory.llm import LLMSettings
 from cat.factory.embedder import EmbedderSettings
 from cat.factory.auth_handler import AuthHandlerConfig
-from cat.factory.plugin_uploader import PluginUploaderConfig
+from cat.factory.plugin_filemanager import PluginFileManagerConfig
 from cat.mad_hatter.decorators import hook
 
 
@@ -60,18 +60,18 @@ def factory_allowed_auth_handlers(allowed: List[AuthHandlerConfig], cat) -> List
 
 
 @hook(priority=0)
-def factory_allowed_plugin_uploaders(allowed: List[PluginUploaderConfig], cat) -> List:
-    """Hook to extend list of supported plugin uploaders.
+def factory_allowed_plugin_file_managers(allowed: List[PluginFileManagerConfig], cat) -> List:
+    """Hook to extend list of supported plugin file managers.
 
     Args:
-        allowed : List of PluginUploaderConfig classes
-            list of allowed plugin uploaders
+        allowed : List of PluginFileManagerConfig classes
+            list of allowed plugin file managers
         cat : CheshireCat
             Cheshire Cat instance
 
     Returns:
-        supported : List of PluginUploaderConfig classes
-            list of allowed plugin uploaders
+        supported : List of PluginFileManagerConfig classes
+            list of allowed plugin file managers
     """
 
     return allowed

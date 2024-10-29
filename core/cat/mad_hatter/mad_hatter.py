@@ -9,4 +9,5 @@ class MadHatter(MarchHare):
     - Uninstalling a plugin
     - Activating a plugin
     """
+
     pass

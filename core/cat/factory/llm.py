@@ -1,3 +1,4 @@
+from abc import ABC
 from langchain_core.language_models import BaseLanguageModel
 from langchain_openai import AzureChatOpenAI
 from langchain_openai import AzureOpenAI
@@ -8,20 +9,16 @@ from langchain_community.llms import (
 from langchain_openai import ChatOpenAI, OpenAI
 from langchain_cohere import ChatCohere
 from langchain_google_genai import ChatGoogleGenerativeAI
-from typing import Type, List
+from typing import Type, List, Dict
 import json
 from pydantic import BaseModel, ConfigDict
 
-from cat.db.cruds import settings as crud_settings
-from cat.factory.base_factory import BaseFactory
+from cat.factory.base_factory import BaseFactory, BaseConfigModel
 from cat.factory.custom_llm import LLMDefault, LLMCustom, CustomOpenAI, CustomOllama
-from cat.log import log
 
 
 # Base class to manage LLM configuration.
-class LLMSettings(BaseModel):
-    _is_multimodal: bool = False
-
+class LLMSettings(BaseConfigModel, ABC):
     # class instantiating the model
     _pyclass: Type[BaseLanguageModel] = None
 
@@ -29,20 +26,9 @@ class LLMSettings(BaseModel):
     # We deactivate the protection because langchain relies on several "model_*" named attributes
     model_config = ConfigDict(protected_namespaces=())
 
-    # instantiate an LLM from configuration
     @classmethod
-    def get_llm_from_config(cls, config) -> BaseLanguageModel:
-        if cls._pyclass:
-            return cls._pyclass.default(**config)
-        raise Exception("Language model configuration class is invalid. It should be a valid BaseLanguageModel class")
-
-    @classmethod
-    def pyclass(cls) -> Type[BaseLanguageModel]:
-        return cls._pyclass.default
-
-    @classmethod
-    def is_multimodal(cls) -> bool:
-        return cls._is_multimodal.default
+    def base_class(cls) -> Type:
+        return BaseLanguageModel
 
 
 class LLMDefaultConfig(LLMSettings):
@@ -67,7 +53,7 @@ class LLMCustomConfig(LLMSettings):
 
     # instantiate Custom LLM from configuration
     @classmethod
-    def get_llm_from_config(cls, config):
+    def get_from_config(cls, config):
         options = config["options"]
         # options are inserted as a string in the admin
         if isinstance(options, str):
@@ -330,23 +316,7 @@ class LLMFactory(BaseFactory):
             BaseLanguageModel: The language model instance
         """
 
-        # get LLM factory class
-        factory_class = next((cls for cls in self.get_allowed_classes() if cls.__name__ == config_name), None)
-        if not factory_class:
-            log.warning(f"LLM class {config_name} not found in the list of allowed LLMs")
-            return LLMDefaultConfig.get_llm_from_config({})
-
-        # obtain configuration and instantiate LLM
-        selected_llm_config = crud_settings.get_setting_by_name(agent_id, config_name)
-        try:
-            llm = factory_class.get_llm_from_config(selected_llm_config["value"])
-        except Exception:
-            import traceback
-            traceback.print_exc()
-
-            llm = LLMDefaultConfig.get_llm_from_config({})
-
-        return llm
+        return self._get_from_config_name(agent_id, config_name)
 
     @property
     def setting_name(self) -> str:
@@ -359,6 +329,14 @@ class LLMFactory(BaseFactory):
     @property
     def setting_factory_category(self) -> str:
         return "llm_factory"
+
+    @property
+    def default_config_class(self) -> Type[BaseModel]:
+        return LLMDefaultConfig
+
+    @property
+    def default_config(self) -> Dict:
+        return {}
 
     @property
     def schema_name(self) -> str:

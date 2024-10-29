@@ -14,9 +14,9 @@ from cat.env import get_env
 from cat.exceptions import LoadMemoryException
 from cat.factory.base_factory import ReplacedNLPConfig
 from cat.factory.custom_auth_handler import CoreAuthHandler
-from cat.factory.custom_uploader import BaseUploader
-from cat.factory.embedder import EmbedderDumbConfig, EmbedderFactory
-from cat.factory.plugin_uploader import LocalPluginUploaderConfig, PluginUploaderFactory
+from cat.factory.custom_filemanager import BaseFileManager
+from cat.factory.embedder import EmbedderFactory
+from cat.factory.plugin_filemanager import PluginFileManagerFactory
 from cat.jobs import job_on_idle_strays
 from cat.log import log
 from cat.looking_glass.cheshire_cat import CheshireCat
@@ -57,7 +57,7 @@ class BillTheLizard:
         self.__key = DEFAULT_SYSTEM_KEY
 
         self.embedder: Embeddings | None = None
-        self.plugin_uploader: BaseUploader | None = None
+        self.plugin_filemanager: BaseFileManager | None = None
 
         # Start scheduling system
         self.white_rabbit = WhiteRabbit()
@@ -70,8 +70,8 @@ class BillTheLizard:
         # load embedder
         self.load_language_embedder()
 
-        # load plugin uploader
-        self.load_plugin_uploader()
+        # load plugin file manager
+        self.load_plugin_filemanager()
 
         # Rabbit Hole Instance
         self.rabbit_hole = RabbitHole()
@@ -105,27 +105,25 @@ class BillTheLizard:
 
         factory = EmbedderFactory(self.march_hare)
 
-        selected_config = FactoryAdapter(factory).get_factory_config_by_settings(self.__key, EmbedderDumbConfig)
+        selected_config = FactoryAdapter(factory).get_factory_config_by_settings(self.__key)
 
         self.embedder = factory.get_from_config_name(self.__key, selected_config["value"]["name"])
 
-    def load_plugin_uploader(self):
+    def load_plugin_filemanager(self):
         """
-        Hook into the plugin uploader selection. Allows to modify how the Lizard selects the plugin uploader at
+        Hook into the plugin file manager selection. Allows to modify how the Lizard selects the plugin file manager at
         bootstrap time.
         """
 
-        factory = PluginUploaderFactory(self.march_hare)
+        factory = PluginFileManagerFactory(self.march_hare)
 
-        selected_config = FactoryAdapter(factory).get_factory_config_by_settings(
-            self.__key, LocalPluginUploaderConfig, {"storage_dir": utils.get_plugins_path()}
-        )
+        selected_config = FactoryAdapter(factory).get_factory_config_by_settings(self.__key)
 
-        self.plugin_uploader = factory.get_from_config_name(self.__key, selected_config["value"]["name"])
+        self.plugin_filemanager = factory.get_from_config_name(self.__key, selected_config["value"]["name"])
 
     def replace_embedder(self, language_embedder_name: str, settings: Dict) -> ReplacedNLPConfig:
         """
-        Replace the current embedder with a new one. This method is used to change the embedder of the cats.
+        Replace the current embedder with a new one. This method is used to change the embedder of the lizard.
 
         Args:
             language_embedder_name: name of the new embedder
@@ -138,7 +136,7 @@ class BillTheLizard:
         adapter = FactoryAdapter(EmbedderFactory(self.march_hare))
         updater = adapter.upsert_factory_config_by_settings(self.__key, language_embedder_name, settings)
 
-        # reload the embedder of the cats
+        # reload the embedder of the lizard
         self.load_language_embedder()
 
         for ccat in self.__cheshire_cats.values():
@@ -161,41 +159,41 @@ class BillTheLizard:
 
         return ReplacedNLPConfig(name=language_embedder_name, value=updater.new_setting["value"])
 
-    def replace_plugin_uploader(self, plugin_uploader_name: str, settings: Dict) -> ReplacedNLPConfig:
+    def replace_plugin_filemanager(self, plugin_filemanager_name: str, settings: Dict) -> ReplacedNLPConfig:
         """
-        Replace the current plugin uploader with a new one. This method is used to change the plugin uploader of the
-        cats.
+        Replace the current plugin file manager with a new one. This method is used to change the plugin file manager of
+        the lizard.
 
         Args:
-            plugin_uploader_name: name of the new plugin uploader
-            settings: settings of the new plugin uploader
+            plugin_filemanager_name: name of the new plugin file manager
+            settings: settings of the new plugin file manager
 
         Returns:
-            The dictionary resuming the new name and settings of the plugin uploader
+            The dictionary resuming the new name and settings of the plugin file manager
         """
 
-        adapter = FactoryAdapter(PluginUploaderFactory(self.march_hare))
-        updater = adapter.upsert_factory_config_by_settings(self.__key, plugin_uploader_name, settings)
+        adapter = FactoryAdapter(PluginFileManagerFactory(self.march_hare))
+        updater = adapter.upsert_factory_config_by_settings(self.__key, plugin_filemanager_name, settings)
 
         try:
-            old_uploader = self.plugin_uploader
+            old_filemanager = self.plugin_filemanager
 
-            # reload the plugin uploader of the cat
-            self.load_plugin_uploader()
+            # reload the plugin file manager of the lizard
+            self.load_plugin_filemanager()
 
-            self.plugin_uploader.transfer(old_uploader)
+            self.plugin_filemanager.transfer(old_filemanager)
         except ValueError as e:
-            log.error(f"Error while loading the new Plugin Uploader: {e}")
+            log.error(f"Error while loading the new Plugin File Manager: {e}")
 
             # something went wrong: rollback
             adapter.rollback_factory_config(self.__key)
 
             if updater.old_setting is not None:
-                self.replace_plugin_uploader(updater.old_setting["value"]["name"], updater.new_setting["value"])
+                self.replace_plugin_filemanager(updater.old_setting["value"]["name"], updater.new_setting["value"])
 
             raise e
 
-        return ReplacedNLPConfig(name=plugin_uploader_name, value=updater.new_setting["value"])
+        return ReplacedNLPConfig(name=plugin_filemanager_name, value=updater.new_setting["value"])
 
     async def remove_cheshire_cat(self, agent_id: str) -> None:
         """
@@ -273,7 +271,7 @@ class BillTheLizard:
         self.rabbit_hole = None
         self.main_agent = None
         self.embedder = None
-        self.plugin_uploader = None
+        self.plugin_filemanager = None
 
     @property
     def cheshire_cats(self):

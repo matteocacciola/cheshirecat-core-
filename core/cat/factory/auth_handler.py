@@ -1,28 +1,21 @@
-from typing import Type
+from abc import ABC
+from typing import Type, Dict
 from pydantic import BaseModel, ConfigDict
 
-from cat.db.cruds import settings as crud_settings
-from cat.factory.base_factory import BaseFactory
+from cat.factory.base_factory import BaseFactory, BaseConfigModel
 from cat.factory.custom_auth_handler import (
     # ApiKeyAuthHandler,
     BaseAuthHandler,
     CoreOnlyAuthHandler,
 )
-from cat.log import log
 
 
-class AuthHandlerConfig(BaseModel):
+class AuthHandlerConfig(BaseConfigModel, ABC):
     _pyclass: Type[BaseAuthHandler] = None
 
     @classmethod
-    def get_auth_handler_from_config(cls, config) -> BaseAuthHandler:
-        if cls._pyclass and issubclass(cls._pyclass.default, BaseAuthHandler):
-            return cls._pyclass.default(**config)
-        raise Exception("AuthHandler configuration class is invalid. It should be a valid BaseAuthHandler class")
-
-    @classmethod
-    def pyclass(cls) -> Type[BaseAuthHandler]:
-        return cls._pyclass.default
+    def base_class(cls) -> Type:
+        return BaseAuthHandler
 
 
 class CoreOnlyAuthConfig(AuthHandlerConfig):
@@ -65,23 +58,7 @@ class AuthHandlerFactory(BaseFactory):
         return list_auth_handler
 
     def get_from_config_name(self, agent_id: str, config_name: str) -> BaseAuthHandler:
-        # get AuthHandler factory class
-        factory_class = next((cls for cls in self.get_allowed_classes() if cls.__name__ == config_name), None)
-        if factory_class is None:
-            log.warning(f"Auth Handler class {config_name} not found in the list of allowed auth handlers")
-            return CoreOnlyAuthConfig.get_auth_handler_from_config({})
-
-        # obtain configuration and instantiate AuthHandler
-        selected_auth_handler_config = crud_settings.get_setting_by_name(agent_id, config_name)
-        try:
-            auth_handler = factory_class.get_auth_handler_from_config(selected_auth_handler_config["value"])
-        except Exception:
-            import traceback
-            traceback.print_exc()
-
-        auth_handler = CoreOnlyAuthConfig.get_auth_handler_from_config({})
-
-        return auth_handler
+        return self._get_from_config_name(agent_id, config_name)
 
     @property
     def setting_name(self) -> str:
@@ -94,6 +71,14 @@ class AuthHandlerFactory(BaseFactory):
     @property
     def setting_factory_category(self) -> str:
         return "auth_handler_factory"
+
+    @property
+    def default_config_class(self) -> Type[BaseModel]:
+        return CoreOnlyAuthConfig
+
+    @property
+    def default_config(self) -> Dict:
+        return {}
 
     @property
     def schema_name(self) -> str:
