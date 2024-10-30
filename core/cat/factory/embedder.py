@@ -186,7 +186,7 @@ class EmbedderFactory(BaseFactory):
             EmbedderFakeConfig,
         ]
 
-        list_embedder = self._mad_hatter.execute_hook(
+        list_embedder = self._march_hare.execute_hook(
             "factory_allowed_embedders", list_embedder_default, cat=None
         )
         return list_embedder

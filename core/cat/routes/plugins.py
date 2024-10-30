@@ -1,52 +1,26 @@
-from typing import Dict, List
+from typing import Dict
 from fastapi import Body, APIRouter, Depends
-from pydantic import ValidationError, BaseModel
+from pydantic import ValidationError
 
 from cat.auth.connection import HTTPAuth, ContextualCats
 from cat.auth.permissions import AuthPermission, AuthResource
 from cat.exceptions import CustomValidationException, CustomNotFoundException
-from cat.looking_glass.cheshire_cat import Plugins
-from cat.routes.routes_utils import GetSettingResponse, get_plugins
+from cat.routes.routes_utils import (
+    GetAvailablePluginsResponse,
+    GetSettingResponse,
+    PluginsSettingsResponse,
+    TogglePluginResponse,
+    get_available_plugins,
+    get_plugins_settings,
+    get_plugin_settings,
+)
 
 router = APIRouter()
 
 
-class GetAvailablePluginsFilter(BaseModel):
-    query: str | None
-
-
-class GetAvailablePluginsResponse(Plugins):
-    filters: GetAvailablePluginsFilter
-
-
-class TogglePluginResponse(BaseModel):
-    info: str
-
-
-class InstallPluginResponse(TogglePluginResponse):
-    filename: str
-    content_type: str
-
-
-class InstallPluginFromRegistryResponse(TogglePluginResponse):
-    url: str
-
-
-class PluginsSettingsResponse(BaseModel):
-    settings: List[GetSettingResponse]
-
-
-class GetPluginDetailsResponse(BaseModel):
-    data: Dict
-
-
-class DeletePluginResponse(BaseModel):
-    deleted: str
-
-
 # GET plugins
 @router.get("/", response_model=GetAvailablePluginsResponse)
-async def get_available_plugins(
+async def get_cheshirecat_available_plugins(
     query: str = None,
     cats: ContextualCats = Depends(HTTPAuth(AuthResource.PLUGINS, AuthPermission.LIST)),
     # author: str = None, to be activated in case of more granular search
@@ -54,17 +28,7 @@ async def get_available_plugins(
 ) -> GetAvailablePluginsResponse:
     """List available plugins"""
 
-    plugins = await get_plugins(cats.cheshire_cat.mad_hatter, query)
-
-    return GetAvailablePluginsResponse(
-        filters={
-            "query": query,
-            # "author": author, to be activated in case of more granular search
-            # "tag": tag, to be activated in case of more granular search
-        },
-        installed=plugins.installed,
-        registry=plugins.registry,
-    )
+    return await get_available_plugins(cats.cheshire_cat.mad_hatter, query)
 
 
 @router.put("/toggle/{plugin_id}", status_code=200, response_model=TogglePluginResponse)
@@ -87,59 +51,26 @@ async def toggle_plugin(
 
 
 @router.get("/settings", response_model=PluginsSettingsResponse)
-async def get_plugins_settings(
+async def get_cheshirecat_plugins_settings(
     cats: ContextualCats = Depends(HTTPAuth(AuthResource.PLUGINS, AuthPermission.READ)),
 ) -> PluginsSettingsResponse:
     """Returns the settings of all the plugins"""
 
-    # access cat instance
-    ccat = cats.cheshire_cat
-
-    settings = []
-
-    # plugins are managed by the MadHatter class
-    for plugin in ccat.mad_hatter.plugins.values():
-        try:
-            plugin_settings = plugin.load_settings()
-            plugin_schema = plugin.settings_schema()
-            if plugin_schema["properties"] == {}:
-                plugin_schema = {}
-            settings.append(
-                GetSettingResponse(name=plugin.id, value=plugin_settings, scheme=plugin_schema)
-            )
-        except Exception as e:
-            raise CustomValidationException(
-                f"Error loading {plugin} settings. The result will not contain the settings for this plugin. "
-                f"Error details: {e}"
-            )
-
-    return PluginsSettingsResponse(settings=settings)
+    return get_plugins_settings(cats.cheshire_cat.mad_hatter)
 
 
 @router.get("/settings/{plugin_id}", response_model=GetSettingResponse)
-async def get_plugin_settings(
+async def get_cheshirecat_plugin_settings(
     plugin_id: str,
     cats: ContextualCats = Depends(HTTPAuth(AuthResource.PLUGINS, AuthPermission.READ)),
 ) -> GetSettingResponse:
     """Returns the settings of a specific plugin"""
 
-    # access cat instance
-    ccat = cats.cheshire_cat
-
-    if not ccat.mad_hatter.plugin_exists(plugin_id):
-        raise CustomNotFoundException("Plugin not found")
-
-    settings = ccat.mad_hatter.plugins[plugin_id].load_settings()
-    scheme = ccat.mad_hatter.plugins[plugin_id].settings_schema()
-
-    if scheme["properties"] == {}:
-        scheme = {}
-
-    return GetSettingResponse(name=plugin_id, value=settings, scheme=scheme)
+    return get_plugin_settings(cats.cheshire_cat.mad_hatter, plugin_id)
 
 
 @router.put("/settings/{plugin_id}", response_model=GetSettingResponse)
-async def upsert_plugin_settings(
+async def upsert_cheshirecat_plugin_settings(
     plugin_id: str,
     payload: Dict = Body({"setting_a": "some value", "setting_b": "another value"}),
     cats: ContextualCats = Depends(HTTPAuth(AuthResource.PLUGINS, AuthPermission.EDIT)),

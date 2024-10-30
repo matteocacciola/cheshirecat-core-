@@ -107,7 +107,7 @@ class PluginFileManagerFactory(BaseFactory):
             DigitalOceanPluginFileManagerConfig,
         ]
 
-        list_file_managers_default = self._mad_hatter.execute_hook(
+        list_file_managers_default = self._march_hare.execute_hook(
             "factory_allowed_plugin_file_managers", list_file_managers_default, cat=None
         )
         return list_file_managers_default

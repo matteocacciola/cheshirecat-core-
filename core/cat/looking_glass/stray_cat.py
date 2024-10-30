@@ -430,9 +430,13 @@ class StrayCat:
 
         # text of latest Human message
         user_message_text = self.working_memory.user_message_json.text
+        # image of latest Human message
+        user_message_image = self.working_memory.user_message_json.image
 
         # update conversation history (Human turn)
-        self.working_memory.update_conversation_history(who=Role.HUMAN, message=user_message_text)
+        self.working_memory.update_conversation_history(
+            who=Role.HUMAN, message=user_message_text, image=user_message_image
+        )
 
         # recall episodic and declarative memories from vector collections
         #   and store them in working_memory
@@ -626,17 +630,18 @@ Allowed classes are:
         Returns:
             List[BaseMessage]: List of Langchain messages.
         """
+        def build_message(message: Dict) -> BaseMessage:
+            if message["role"] != Role.HUMAN:
+                return AIMessage(name=str(message["who"]), content=message["message"])
+            content = [{"type": "text", "text": message["message"]}]
+            if message["image"]:
+                content.append({"type": "image_url", "image_url": {"url": message["image"]}})
+            return HumanMessage(name=str(message["who"]), content=content)
 
         chat_history = self.working_memory.history[-latest_n:]
         chat_history = [ch.model_dump() for ch in chat_history]
 
-        langchain_chat_history = [
-            HumanMessage(name=str(message["who"]), content=message["message"])
-            if message["role"] == Role.HUMAN else AIMessage(name=str(message["who"]), content=message["message"])
-            for message in chat_history
-        ]
-
-        return langchain_chat_history
+        return [build_message(message) for message in chat_history]
 
     async def close_connection(self):
         if not self.__ws:

@@ -2,7 +2,14 @@ import pytest
 
 from cat.db.cruds import users as crud_users
 
-from tests.utils import send_websocket_message, get_declarative_memory_contents, agent_id, fake_timestamp, api_key
+from tests.utils import (
+    send_websocket_message,
+    get_declarative_memory_contents,
+    agent_id,
+    fake_timestamp,
+    api_key,
+    api_key_ws,
+)
 
 
 def create_point_wrong_collection(secure_client, secure_client_headers, cheshire_cat):
@@ -30,7 +37,7 @@ def create_point_wrong_collection(secure_client, secure_client_headers, cheshire
 
 def test_point_deleted(secure_client, secure_client_headers):
     # send websocket message
-    send_websocket_message({"text": "Hello Mad Hatter"}, secure_client)
+    send_websocket_message({"text": "Hello Mad Hatter"}, secure_client, {"apikey": api_key_ws})
 
     # get point back
     params = {"text": "Mad Hatter"}

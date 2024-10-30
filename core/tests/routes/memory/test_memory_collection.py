@@ -1,4 +1,4 @@
-from tests.utils import send_websocket_message, get_collections_names_and_point_count
+from tests.utils import send_websocket_message, get_collections_names_and_point_count, api_key_ws
 
 
 def test_memory_collections_created(secure_client, secure_client_headers):
@@ -27,7 +27,7 @@ def test_memory_collection_episodic_stores_messages(secure_client, secure_client
 
     # send message via websocket
     message = {"text": "Meow"}
-    res = send_websocket_message(message, secure_client)
+    res = send_websocket_message(message, secure_client, {"apikey": api_key_ws})
     assert isinstance(res["content"], str)
 
     # episodic memory should now contain one point
@@ -48,7 +48,7 @@ def test_memory_collection_non_existent_clear(secure_client, secure_client_heade
 def test_memory_collection_episodic_cleared(secure_client, secure_client_headers):
     # send message via websocket
     message = {"text": "Meow"}
-    res = send_websocket_message(message, secure_client)
+    res = send_websocket_message(message, secure_client, {"apikey": api_key_ws})
     assert isinstance(res["content"], str)
 
     # episodic memory should now contain one point
@@ -81,7 +81,7 @@ def test_memory_collection_procedural_has_tools_after_clear(secure_client, secur
 def test_memory_collections_wipe(secure_client, secure_client_headers):
     # create episodic memory
     message = {"text": "Meow"}
-    send_websocket_message(message, secure_client)
+    send_websocket_message(message, secure_client, {"apikey": api_key_ws})
 
     # create declarative memories
     file_name = "sample.txt"

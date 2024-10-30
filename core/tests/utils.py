@@ -25,8 +25,7 @@ def get_class_from_decorated_singleton(singleton):
 
 
 # utility function to communicate with the cat via websocket
-def send_websocket_message(msg, client, query_params=None):
-    query_params = query_params if query_params is not None else {"apikey": api_key_ws}
+def send_websocket_message(msg, client, query_params):
     url = f"/ws/{agent_id}?" + urlencode(query_params)
 
     with client.websocket_connect(url) as websocket:
@@ -39,7 +38,7 @@ def send_websocket_message(msg, client, query_params=None):
 
 
 # utility to send n messages via chat
-def send_n_websocket_messages(num_messages, client):
+def send_n_websocket_messages(num_messages, client, image=None):
     responses = []
 
     url = f"/ws/{agent_id}?" + urlencode({"token": api_key_ws})
@@ -47,6 +46,8 @@ def send_n_websocket_messages(num_messages, client):
     with client.websocket_connect(url) as websocket:
         for m in range(num_messages):
             message = {"text": f"Red Queen {m}"}
+            if image:
+                message["image"] = image
             # sed ws message
             websocket.send_json(message)
             # get reply

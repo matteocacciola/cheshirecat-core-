@@ -1,6 +1,6 @@
 import time
 
-from tests.utils import send_websocket_message, send_n_websocket_messages, agent_id
+from tests.utils import send_websocket_message, send_n_websocket_messages, api_key_ws
 
 
 def check_correct_websocket_reply(reply):
@@ -45,8 +45,9 @@ def check_correct_websocket_reply(reply):
 
 
 def test_websocket(secure_client):
+    msg = {"text": "It's late! It's late", "image": "tests/mocks/sample.png"}
     # send websocket message
-    res = send_websocket_message({"text": "It's late! It's late"}, secure_client)
+    res = send_websocket_message(msg, secure_client, {"apikey": api_key_ws})
 
     check_correct_websocket_reply(res)
 

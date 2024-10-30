@@ -299,7 +299,7 @@ class LLMFactory(BaseFactory):
             LLMDefaultConfig,
         ]
 
-        list_llms = self._mad_hatter.execute_hook(
+        list_llms = self._march_hare.execute_hook(
             "factory_allowed_llms", list_llms_default, cat=None
         )
         return list_llms

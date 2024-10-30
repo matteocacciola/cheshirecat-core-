@@ -51,7 +51,7 @@ class AuthHandlerFactory(BaseFactory):
             # ApiKeyAuthConfig,
         ]
 
-        list_auth_handler = self._mad_hatter.execute_hook(
+        list_auth_handler = self._march_hare.execute_hook(
             "factory_allowed_auth_handlers", list_auth_handler_default, cat=None
         )
 

@@ -33,7 +33,7 @@ class BaseConfigModel(ABC, BaseModel):
 
 class BaseFactory(ABC):
     def __init__(self, march_hare: MarchHare):
-        self._mad_hatter = march_hare
+        self._march_hare = march_hare
 
     def get_config_class_from_adapter(self, cls: Type) -> Type[BaseModel] | None:
         return next(

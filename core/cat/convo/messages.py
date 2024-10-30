@@ -78,6 +78,7 @@ class UserMessage(BaseModelDict):
     """
 
     text: str
+    image: str | None = None
     user_id: str
     agent_id: str
 
@@ -88,6 +89,7 @@ class ConversationHistoryInfo(BaseModelDict):
     Variables:
         who (Role): role
         message (str): message
+        image (str): image or None
         why (MessageWhy): message why
         when (float): when
         role (Role): role
@@ -95,6 +97,7 @@ class ConversationHistoryInfo(BaseModelDict):
 
     who: Role
     message: str
+    image: str | None = None
     why: MessageWhy | None = None
     when: float | None = time.time()
     role: Role

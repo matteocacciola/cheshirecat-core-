@@ -2,7 +2,7 @@ import time
 
 from cat.convo.messages import Role
 
-from tests.utils import send_websocket_message, agent_id, api_key, create_new_user, new_user_password
+from tests.utils import send_websocket_message, agent_id, api_key, create_new_user, new_user_password, api_key_ws
 
 
 def test_convo_history_absent(secure_client, secure_client_headers):
@@ -18,7 +18,7 @@ def test_convo_history_update(secure_client, secure_client_headers):
     message = "It's late! It's late!"
 
     # send websocket messages
-    send_websocket_message({"text": message}, secure_client)
+    send_websocket_message({"text": message}, secure_client, {"apikey": api_key_ws})
 
     # check working memory update
     response = secure_client.get("/memory/conversation_history", headers=secure_client_headers)
@@ -37,7 +37,7 @@ def test_convo_history_update(secure_client, secure_client_headers):
 
 def test_convo_history_reset(secure_client, secure_client_headers):
     # send websocket messages
-    send_websocket_message({"text": "It's late! It's late!"}, secure_client)
+    send_websocket_message({"text": "It's late! It's late!"}, secure_client, {"apikey": api_key_ws})
 
     # delete convo history
     response = secure_client.delete("/memory/conversation_history", headers=secure_client_headers)

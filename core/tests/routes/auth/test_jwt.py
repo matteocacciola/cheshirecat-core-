@@ -151,7 +151,7 @@ def test_jwt_imposes_user_id(client, cheshire_cat):
     token = res.json()["access_token"]
 
     # we will send this message both via http and ws, having the user_id carried by the JWT
-    message = {"text": "hey"}
+    message = {"text": "hey", "image": "tests/mocks/sample.png"}
 
     # send user specific message via http
     headers = {"Authorization": f"Bearer {token}"}

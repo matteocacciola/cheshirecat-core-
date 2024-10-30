@@ -58,7 +58,7 @@ def test_api_key_http(secure_client, header_name):
 
     # allow websocket access without any key
     mex = {"text": "Where do I go?"}
-    res = send_websocket_message(mex, secure_client)
+    res = send_websocket_message(mex, secure_client, {"apikey": api_key_ws})
     assert "You did not configure" in res["content"]
 
     reset_api_key("CCAT_API_KEY", old_api_key)

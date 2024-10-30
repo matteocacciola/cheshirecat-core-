@@ -76,7 +76,7 @@ class MarchHare:
         # activate it
         self.toggle_plugin(plugin_id)
 
-    def uninstall_plugin(self, plugin_id):
+    def uninstall_plugin(self, plugin_id: str):
         if self.plugin_exists(plugin_id) and (plugin_id != "core_plugin"):
             # deactivate plugin if it is active (will sync cache)
             if plugin_id in self.active_plugins:
@@ -150,7 +150,7 @@ class MarchHare:
         self.tools = []
         self.forms = []
 
-        for _, plugin in self.plugins.items():
+        for plugin in self.plugins.values():
             # load hooks, tools and forms from active plugins
             if plugin.id in self.active_plugins:
                 # cache tools
@@ -166,11 +166,11 @@ class MarchHare:
         for hook_name in self.hooks.keys():
             self.hooks[hook_name].sort(key=lambda x: x.priority, reverse=True)
 
-        # notify sync has finished (the Cat will ensure all tools are embedded in vector memory)
+        # notify sync has finished (the Lizard will ensure all tools are embedded in vector memory)
         self.on_finish_plugins_sync_callback()
 
     # check if plugin exists
-    def plugin_exists(self, plugin_id):
+    def plugin_exists(self, plugin_id: str):
         return plugin_id in self.plugins.keys()
 
     def load_active_plugins_from_db(self):
@@ -184,7 +184,7 @@ class MarchHare:
         return active_plugins
 
     # activate / deactivate plugin
-    def toggle_plugin(self, plugin_id):
+    def toggle_plugin(self, plugin_id: str):
         if not self.plugin_exists(plugin_id):
             raise Exception(f"Plugin {plugin_id} not present in plugins folder")
 

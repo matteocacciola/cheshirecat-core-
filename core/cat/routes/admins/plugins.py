@@ -1,58 +1,34 @@
 import aiofiles
 import mimetypes
 from copy import deepcopy
-from typing import Dict, List
+from typing import Dict
 from fastapi import Body, APIRouter, UploadFile, Depends
-from pydantic import BaseModel
 
 from cat.auth.connection import AdminConnectionAuth
 from cat.auth.permissions import AuthPermission, AdminAuthResource
 from cat.bill_the_lizard import BillTheLizard
 from cat.exceptions import CustomValidationException, CustomNotFoundException
 from cat.log import log
-from cat.looking_glass.cheshire_cat import Plugins
 from cat.mad_hatter.registry import registry_download_plugin
-from cat.routes.routes_utils import GetSettingResponse, get_plugins
+from cat.routes.routes_utils import (
+    DeletePluginResponse,
+    GetAvailablePluginsResponse,
+    GetPluginDetailsResponse,
+    GetSettingResponse,
+    InstallPluginFromRegistryResponse,
+    InstallPluginResponse,
+    PluginsSettingsResponse,
+    get_available_plugins,
+    get_plugins_settings,
+    get_plugin_settings,
+)
 
 router = APIRouter()
 
 
-class GetAvailablePluginsFilter(BaseModel):
-    query: str | None
-
-
-class GetAvailablePluginsResponse(Plugins):
-    filters: GetAvailablePluginsFilter
-
-
-class TogglePluginResponse(BaseModel):
-    info: str
-
-
-class InstallPluginResponse(TogglePluginResponse):
-    filename: str
-    content_type: str
-
-
-class InstallPluginFromRegistryResponse(TogglePluginResponse):
-    url: str
-
-
-class PluginsSettingsResponse(BaseModel):
-    settings: List[GetSettingResponse]
-
-
-class GetPluginDetailsResponse(BaseModel):
-    data: Dict
-
-
-class DeletePluginResponse(BaseModel):
-    deleted: str
-
-
 # GET plugins
 @router.get("/", response_model=GetAvailablePluginsResponse)
-async def get_available_plugins(
+async def get_lizard_available_plugins(
     query: str = None,
     lizard: BillTheLizard = Depends(AdminConnectionAuth(AdminAuthResource.PLUGINS, AuthPermission.LIST)),
     # author: str = None, to be activated in case of more granular search
@@ -60,17 +36,7 @@ async def get_available_plugins(
 ) -> GetAvailablePluginsResponse:
     """List available plugins"""
 
-    plugins = await get_plugins(lizard.march_hare, query)
-
-    return GetAvailablePluginsResponse(
-        filters={
-            "query": query,
-            # "author": author, to be activated in case of more granular search
-            # "tag": tag, to be activated in case of more granular search
-        },
-        installed=plugins.installed,
-        registry=plugins.registry,
-    )
+    return await get_available_plugins(lizard.march_hare, query)
 
 
 @router.post("/upload", response_model=InstallPluginResponse)
@@ -119,49 +85,22 @@ async def install_plugin_from_registry(
 
 
 @router.get("/settings", response_model=PluginsSettingsResponse)
-async def get_plugins_settings(
+async def get_lizard_plugins_settings(
     lizard: BillTheLizard = Depends(AdminConnectionAuth(AdminAuthResource.PLUGINS, AuthPermission.READ)),
 ) -> PluginsSettingsResponse:
     """Returns the default settings of all the plugins"""
 
-    settings = []
-
-    # plugins are managed by the MadHatter class
-    for plugin in lizard.march_hare.plugins.values():
-        try:
-            plugin_settings = plugin.load_settings()
-            plugin_schema = plugin.settings_schema()
-            if plugin_schema["properties"] == {}:
-                plugin_schema = {}
-            settings.append(
-                GetSettingResponse(name=plugin.id, value=plugin_settings, scheme=plugin_schema)
-            )
-        except Exception as e:
-            raise CustomValidationException(
-                f"Error loading {plugin} settings. The result will not contain the settings for this plugin. "
-                f"Error details: {e}"
-            )
-
-    return PluginsSettingsResponse(settings=settings)
+    return get_plugins_settings(lizard.march_hare)
 
 
 @router.get("/settings/{plugin_id}", response_model=GetSettingResponse)
-async def get_plugin_settings(
+async def get_lizard_plugin_settings(
     plugin_id: str,
     lizard: BillTheLizard = Depends(AdminConnectionAuth(AdminAuthResource.PLUGINS, AuthPermission.READ)),
 ) -> GetSettingResponse:
     """Returns the default settings of a specific plugin"""
 
-    if not lizard.march_hare.plugin_exists(plugin_id):
-        raise CustomNotFoundException("Plugin not found")
-
-    settings = lizard.march_hare.plugins[plugin_id].load_settings()
-    scheme = lizard.march_hare.plugins[plugin_id].settings_schema()
-
-    if scheme["properties"] == {}:
-        scheme = {}
-
-    return GetSettingResponse(name=plugin_id, value=settings, scheme=scheme)
+    return get_plugin_settings(lizard.march_hare, plugin_id)
 
 
 @router.get("/{plugin_id}", response_model=GetPluginDetailsResponse)
