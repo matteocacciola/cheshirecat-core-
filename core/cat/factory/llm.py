@@ -331,7 +331,7 @@ class LLMFactory(BaseFactory):
         return "llm_factory"
 
     @property
-    def default_config_class(self) -> Type[BaseModel]:
+    def default_config_class(self) -> Type[BaseConfigModel]:
         return LLMDefaultConfig
 
     @property

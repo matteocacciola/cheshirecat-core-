@@ -73,7 +73,7 @@ class AuthHandlerFactory(BaseFactory):
         return "auth_handler_factory"
 
     @property
-    def default_config_class(self) -> Type[BaseModel]:
+    def default_config_class(self) -> Type[BaseConfigModel]:
         return CoreOnlyAuthConfig
 
     @property

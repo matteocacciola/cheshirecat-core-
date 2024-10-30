@@ -60,22 +60,22 @@ class BaseFactory(ABC):
         factory_class = next((cls for cls in self.get_allowed_classes() if cls.__name__ == config_name), None)
         if not factory_class:
             log.warning(f"Class {config_name} not found in the list of allowed classes for setting {self.setting_name}")
-            return self.default_config_class.get_filemanager_from_config(self.default_config)
+            return self.default_config_class.get_from_config(self.default_config)
 
-        # obtain configuration and instantiate the file manager
-        selected_file_manager_config = crud_settings.get_setting_by_name(agent_id, config_name)
+        # obtain configuration and instantiate the finalized object by the factory
+        selected_config = crud_settings.get_setting_by_name(agent_id, config_name)
         try:
-            file_manager = factory_class.get_filemanager_from_config(selected_file_manager_config["value"])
+            object = factory_class.get_from_config(selected_config["value"])
         except Exception:
             import traceback
             traceback.print_exc()
 
-            file_manager = self.default_config_class.get_from_config(self.default_config)
+            object = self.default_config_class.get_from_config(self.default_config)
 
-        return file_manager
+        return object
 
     @abstractmethod
-    def get_allowed_classes(self) -> List[Type[BaseModel]]:
+    def get_allowed_classes(self) -> List[Type[BaseConfigModel]]:
         pass
 
     @abstractmethod
@@ -99,7 +99,7 @@ class BaseFactory(ABC):
 
     @property
     @abstractmethod
-    def default_config_class(self) -> Type[BaseModel]:
+    def default_config_class(self) -> Type[BaseConfigModel]:
         pass
 
     @property

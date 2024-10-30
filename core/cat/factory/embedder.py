@@ -219,7 +219,7 @@ class EmbedderFactory(BaseFactory):
         return "embedder_factory"
 
     @property
-    def default_config_class(self) -> Type[BaseModel]:
+    def default_config_class(self) -> Type[BaseConfigModel]:
         return EmbedderDumbConfig
 
     @property

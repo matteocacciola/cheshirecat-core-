@@ -139,7 +139,7 @@ class PluginFileManagerFactory(BaseFactory):
         return "plugin_filemanager_factory"
 
     @property
-    def default_config_class(self) -> Type[BaseModel]:
+    def default_config_class(self) -> Type[BaseConfigModel]:
         return LocalPluginFileManagerConfig
 
     @property
