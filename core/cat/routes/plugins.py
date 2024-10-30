@@ -56,7 +56,7 @@ async def get_cheshirecat_plugins_settings(
 ) -> PluginsSettingsResponse:
     """Returns the settings of all the plugins"""
 
-    return get_plugins_settings(cats.cheshire_cat.mad_hatter)
+    return get_plugins_settings(cats.cheshire_cat.mad_hatter, cats.cheshire_cat.id)
 
 
 @router.get("/settings/{plugin_id}", response_model=GetSettingResponse)
@@ -66,7 +66,7 @@ async def get_cheshirecat_plugin_settings(
 ) -> GetSettingResponse:
     """Returns the settings of a specific plugin"""
 
-    return get_plugin_settings(cats.cheshire_cat.mad_hatter, plugin_id)
+    return get_plugin_settings(cats.cheshire_cat.mad_hatter, plugin_id, cats.cheshire_cat.id)
 
 
 @router.put("/settings/{plugin_id}", response_model=GetSettingResponse)
@@ -94,6 +94,6 @@ async def upsert_cheshirecat_plugin_settings(
     except ValidationError as e:
         raise CustomValidationException("\n".join(list(map(lambda x: x["msg"], e.errors()))))
 
-    final_settings = plugin.save_settings(payload)
+    final_settings = plugin.save_settings(payload, ccat.id)
 
     return GetSettingResponse(name=plugin_id, value=final_settings)

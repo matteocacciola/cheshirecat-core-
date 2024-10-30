@@ -8,7 +8,7 @@ from cat.adapters.factory_adapter import FactoryAdapter
 from cat.agents.main_agent import MainAgent
 from cat.auth.auth_utils import hash_password, DEFAULT_ADMIN_USERNAME
 from cat.auth.permissions import get_full_admin_permissions
-from cat.db.cruds import users as crud_users
+from cat.db.cruds import users as crud_users, plugins as crud_plugins
 from cat.db.database import DEFAULT_SYSTEM_KEY
 from cat.env import get_env
 from cat.exceptions import LoadMemoryException
@@ -52,7 +52,6 @@ class BillTheLizard:
         the *White Rabbit*.
         """
 
-
         self.__cheshire_cats: Dict[str, CheshireCat] = {}
         self.__key = DEFAULT_SYSTEM_KEY
 
@@ -81,9 +80,36 @@ class BillTheLizard:
         # Main agent instance (for reasoning)
         self.main_agent = MainAgent()
 
+        self.march_hare.on_finish_plugin_install_callback = self.notify_plugin_installed
+        self.march_hare.on_finish_plugin_uninstall_callback = self.clean_up_plugin_uninstall
+
         # Initialize the default admin if not present
         if not crud_users.get_users(self.__key):
             self.__initialize_users()
+
+    def notify_plugin_installed(self):
+        """
+        Notify the loaded Cheshire cats that a plugin was installed, thus reloading the available plugins into the
+        cats.
+        """
+
+        for ccat in self.__cheshire_cats.values():
+            # inform the Cheshire Cats about the new plugin available in the system
+            ccat.mad_hatter.find_plugins()
+
+    def clean_up_plugin_uninstall(self, plugin_id: str):
+        """
+        Clean up the plugin uninstallation. It removes the plugin settings from the database.
+
+        Args:
+            plugin_id: The id of the plugin to remove
+        """
+
+        # remove all plugin settings, regardless for system or whatever agent
+        crud_plugins.destroy_plugin(plugin_id)
+        for ccat in self.__cheshire_cats.values():
+            # deactivate plugins in the Cheshire Cats
+            ccat.mad_hatter.toggle_plugin(plugin_id)
 
     def __initialize_users(self):
         admin_id = str(uuid4())

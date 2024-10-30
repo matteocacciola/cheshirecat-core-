@@ -4,6 +4,7 @@ import fnmatch
 import subprocess
 from inspect import isfunction
 
+from cat.db.database import DEFAULT_SYSTEM_KEY
 from cat.mad_hatter.decorators.hook import CatHook
 from cat.mad_hatter.decorators.tool import CatTool
 from cat.mad_hatter.plugin import Plugin
@@ -14,7 +15,7 @@ from tests.utils import mock_plugin_path, agent_id
 
 def test_create_plugin_wrong_folder():
     with pytest.raises(Exception) as e:
-        Plugin("/non/existent/folder", agent_id)
+        Plugin("/non/existent/folder")
 
     assert "Cannot create" in str(e.value)
 
@@ -25,7 +26,7 @@ def test_create_plugin_empty_folder():
     os.mkdir(path)
 
     with pytest.raises(Exception) as e:
-        Plugin(path, agent_id)
+        Plugin(path)
 
     assert "Cannot create" in str(e.value)
 
@@ -49,7 +50,7 @@ def test_create_plugin(plugin):
 
 def test_activate_plugin(plugin):
     # activate it
-    plugin.activate()
+    plugin.activate(DEFAULT_SYSTEM_KEY)
 
     assert plugin.active is True
 
@@ -86,10 +87,10 @@ def test_activate_plugin(plugin):
 
 def test_deactivate_plugin(plugin):
     # The plugin is non active by default
-    plugin.activate()
+    plugin.activate(DEFAULT_SYSTEM_KEY)
 
     # deactivate it
-    plugin.deactivate()
+    plugin.deactivate(DEFAULT_SYSTEM_KEY)
 
     assert plugin.active is False
 
@@ -107,15 +108,15 @@ def test_settings_schema(plugin):
 
 
 def test_load_settings(plugin):
-    settings = plugin.load_settings()
+    settings = plugin.load_settings(DEFAULT_SYSTEM_KEY)
     assert settings == {}
 
 
 def test_save_settings(plugin):
     fake_settings = {"a": 42}
-    plugin.save_settings(fake_settings)
+    plugin.save_settings(fake_settings, DEFAULT_SYSTEM_KEY)
 
-    settings = plugin.load_settings()
+    settings = plugin.load_settings(DEFAULT_SYSTEM_KEY)
     assert settings["a"] == fake_settings["a"]
 
 
@@ -130,10 +131,10 @@ def test_install_plugin_dependencies():
     os.system("pip uninstall -y pip-install-test")
 
     # Install mock plugin
-    p = Plugin(mock_plugin_path, agent_id)
+    p = Plugin(mock_plugin_path)
 
     # Dependencies are installed on plugin activation
-    p.activate()
+    p.activate(DEFAULT_SYSTEM_KEY)
 
     # pip-install-test should have been installed
     result = subprocess.run(["pip", "list"], stdout=subprocess.PIPE)

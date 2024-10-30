@@ -153,13 +153,13 @@ async def get_available_plugins(
         registry=plugins.registry,
     )
 
-def get_plugins_settings(march_hare: MarchHare) -> PluginsSettingsResponse:
+def get_plugins_settings(march_hare: MarchHare, agent_id: str) -> PluginsSettingsResponse:
     settings = []
 
     # plugins are managed by the MarchHare / MadHatter class
     for plugin in march_hare.plugins.values():
         try:
-            plugin_settings = plugin.load_settings()
+            plugin_settings = plugin.load_settings(agent_id)
             plugin_schema = plugin.settings_schema()
             if plugin_schema["properties"] == {}:
                 plugin_schema = {}
@@ -175,13 +175,13 @@ def get_plugins_settings(march_hare: MarchHare) -> PluginsSettingsResponse:
     return PluginsSettingsResponse(settings=settings)
 
 
-def get_plugin_settings(march_hare: MarchHare, plugin_id: str) -> GetSettingResponse:
+def get_plugin_settings(march_hare: MarchHare, plugin_id: str, agent_id: str) -> GetSettingResponse:
     """Returns the settings of a specific plugin"""
 
     if not march_hare.plugin_exists(plugin_id):
         raise CustomNotFoundException("Plugin not found")
 
-    settings = march_hare.plugins[plugin_id].load_settings()
+    settings = march_hare.plugins[plugin_id].load_settings(agent_id)
     scheme = march_hare.plugins[plugin_id].settings_schema()
 
     if scheme["properties"] == {}:

@@ -90,7 +90,7 @@ async def get_lizard_plugins_settings(
 ) -> PluginsSettingsResponse:
     """Returns the default settings of all the plugins"""
 
-    return get_plugins_settings(lizard.march_hare)
+    return get_plugins_settings(lizard.march_hare, lizard.config_key)
 
 
 @router.get("/settings/{plugin_id}", response_model=GetSettingResponse)
@@ -100,7 +100,7 @@ async def get_lizard_plugin_settings(
 ) -> GetSettingResponse:
     """Returns the default settings of a specific plugin"""
 
-    return get_plugin_settings(lizard.march_hare, plugin_id)
+    return get_plugin_settings(lizard.march_hare, plugin_id, lizard.config_key)
 
 
 @router.get("/{plugin_id}", response_model=GetPluginDetailsResponse)

@@ -1,5 +1,5 @@
 import time
-from typing import List, Dict
+from typing import Dict
 from uuid import uuid4
 from langchain_community.document_loaders.parsers.pdf import PDFMinerParser
 from langchain_community.document_loaders.parsers.html.bs4 import BS4HTMLParser
@@ -7,8 +7,6 @@ from langchain_community.document_loaders.parsers.txt import TextParser
 from langchain_core.embeddings import Embeddings
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 from langchain_core.language_models import BaseLanguageModel
-from pydantic import BaseModel
-from typing_extensions import Protocol
 from langchain_core.messages import SystemMessage
 from langchain_core.runnables import RunnableLambda
 from langchain_core.prompts import ChatPromptTemplate
@@ -31,27 +29,6 @@ from cat.log import log
 from cat.mad_hatter.mad_hatter import MadHatter
 from cat.memory.long_term_memory import LongTermMemory
 from cat.utils import langchain_log_prompt, langchain_log_output, get_caller_info
-
-
-class Procedure(Protocol):
-    name: str
-    procedure_type: str  # "tool" or "form"
-
-    # {
-    #   "description": [],
-    #   "start_examples": [],
-    # }
-    triggers_map: Dict[str, List[str]]
-
-
-class Plugins(BaseModel):
-    installed: List[Dict]
-    registry: List[Dict]
-
-
-class ReplacedLLM(BaseModel):
-    installed: List[Dict]
-    registry: List[Dict]
 
 
 # main class

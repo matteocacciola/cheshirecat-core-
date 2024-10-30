@@ -31,7 +31,7 @@ class PluginSettingsModel(BaseModel):
 
 
 class Plugin:
-    def __init__(self, plugin_path: str, agent_id: str):
+    def __init__(self, plugin_path: str):
         # does folder exist?
         if not os.path.exists(plugin_path) or not os.path.isdir(plugin_path):
             raise Exception(
@@ -40,7 +40,6 @@ class Plugin:
 
         # where the plugin is on disk
         self._path: str = plugin_path
-        self._agent_id = agent_id
 
         # search for .py files in folder
         py_files_path = os.path.join(self._path, "**/*.py")
@@ -54,7 +53,7 @@ class Plugin:
         # plugin id is just the folder name
         self._id: str = os.path.basename(os.path.normpath(plugin_path))
 
-        # plugin manifest (name, decription, thumb, etc.)
+        # plugin manifest (name, description, thumb, etc.)
         self._manifest = self._load_manifest()
 
         # list of tools, forms and hooks contained in the plugin.
@@ -70,39 +69,49 @@ class Plugin:
         # plugin starts deactivated
         self._active = False
 
-    def activate(self):
+    def activate(self, agent_id: str):
         # install plugin requirements on activation
         try:
             self._install_requirements()
         except Exception as e:
             raise e
 
-        # Load of hooks and tools
+        self.activate_settings(agent_id)
+
+    def activate_settings(self, agent_id: str):
+        # load hooks and tools
         self._load_decorated_functions()
 
         # by default, plugin settings are saved inside the Redis database
-        setting = crud_plugins.get_setting(self._agent_id, self._id)
+        setting = crud_plugins.get_setting(agent_id, self._id)
 
-        # Try to create the setting into the Redis database
+        # try to create the setting into the Redis database
         if not setting:
-            self._create_settings_from_model()
+            self._create_settings_from_model(agent_id)
 
         self._active = True
 
-    def deactivate(self):
+    def deactivate(self, agent_id: str):
         # Remove the imported modules
         for py_file in self._py_files:
             py_filename = py_file.replace("/", ".").replace(".py", "")
 
             # If the module is imported it is removed
-            if py_filename in sys.modules:
-                log.debug(f"Remove module {py_filename}")
-                sys.modules.pop(py_filename)
+            if py_filename not in sys.modules:
+                continue
+            log.debug(f"Remove module {py_filename}")
+            sys.modules.pop(py_filename)
 
+        self.deactivate_settings(agent_id)
+
+    def deactivate_settings(self, agent_id: str):
         self._hooks = []
         self._tools = []
         self._plugin_overrides = []
         self._active = False
+
+        # remove the settings
+        crud_plugins.delete_setting(agent_id, self._id)
 
     # get plugin settings JSON schema
     def settings_schema(self):
@@ -126,19 +135,19 @@ class Plugin:
         return PluginSettingsModel
 
     # load plugin settings
-    def load_settings(self):
+    def load_settings(self, agent_id: str):
         # is "settings_load" hook defined in the plugin?
         ph = next((h for h in self._plugin_overrides if h.name == "load_settings"), None)
         if ph is not None:
             return ph.function()
 
         # by default, plugin settings are saved inside the Redis database
-        settings = crud_plugins.get_setting(self._agent_id, self._id)
-        if not settings and not self._create_settings_from_model():
+        settings = crud_plugins.get_setting(agent_id, self._id)
+        if not settings and not self._create_settings_from_model(agent_id):
             return {}
 
         # load settings from Redis database, in case of new settings, the already grabbed values are loaded otherwise
-        settings = settings if settings else crud_plugins.get_setting(self._agent_id, self._id)
+        settings = settings if settings else crud_plugins.get_setting(agent_id, self._id)
         try:
             # Validate the settings
             self.settings_model().model_validate(settings)
@@ -149,7 +158,7 @@ class Plugin:
             raise e
 
     # save plugin settings
-    def save_settings(self, settings: Dict):
+    def save_settings(self, settings: Dict, agent_id: str):
         # is "settings_save" hook defined in the plugin?
         ph = next((h for h in self._plugin_overrides if h.name == "save_settings"), None)
         if ph is not None:
@@ -158,14 +167,14 @@ class Plugin:
         try:
             # overwrite settings over old ones
             # write settings into the Redis database
-            return crud_plugins.update_setting(self._agent_id, self._id, settings)
+            return crud_plugins.update_setting(agent_id, self._id, settings)
         except Exception as e:
             log.error(f"Unable to save plugin {self._id} settings: {e}")
             log.warning(self.plugin_specific_error_message())
             traceback.print_exc()
             return {}
 
-    def _create_settings_from_model(self) -> bool:
+    def _create_settings_from_model(self, agent_id: str) -> bool:
         try:
             model = self.settings_model()
             # if some settings have no default value this will raise a ValidationError
@@ -173,7 +182,7 @@ class Plugin:
 
             # If each field have a default value and the model is correct,
             # create the settings with default values
-            crud_plugins.set_setting(self._agent_id, self._id, settings)
+            crud_plugins.set_setting(agent_id, self._id, settings)
             log.debug(
                 f"{self.id} have no settings, created with settings model default values"
             )
@@ -266,6 +275,48 @@ class Plugin:
                 subprocess.run(["pip", "uninstall", "-r", tmp.name], check=True)
 
                 raise Exception(f"Error during {self.id} requirements installation")
+
+    def _uninstall_requirements(self):
+        req_file = os.path.join(self.path, "requirements.txt")
+        if not os.path.exists(req_file):
+            return
+
+        installed_packages = {x.name for x in importlib.metadata.distributions()}
+        filtered_requirements = []
+        try:
+            with open(req_file, "r") as read_file:
+                requirements = read_file.readlines()
+
+            for req in requirements:
+                log.info(f"Uninstalling requirements for: {self.id}")
+
+                # get package name
+                package_name = Requirement(req).name
+
+                # check if package is installed
+                if package_name in installed_packages:
+                    filtered_requirements.append(req)
+                else:
+                    log.debug(f"{package_name} is not installed")
+        except Exception as e:
+            log.error(f"Error during requirements check: {e}, for {self.id}")
+
+        if len(filtered_requirements) == 0:
+            return
+
+        with tempfile.NamedTemporaryFile(mode="w") as tmp:
+            tmp.write("".join(filtered_requirements))
+            # If flush is not performed, when pip reads the file it is empty
+            tmp.flush()
+
+            try:
+                subprocess.run(
+                    ["pip", "uninstall", "-r", tmp.name], check=True
+                )
+            except subprocess.CalledProcessError as e:
+                log.error(f"Error during uninstalling {self.id} requirements: {e}")
+
+                raise Exception(f"Error during {self.id} requirements uninstallation")
 
     # lists of hooks and tools
     def _load_decorated_functions(self):

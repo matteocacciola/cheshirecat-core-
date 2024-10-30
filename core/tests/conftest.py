@@ -245,19 +245,20 @@ def march_hare_no_plugins(lizard):
 
 
 @pytest.fixture
-def mad_hatter(cheshire_cat):
-    mad_hatter = cheshire_cat.mad_hatter
-
-    # install plugin
-    new_plugin_zip_path = create_mock_plugin_zip(flat=True)
-    mad_hatter.install_plugin(new_plugin_zip_path)
-
-    yield mad_hatter
+def mad_hatter_no_plugins(cheshire_cat):
+    yield cheshire_cat.mad_hatter
 
 
 @pytest.fixture
-def mad_hatter_no_plugins(cheshire_cat):
-    yield cheshire_cat.mad_hatter
+def mad_hatter(mad_hatter_no_plugins):
+    # install plugin
+    new_plugin_zip_path = create_mock_plugin_zip(flat=True)
+    plugin_id = mad_hatter_no_plugins.march_hare.install_plugin(new_plugin_zip_path)
+
+    # activate the plugin within the Cheshire Cat whose Mad Hatter is being used
+    mad_hatter_no_plugins.toggle_plugin(plugin_id)
+
+    yield mad_hatter_no_plugins
 
 
 @pytest.fixture
@@ -276,7 +277,7 @@ def memory(client, cheshire_cat):
 
 
 @pytest.fixture
-def stray_no_memory(client, cheshire_cat) -> StrayCat:
+def stray_no_memory(client, cheshire_cat, lizard) -> StrayCat:
     stray_cat = StrayCat(
         user_data=AuthUserInfo(id="user_alice", name="Alice", permissions=get_base_permissions()),
         main_loop=asyncio.new_event_loop(),
@@ -287,7 +288,10 @@ def stray_no_memory(client, cheshire_cat) -> StrayCat:
 
     # install plugin
     new_plugin_zip_path = create_mock_plugin_zip(flat=True)
-    stray_cat.mad_hatter.install_plugin(new_plugin_zip_path)
+    plugin_id = lizard.march_hare.install_plugin(new_plugin_zip_path)
+
+    # activate the plugin within the Cheshire Cat whose Mad Hatter is being used
+    cheshire_cat.mad_hatter.toggle_plugin(plugin_id)
 
     yield stray_cat
 
@@ -321,8 +325,8 @@ def patch_time_now(monkeypatch):
 # this fixture will give test functions a ready instantiated plugin
 # (and having the `client` fixture, a clean setup every unit)
 @pytest.fixture
-def plugin(client, cheshire_cat):
-    p = Plugin(mock_plugin_path, cheshire_cat.id)
+def plugin(client):
+    p = Plugin(mock_plugin_path)
     yield p
 
 
