@@ -21,13 +21,13 @@ def rabbithole_instantiates_parsers(file_handlers: Dict, cat) -> Dict:
     Allows replacing or extending existing supported mime types and related parsers to customize the file ingestion.
 
     Args:
-        file_handlers : Dict
+        file_handlers: Dict
             Keys are the supported mime types and values are the related parsers.
-        cat : CheshireCat
+        cat: CheshireCat
             Cheshire Cat instance.
 
     Returns:
-        file_handlers : Dict
+        file_handlers: Dict
             Edited dictionary of supported mime types and related parsers.
     """
     return file_handlers
@@ -40,13 +40,13 @@ def rabbithole_instantiates_splitter(text_splitter: TextSplitter, cat) -> TextSp
     Allows replacing the default text splitter to customize the splitting process.
 
     Args:
-        text_splitter : TextSplitter
+        text_splitter: TextSplitter
             The text splitter used by default.
-        cat : CheshireCat
+        cat: CheshireCat
             Cheshire Cat instance.
 
     Returns:
-        text_splitter : TextSplitter
+        text_splitter: TextSplitter
             An instance of a TextSplitter subclass.
     """
 
@@ -65,13 +65,13 @@ def before_rabbithole_insert_memory(doc: Document, cat) -> Document:
     Allows editing and enhancing a single `Document` before the *RabbitHole* add it to the declarative vector memory.
 
     Args:
-        doc : Document
+        doc: Document
             Langchain `Document` to be inserted in memory.
-        cat : CheshireCat
-            Cheshire Cat instance.
+        cat: StrayCat
+            Stray Cat instance.
 
     Returns:
-        doc : Document
+        doc: Document
             Langchain `Document` that is added in the declarative vector memory.
 
     Notes
@@ -97,13 +97,13 @@ def before_rabbithole_splits_text(docs: List[Document], cat) -> List[Document]:
     For instance, the hook allows to change the text or edit/add metadata.
 
     Args:
-        docs : List[Document]
+        docs: List[Document]
             Langchain `Document`s resulted after parsing the file uploaded in the *RabbitHole*.
-        cat : CheshireCat
-            Cheshire Cat instance.
+        cat: StrayCat
+            Stray Cat instance.
 
     Returns:
-        docs : List[Document]
+        docs: List[Document]
             Edited Langchain `Document`s.
     """
 
@@ -119,13 +119,13 @@ def after_rabbithole_splitted_text(chunks: List[Document], cat) -> List[Document
     Allows editing the list of `Document` right after the *RabbitHole* chunked them in smaller ones.
 
     Args:
-        chunks : List[Document]
+        chunks: List[Document]
             List of Langchain `Document`.
-        cat : CheshireCat
-            Cheshire Cat instance.
+        cat: StrayCat
+            Stray Cat Cat instance.
 
     Returns:
-        chunks : List[Document]
+        chunks: List[Document]
             List of modified chunked langchain documents to be stored in the episodic memory.
     """
 
@@ -147,13 +147,13 @@ def before_rabbithole_stores_documents(docs: List[Document], cat) -> List[Docume
     An official plugin is available to test this procedure.
 
     Args:
-        docs : List[Document]
+        docs: List[Document]
             List of Langchain `Document` to be edited.
-        cat: CheshireCat
-            Cheshire Cat instance.
+        cat: StrayCat
+            Stray Cat instance.
 
     Returns:
-        docs : List[Document]
+        docs: List[Document]
             List of edited Langchain documents.
     """
 
@@ -169,9 +169,9 @@ def after_rabbithole_stored_documents(source, stored_points: List[PointStruct], 
     Args:
         source: str
             Name of ingested file/url
-        stored_points : List[PointStruct]
+        stored_points: List[PointStruct]
             List of Qdrant PointStruct just inserted into the db.
-        cat : CheshireCat
-            Cheshire Cat instance.
+        cat: StrayCat
+            Stray Cat instance.
     """
     pass

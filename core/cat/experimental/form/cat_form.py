@@ -80,7 +80,7 @@ JSON:
     "confirm": """
 
         # Queries the LLM and check if user is agree or not
-        response = self.cat.llm_response(confirm_prompt)
+        response = self.cat.llm(confirm_prompt)
         return "true" in response.lower()
 
     # Check if the user wants to exit the form
@@ -115,7 +115,7 @@ JSON:
     "exit": """
 
         # Queries the LLM and check if user is agree or not
-        response = self.cat.llm_response(check_exit_prompt)
+        response = self.cat.llm(check_exit_prompt)
         return "true" in response.lower()
 
     # Execute the dialogue step
@@ -213,7 +213,7 @@ JSON:
         prompt = self.extraction_prompt()
         log.debug(prompt)
 
-        json_str = self.cat.llm_response(prompt)
+        json_str = self.cat.llm(prompt)
 
         log.debug(f"Form JSON after parser:\n{json_str}")
 

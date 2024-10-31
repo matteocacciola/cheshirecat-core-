@@ -113,11 +113,8 @@ async def upload_file(
     ```
     """
 
-    ccat = cats.cheshire_cat
-
     # Check the file format is supported
-    file_handlers = ccat.file_handlers
-    admitted_types = file_handlers.keys()
+    admitted_types = cats.cheshire_cat.file_handlers.keys()
 
     # Get file mime type
     content_type = mimetypes.guess_type(file.filename)[0]
@@ -135,8 +132,6 @@ async def upload_file(
         # https://github.com/tiangolo/fastapi/discussions/10936
         request.app.state.lizard.rabbit_hole.ingest_file,
         cats.stray_cat,
-        file_handlers,
-        ccat.text_splitter,
         deepcopy(format_upload_file(file)),
         chunk_size=chunk_size,
         chunk_overlap=chunk_overlap,
@@ -219,11 +214,8 @@ async def upload_files(
     ```
     """
 
-    ccat = cats.cheshire_cat
-
     # Check the file format is supported
-    file_handlers = ccat.file_handlers
-    admitted_types = file_handlers.keys()
+    admitted_types = cats.cheshire_cat.file_handlers.keys()
     log.info(f"Uploading {len(files)} files")
 
     response = {}
@@ -246,8 +238,6 @@ async def upload_files(
             # https://github.com/tiangolo/fastapi/discussions/10936
             request.app.state.lizard.rabbit_hole.ingest_file,
             cats.stray_cat,
-            file_handlers,
-            ccat.text_splitter,
             deepcopy(format_upload_file(file)),
             chunk_size=chunk_size,
             chunk_overlap=chunk_overlap,
@@ -273,8 +263,6 @@ async def upload_url(
     """Upload an url. Website content will be extracted and segmented into chunks.
     Chunks will be then vectorized and stored into documents memory."""
 
-    ccat = cats.cheshire_cat
-
     # check that URL is valid
     try:
         # Send a HEAD request to the specified URL
@@ -288,8 +276,6 @@ async def upload_url(
             background_tasks.add_task(
                 request.app.state.lizard.rabbit_hole.ingest_file,
                 cats.stray_cat,
-                ccat.file_handlers,
-                ccat.text_splitter,
                 upload_config.url,
                 **upload_config.model_dump(exclude={"url"})
             )

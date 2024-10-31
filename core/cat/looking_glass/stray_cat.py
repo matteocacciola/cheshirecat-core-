@@ -25,7 +25,6 @@ from cat.exceptions import VectorMemoryError
 from cat.log import log
 from cat.looking_glass.callbacks import NewTokenHandler, ModelInteractionHandler
 from cat.looking_glass.white_rabbit import WhiteRabbit
-from cat.mad_hatter.mad_hatter import MadHatter
 from cat.mad_hatter.tweedledee import Tweedledee
 from cat.memory.long_term_memory import LongTermMemory
 from cat.memory.vector_memory_collection import VectoryMemoryCollectionTypes
@@ -104,9 +103,9 @@ class StrayCat:
         In case there is no connection the message is skipped and a warning is logged
 
         Args:
-            content : str
+            content: str
                 The content of the message.
-            msg_type : str
+            msg_type: str
                 The type of the message. Should be either `notification`, `chat`, `chat_token` or `error`
         """
 
@@ -265,7 +264,7 @@ class StrayCat:
         Recalled memories are stored in the working memory.
 
         Args:
-            query : str, optional
+            query: str, optional
                 The query used to make a similarity search in the Cat's vector memories. If not provided, the query
                 will be derived from the user's message.
 
@@ -350,9 +349,9 @@ class StrayCat:
         This method is useful for generating a response with both a chat and a completion model using the same syntax
 
         Args:
-            prompt : str
+            prompt: str
                 The prompt for generating the response.
-            stream : bool, optional
+            stream: bool, optional
                 Whether to stream the tokens or not.
 
         Returns:
@@ -381,7 +380,7 @@ class StrayCat:
         chain = (
             prompt
             | RunnableLambda(lambda x: utils.langchain_log_prompt(x, f"{caller} prompt"))
-            | self.cheshire_cat.llm
+            | self.cheshire_cat.large_language_model
             | RunnableLambda(lambda x: utils.langchain_log_output(x, f"{caller} prompt output"))
             | StrOutputParser()
         )
@@ -399,11 +398,11 @@ class StrayCat:
         This method is called on the user's message received from the client.
 
         Args:
-            user_message : UserMessage
+            user_message: UserMessage
                 Message received from the Websocket client.
 
         Returns:
-            final_output : CatMessage
+            final_output: CatMessage
                 Dictionary with the Cat's answer to be sent to the client.
 
         Notes
@@ -541,13 +540,13 @@ class StrayCat:
         """Classify a sentence.
 
         Args:
-            sentence : str
+            sentence: str
                 Sentence to be classified.
-            labels : List[str] or Dict[str, List[str]]
+            labels: List[str] or Dict[str, List[str]]
                 Possible output categories and optional examples.
 
         Returns:
-            label : str
+            label: str
                 Sentence category.
 
         Examples
@@ -674,20 +673,28 @@ Allowed classes are:
         return self.__agent_id
 
     @property
+    def lizard(self) -> BillTheLizard:
+        return BillTheLizard()
+
+    @property
     def cheshire_cat(self) -> "CheshireCat":
-        ccat = BillTheLizard().get_cheshire_cat(self.__agent_id)
+        ccat = self.lizard.get_cheshire_cat(self.__agent_id)
         if not ccat:
             raise ValueError(f"Cheshire Cat not found for the StrayCat {self.user.id}.")
 
         return ccat
 
     @property
-    def llm(self) -> BaseLanguageModel:
-        return self.cheshire_cat.llm
+    def large_language_model(self) -> BaseLanguageModel:
+        return self.cheshire_cat.large_language_model
+
+    @property
+    def _llm(self) -> BaseLanguageModel:
+        return self.large_language_model
 
     @property
     def embedder(self) -> Embeddings:
-        return BillTheLizard().embedder
+        return self.lizard.embedder
 
     @property
     def memory(self) -> LongTermMemory:
@@ -695,23 +702,23 @@ Allowed classes are:
 
     @property
     def rabbit_hole(self) -> RabbitHole:
-        return BillTheLizard().rabbit_hole
+        return self.lizard.rabbit_hole
 
     @property
     def plugin_manager(self) -> Tweedledee:
         return self.cheshire_cat.plugin_manager
 
     @property
-    def mad_hatter(self) -> MadHatter:
+    def mad_hatter(self) -> Tweedledee:
         return self.cheshire_cat.plugin_manager
 
     @property
     def main_agent(self) -> MainAgent:
-        return BillTheLizard().main_agent
+        return self.lizard.main_agent
 
     @property
     def white_rabbit(self) -> WhiteRabbit:
-        return BillTheLizard().white_rabbit
+        return self.lizard.white_rabbit
 
     @property
     def loop(self):
@@ -720,3 +727,13 @@ Allowed classes are:
     @property
     def is_idle(self) -> bool:
         return time.time() - self.__last_message_time >= float(get_env("CCAT_STRAYCAT_TIMEOUT"))
+
+    # each time we access the file handlers, plugins can intervene
+    @property
+    def file_handlers(self) -> Dict:
+        return self.cheshire_cat.file_handlers
+
+    # each time we access the text splitter, plugins can intervene
+    @property
+    def text_splitter(self):
+        return self.cheshire_cat.text_splitter

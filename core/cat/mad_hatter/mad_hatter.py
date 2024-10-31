@@ -5,6 +5,7 @@ import traceback
 from copy import deepcopy
 from typing import List, Dict
 
+from cat.db import models
 from cat.db.cruds import settings as crud_settings
 from cat.db.models import Setting
 from cat.log import log
@@ -76,27 +77,38 @@ class MadHatter(ABC):
 
         return active_plugins
 
-    def _deactivate_plugin(self, plugin_id: str):
+    def deactivate_plugin(self, plugin_id: str):
         # Execute hook on plugin deactivation
         # Deactivation hook must happen before actual deactivation,
         # otherwise the hook will not be available in _plugin_overrides anymore
-        for hook in self.plugins[plugin_id].plugin_overrides:
-            if hook.name == "deactivated":
+        if self.plugin_exists(plugin_id):
+            for hook in self.plugins[plugin_id].plugin_overrides:
+                if hook.name != "deactivated":
+                    continue
                 hook.function(self.plugins[plugin_id])
 
         # Remove the plugin from the list of active plugins
         self.active_plugins.remove(plugin_id)
+        crud_settings.upsert_setting_by_name(
+            self.agent_key, models.Setting(name="active_plugins", value=self.active_plugins)
+        )
 
     def _activate_plugin(self, plugin_id: str):
         # Execute hook on plugin activation
         # Activation hook must happen before actual activation,
         # otherwise the hook will still not be available in _plugin_overrides
+        if not self.plugin_exists(plugin_id):
+            return
+
         for hook in self.plugins[plugin_id].plugin_overrides:
             if hook.name == "activated":
                 hook.function(self.plugins[plugin_id])
 
         # Add the plugin in the list of active plugins
         self.active_plugins.append(plugin_id)
+        crud_settings.upsert_setting_by_name(
+            self.agent_key, models.Setting(name="active_plugins", value=self.active_plugins)
+        )
 
     def _on_finish_toggle_plugin(self):
         # update DB with list of active plugins, delete duplicate plugins
@@ -161,7 +173,6 @@ class MadHatter(ABC):
 
     # get plugin object (used from within a plugin)
     # TODO: should we allow to take directly another plugins' obj?
-    # TODO: throw exception if this method is called from outside the plugins folder
     def get_plugin(self):
         # who's calling?
         calling_frame = inspect.currentframe().f_back
@@ -170,6 +181,11 @@ class MadHatter(ABC):
         # Get the absolute and then relative path of the calling module's file
         abs_path = inspect.getabsfile(module)
         rel_path = os.path.relpath(abs_path)
+
+        # throw exception if this method is called from outside the plugins folder
+        if not rel_path.startswith(utils.get_plugins_path()):
+            raise Exception("get_plugin() can only be called from within a plugin")
+
         # Replace the root and get only the current plugin folder
         plugin_suffix = rel_path.replace(utils.get_plugins_path(), "")
         # Plugin's folder

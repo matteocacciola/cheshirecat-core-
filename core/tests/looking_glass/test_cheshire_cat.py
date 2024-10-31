@@ -12,14 +12,14 @@ from cat.factory.custom_llm import LLMDefault
 def test_main_modules_loaded(cheshire_cat):
     assert isinstance(cheshire_cat.plugin_manager, Tweedledee)
     assert isinstance(cheshire_cat.memory, LongTermMemory)
-    assert isinstance(cheshire_cat.llm, BaseLanguageModel)
+    assert isinstance(cheshire_cat.large_language_model, BaseLanguageModel)
     assert isinstance(cheshire_cat.embedder, Embeddings)
 
 
 def test_default_llm_loaded(llm, cheshire_cat):
     assert isinstance(llm, LLMDefault)
 
-    out = cheshire_cat.llm_response("Hey")
+    out = cheshire_cat.llm("Hey")
     assert "You did not configure a Language Model" in out
 
 

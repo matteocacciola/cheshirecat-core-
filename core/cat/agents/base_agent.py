@@ -24,11 +24,11 @@ class BaseAgent(ABC):
         """Execute the agents.
 
         Args:
-            stray : StrayCat
+            stray: StrayCat
                 StrayCat instance containing the working memory and the chat history.
 
         Returns:
-            agent_output : AgentOutput
+            agent_output: AgentOutput
                 Reply of the agent, instance of AgentOutput.
         """
 

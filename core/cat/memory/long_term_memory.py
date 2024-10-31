@@ -11,7 +11,7 @@ class LongTermMemory:
 
     Attributes
     ----------
-    vectors : VectorMemory
+    vectors: VectorMemory
         Vector Memory collection.
     """
 

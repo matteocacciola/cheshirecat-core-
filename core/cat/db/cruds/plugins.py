@@ -33,8 +33,8 @@ def delete_setting(agent_id: str, plugin_id: str) -> None:
 
 
 def destroy_all(agent_id: str) -> None:
-    crud.delete(format_key(agent_id, "*"))
+    crud.destroy(format_key(agent_id, "*"))
 
 
 def destroy_plugin(plugin_id: str) -> None:
-    crud.delete(format_key("*", plugin_id))
+    crud.destroy(format_key("*", plugin_id))

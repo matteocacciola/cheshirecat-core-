@@ -29,4 +29,5 @@ def delete(key: str, path: str | None = "$") -> None:
 
 
 def destroy(key: str) -> None:
-    get_db().delete(key)
+    for k in get_db().scan_iter(key):
+        get_db().delete(k)

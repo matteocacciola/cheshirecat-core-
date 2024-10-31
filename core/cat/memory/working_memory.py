@@ -87,13 +87,13 @@ class WorkingMemory(BaseModelDict):
         The methods append to the history key the last three conversation turns.
 
         Args
-            who : str
+            who: str
                 Who said the message. Can either be Role.Human or Role.AI.
-            message : str
+            message: str
                 The message said.
-            image : str, optional
+            image: str, optional
                 The image said. Default is None.
-            why : MessageWhy, optional
+            why: MessageWhy, optional
                 The reason why the message was said. Default is None.
         """
 

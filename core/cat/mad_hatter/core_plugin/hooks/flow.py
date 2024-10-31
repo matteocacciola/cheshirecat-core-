@@ -24,7 +24,7 @@ def before_cat_bootstrap(cat) -> None:
     This hook can be used to set or store variables to be propagated to subsequent loaded objects.
 
     Args:
-        cat : CheshireCat
+        cat: CheshireCat
             Cheshire Cat instance.
     """
     pass  # do nothing
@@ -44,7 +44,7 @@ def after_cat_bootstrap(cat) -> None:
     This can be used to set or store variables to be shared further in the pipeline.
 
     Args:
-        cat : CheshireCat
+        cat: CheshireCat
             Cheshire Cat instance.
     """
     pass  # do nothing
@@ -67,13 +67,13 @@ def before_cat_reads_message(user_message_json: Dict, cat) -> Dict:
         }
 
     Args:
-        user_message_json : Dict
+        user_message_json: Dict
             JSON dictionary with the message received from the chat.
-        cat : StrayCat
+        cat: StrayCat
             Stray Cat instance.
 
     Returns:
-        user_message_json : Dict
+        user_message_json: Dict
             Edited JSON dictionary that will be fed to the Cat.
 
     Notes
@@ -100,9 +100,9 @@ def cat_recall_query(user_message: str, cat) -> str:
     As a result, the retrieved context can be conditioned editing the user's message.
 
     Args:
-        user_message : str
+        user_message: str
             String with the text received from the user.
-        cat : StrayCat
+        cat: StrayCat
             Stray Cat instance to exploit the Cat's methods.
 
     Returns:
@@ -138,7 +138,7 @@ def before_cat_recalls_memories(cat) -> None:
     and stores it in the *Working Memory*.
 
     Args:
-        cat : StrayCat
+        cat: StrayCat
             Stray Cat instance.
 
     """
@@ -159,9 +159,9 @@ def before_cat_recalls_episodic_memories(episodic_recall_config: RecallSettings,
     It also returns the embedded query (embedding) and the conditions on recall (metadata).
 
     Args:
-        episodic_recall_config : Dict | RecallSettings
+        episodic_recall_config: Dict | RecallSettings
             Data needed to recall episodic memories
-        cat : StrayCat
+        cat: StrayCat
             Stray Cat instance.
 
     Returns:
@@ -186,9 +186,9 @@ def before_cat_recalls_declarative_memories(declarative_recall_config: RecallSet
     It also returns the embedded query (embedding) and the conditions on recall (metadata).
 
     Args:
-        declarative_recall_config : Dict | RecallSettings
+        declarative_recall_config: Dict | RecallSettings
             Data needed to recall declarative memories
-        cat : StrayCat
+        cat: StrayCat
             Stray Cat instance.
 
     Returns:
@@ -213,9 +213,9 @@ def before_cat_recalls_procedural_memories(procedural_recall_config: RecallSetti
     It also returns the embedded query (embedding) and the conditions on recall (metadata).
 
     Args:
-        procedural_recall_config : Dict | RecallSettings
+        procedural_recall_config: Dict | RecallSettings
             Data needed to recall tools from procedural memory
-        cat : StrayCat
+        cat: StrayCat
             Stray Cat instance.
 
     Returns:
@@ -235,7 +235,7 @@ def after_cat_recalls_memories(cat) -> None:
     and stores it in the *Working Memory*.
 
     Args:
-        cat : StrayCat
+        cat: StrayCat
             Stray Cat instance.
 
     """
@@ -252,13 +252,13 @@ def before_cat_sends_message(message: Dict, cat) -> Dict:
     This hook can be used to edit the message sent to the user or to add keys to the dictionary.
 
     Args:
-        message : Dict
+        message: Dict
             JSON dictionary to be sent to the WebSocket client.
-        cat : StrayCat
+        cat: StrayCat
             Stray Cat instance.
 
     Returns:
-        message : Dict
+        message: Dict
             Edited JSON dictionary with the Cat's answer.
 
     Notes
@@ -294,13 +294,13 @@ def before_cat_stores_episodic_memory(doc: Document, cat) -> Document:
     Allows editing and enhancing a single `Document` before the Cat add it to the episodic vector memory.
 
     Args:
-        doc : Document
+        doc: Document
             Langchain `Document` to be inserted in memory.
-        cat : StrayCat
+        cat: StrayCat
             Stray Cat instance.
 
     Returns:
-        doc : Document
+        doc: Document
             Langchain `Document` that is added in the episodic vector memory.
 
     Notes

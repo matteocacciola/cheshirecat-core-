@@ -79,7 +79,7 @@ class MainAgent(BaseAgent):
         Agent and inserted in the prompt.
 
         Args:
-            stray : StrayCat
+            stray: StrayCat
                 StrayCat instance containing the working memory and the chat history.
 
         Returns:
@@ -123,12 +123,12 @@ class MainAgent(BaseAgent):
         """Formats episodic memories to be inserted into the prompt.
 
         Args:
-            memory_docs : List[Tuple[Document, float, List[float], str]]
+            memory_docs: List[Tuple[Document, float, List[float], str]]
                 List of Langchain `Document` retrieved from the episodic memory, with the similarity score, the list of
                 embeddings and the id of the memory.
 
         Returns:
-            memory_content : str
+            memory_content: str
                 String of retrieved context from the episodic memory.
         """
 
@@ -167,12 +167,12 @@ class MainAgent(BaseAgent):
         Such context is placed in the `agent_prompt_prefix` in the place held by {declarative_memory}.
 
         Args:
-            memory_docs : List[Tuple[Document, float, List[float], str]]
+            memory_docs: List[Tuple[Document, float, List[float], str]]
                 List of Langchain `Document` retrieved from the episodic memory, with the similarity score, the list of
                 embeddings and the id of the memory.
 
         Returns:
-            memory_content : str
+            memory_content: str
                 String of retrieved context from the declarative memory.
         """
 

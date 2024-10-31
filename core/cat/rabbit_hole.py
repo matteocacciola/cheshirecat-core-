@@ -6,7 +6,6 @@ import httpx
 from typing import List, Dict
 from urllib.parse import urlparse
 from urllib.error import HTTPError
-from langchain_text_splitters import TextSplitter
 from starlette.datastructures import UploadFile
 from langchain.docstore.document import Document
 from langchain_community.document_loaders.parsers.generic import MimeTypeBasedParser
@@ -28,7 +27,7 @@ class RabbitHole:
         Args:
             ccat: CheshireCat
                 CheshireCat instance.
-            file : UploadFile
+            file: UploadFile
                 File object sent via `rabbithole/memory` hook.
 
         Notes
@@ -82,8 +81,6 @@ class RabbitHole:
     def ingest_file(
         self,
         stray,
-        file_handlers: Dict,
-        text_splitter: TextSplitter,
         file: str | UploadFile,
         chunk_size: int | None = None,
         chunk_overlap: int | None = None,
@@ -95,21 +92,16 @@ class RabbitHole:
         memory.
 
         Args:
-            stray : StrayCat
+            stray: StrayCat
                 StrayCat instance.
-            file_handlers : Dict
-                Dictionary of file handlers. It contains the supported file formats and the corresponding parser. The
-                dictionary is defined in the `CheshireCat` instance.
-            text_splitter : TextSplitter
-                TextSplitter instance. It is used to split the text in chunks. It is defined in the `CheshireCat` instance.
-            file : str, UploadFile
+            file: str, UploadFile
                 The file can be a path passed as a string or an `UploadFile` object if the document is ingested using the
                 `rabbithole` endpoint.
-            chunk_size : int
+            chunk_size: int
                 Number of tokens in each document chunk.
-            chunk_overlap : int
+            chunk_overlap: int
                 Number of overlapping tokens between consecutive chunks.
-            metadata : Dict
+            metadata: Dict
                 Metadata to be stored with each chunk.
 
         See Also:
@@ -122,14 +114,7 @@ class RabbitHole:
         """
 
         # split file into a list of docs
-        docs = self.file_to_docs(
-            stray=stray,
-            file_handlers=file_handlers,
-            text_splitter=text_splitter,
-            file=file,
-            chunk_size=chunk_size,
-            chunk_overlap=chunk_overlap
-        )
+        docs = self.file_to_docs(stray=stray, file=file, chunk_size=chunk_size, chunk_overlap=chunk_overlap)
         metadata = metadata or {}
 
         # store in memory
@@ -140,8 +125,6 @@ class RabbitHole:
     def file_to_docs(
         self,
         stray,
-        file_handlers: Dict,
-        text_splitter: TextSplitter,
         file: str | UploadFile,
         chunk_size: int | None = None,
         chunk_overlap: int | None = None
@@ -152,23 +135,18 @@ class RabbitHole:
         Hence, it loads it in memory and splits it in overlapped chunks of text.
 
         Args:
-            stray : StrayCat
+            stray: StrayCat
                 StrayCat instance.
-            file_handlers : Dict
-                Dictionary of file handlers. It contains the supported file formats and the corresponding parser. The
-                dictionary is defined in the `CheshireCat` instance.
-            text_splitter : TextSplitter
-                TextSplitter instance. It is used to split the text in chunks. It is defined in the `CheshireCat` instance.
-            file : str, UploadFile
+            file: str, UploadFile
                 The file can be either a string path if loaded programmatically, a FastAPI `UploadFile`
                 if coming from the `/rabbithole/` endpoint or a URL if coming from the `/rabbithole/web` endpoint.
-            chunk_size : int
+            chunk_size: int
                 Number of tokens in each document chunk.
-            chunk_overlap : int
+            chunk_overlap: int
                 Number of overlapping tokens between consecutive chunks.
 
         Returns:
-            docs : List[Document]
+            docs: List[Document]
                 List of Langchain `Document` of chunked text.
 
         Notes
@@ -221,8 +199,6 @@ class RabbitHole:
 
         return self.string_to_docs(
             stray=stray,
-            file_handlers=file_handlers,
-            text_splitter=text_splitter,
             file_bytes=file_bytes,
             source=source,
             content_type=content_type,
@@ -233,8 +209,6 @@ class RabbitHole:
     def string_to_docs(
         self,
         stray,
-        file_handlers: Dict,
-        text_splitter: TextSplitter,
         file_bytes: bytes,
         source: str = None,
         content_type: str = "text/plain",
@@ -247,26 +221,21 @@ class RabbitHole:
         Hence, loads it in memory and splits it in overlapped chunks of text.
 
         Args:
-            stray : StrayCat
+            stray: StrayCat
                 StrayCat instance.
-            file_handlers : Dict
-                Dictionary of file handlers. It contains the supported file formats and the corresponding parser. The
-                dictionary is defined in the `CheshireCat` instance.
-            text_splitter : TextSplitter
-                TextSplitter instance. It is used to split the text in chunks. It is defined in the `CheshireCat` instance.
-            file_bytes : bytes
+            file_bytes: bytes
                 The bytes to be converted.
             source: str
                 Source filename.
             content_type:
                 Mimetype of content.
-            chunk_size : int
+            chunk_size: int
                 Number of tokens in each document chunk.
-            chunk_overlap : int
+            chunk_overlap: int
                 Number of overlapping tokens between consecutive chunks.
 
         Returns:
-            docs : List[Document]
+            docs: List[Document]
                 List of Langchain `Document` of chunked text.
         """
 
@@ -275,7 +244,7 @@ class RabbitHole:
             data=file_bytes, mime_type=content_type, path=source
         )
         # Parser based on the mime type
-        parser = MimeTypeBasedParser(handlers=file_handlers)
+        parser = MimeTypeBasedParser(handlers=stray.file_handlers)
 
         # Parse the text
         stray.send_ws_message(
@@ -285,13 +254,7 @@ class RabbitHole:
 
         # Split
         stray.send_ws_message("Parsing completed. Now let's go with reading process...")
-        docs = self.__split_text(
-            stray=stray,
-            text_splitter=text_splitter,
-            text=super_docs,
-            chunk_size=chunk_size,
-            chunk_overlap=chunk_overlap,
-        )
+        docs = self.__split_text(stray=stray, text=super_docs, chunk_size=chunk_size, chunk_overlap=chunk_overlap)
         return docs
 
     def store_documents(
@@ -307,13 +270,13 @@ class RabbitHole:
         timestamp of insertion. Once done, the method notifies the client via Websocket connection.
 
         Args:
-            stray : StrayCat
+            stray: StrayCat
                 StrayCat instance.
-            docs : List[Document]
+            docs: List[Document]
                 List of Langchain `Document` to be inserted in the Cat's declarative memory.
-            source : str
+            source: str
                 Source name to be added as a metadata. It can be a file name or an URL.
-            metadata : Dict
+            metadata: Dict
                 Metadata to be stored with each chunk.
 
         See Also:
@@ -328,15 +291,13 @@ class RabbitHole:
         log.info(f"Preparing to memorize {len(docs)} vectors")
 
         ccat = stray.cheshire_cat
-
-        plugin_manager = ccat.plugin_manager
         embedder = ccat.embedder
         memory = ccat.memory
 
+        plugin_manager = stray.mad_hatter
+
         # hook the docs before they are stored in the vector memory
-        docs = plugin_manager.execute_hook(
-            "before_rabbithole_stores_documents", docs, cat=ccat
-        )
+        docs = plugin_manager.execute_hook("before_rabbithole_stores_documents", docs, cat=stray)
 
         metadata = metadata or {}
 
@@ -360,7 +321,7 @@ class RabbitHole:
             doc.metadata = {**doc.metadata, **{k: v for k, v in metadata.items()}}
 
             doc = plugin_manager.execute_hook(
-                "before_rabbithole_insert_memory", doc, cat=ccat
+                "before_rabbithole_insert_memory", doc, cat=stray
             )
             inserting_info = f"{d + 1}/{len(docs)}):    {doc.page_content}"
             if doc.page_content != "":
@@ -381,7 +342,7 @@ class RabbitHole:
 
         # hook the points after they are stored in the vector memory
         plugin_manager.execute_hook(
-            "after_rabbithole_stored_documents", source, stored_points, cat=ccat
+            "after_rabbithole_stored_documents", source, stored_points, cat=stray
         )
 
         # notify client
@@ -393,28 +354,24 @@ class RabbitHole:
 
         log.warning(f"Done uploading {source}")
 
-    def __split_text(
-        self, stray, text_splitter: TextSplitter, text: List[Document], chunk_size: int, chunk_overlap: int
-    ):
+    def __split_text(self, stray, text: List[Document], chunk_size: int, chunk_overlap: int):
         """Split text in overlapped chunks.
 
         This method splits the incoming text in overlapped  chunks of text. Other two hooks are available to edit the
         text before and after the split step.
 
         Args:
-            stray : StrayCat
+            stray: StrayCat
                 StrayCat instance.
-            text_splitter : TextSplitter
-                TextSplitter instance. It is used to split the text in chunks. It is defined in the `CheshireCat` instance.
-            text : List[Document]
+            text: List[Document]
                 Content of the loaded file.
-            chunk_size : int
+            chunk_size: int
                 Number of tokens in each document chunk.
-            chunk_overlap : int
+            chunk_overlap: int
                 Number of overlapping tokens between consecutive chunks.
 
         Returns:
-            docs : List[Document]
+            docs: List[Document]
                 List of split Langchain `Document`.
 
         See Also:
@@ -428,16 +385,14 @@ class RabbitHole:
         any modification.
         """
 
-        ccat = stray.cheshire_cat
-        plugin_manager = ccat.plugin_manager
+        plugin_manager = stray.mad_hatter
+        text_splitter = stray.text_splitter
 
         # do something on the text before it is split
-        text = plugin_manager.execute_hook(
-            "before_rabbithole_splits_text", text, cat=ccat
-        )
+        text = plugin_manager.execute_hook("before_rabbithole_splits_text", text, cat=stray)
 
         # hooks decide the test splitter (see @property .text_splitter)
-        # override chunk_size and chunk_overlap only if the request has those info
+        # override chunk_size and chunk_overlap only if the request has that info
         if chunk_size:
             text_splitter._chunk_size = chunk_size
         if chunk_overlap:
@@ -452,7 +407,7 @@ class RabbitHole:
 
         # do something on the text after it is split
         docs = plugin_manager.execute_hook(
-            "after_rabbithole_splitted_text", docs, cat=ccat
+            "after_rabbithole_splitted_text", docs, cat=stray
         )
 
         return docs

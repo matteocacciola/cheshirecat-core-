@@ -132,4 +132,4 @@ def get_user_by_credentials(key_id: str, username: str, password: str) -> Dict |
 
 
 def destroy_all(agent_id: str) -> None:
-    crud.delete(format_key(agent_id))
+    crud.destroy(format_key(agent_id))

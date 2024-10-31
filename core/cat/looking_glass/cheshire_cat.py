@@ -51,7 +51,7 @@ class CheshireCat:
         # bootstrap the Cat! ^._.^
         self.id = agent_id
 
-        self.llm: BaseLanguageModel | None = None
+        self.large_language_model: BaseLanguageModel | None = None
         self.memory: LongTermMemory | None = None
         self.custom_auth_handler: BaseAuthHandler | None = None
 
@@ -163,7 +163,7 @@ class CheshireCat:
         self.memory = None
         self.custom_auth_handler = None
         self.plugin_manager = None
-        self.llm = None
+        self.large_language_model = None
 
     def destroy(self):
         """Destroy all data from the cat."""
@@ -184,7 +184,7 @@ class CheshireCat:
         # Custom llm
         selected_config = FactoryAdapter(factory).get_factory_config_by_settings(self.id)
 
-        self.llm = factory.get_from_config_name(self.id, selected_config["value"]["name"])
+        self.large_language_model = factory.get_from_config_name(self.id, selected_config["value"]["name"])
 
     def load_auth(self):
         factory = AuthHandlerFactory(self.plugin_manager)
@@ -273,7 +273,7 @@ class CheshireCat:
 
     # REFACTOR: cat.llm should be available here, without streaming clearly
     # (one could be interested in calling the LLM anytime, not only when there is a session)
-    def llm_response(self, prompt, *args, **kwargs) -> str:
+    def llm(self, prompt, *args, **kwargs) -> str:
         """Generate a response using the LLM model.
 
         This method is useful for generating a response with both a chat and a completion model using the same syntax
@@ -294,7 +294,7 @@ class CheshireCat:
         chain = (
             prompt
             | RunnableLambda(lambda x: langchain_log_prompt(x, f"{caller} prompt"))
-            | self.llm
+            | self.large_language_model
             | RunnableLambda(lambda x: langchain_log_output(x, f"{caller} prompt output"))
             | StrOutputParser()
         )
@@ -382,6 +382,10 @@ class CheshireCat:
     @property
     def mad_hatter(self) -> MadHatter:
         return self.plugin_manager
+
+    @property
+    def _llm(self) -> MadHatter:
+        return self.large_language_model
 
     # each time we access the file handlers, plugins can intervene
     @property

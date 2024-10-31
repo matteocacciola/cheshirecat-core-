@@ -22,7 +22,7 @@ class CatLogEngine:
 
     Attributes
     ----------
-    LOG_LEVEL : str
+    LOG_LEVEL: str
         Level of logging set in the `.env` file.
 
     Notes
@@ -51,7 +51,7 @@ class CatLogEngine:
         """Allows to show stuff in the log based on the global setting.
 
         Args:
-            record : dict
+            record: dict
 
         Returns:
             bool
@@ -92,19 +92,19 @@ class CatLogEngine:
         Copied from: https://gist.github.com/techtonik/2151727
 
         Args:
-            skip :  int
+            skip:  int
                 Specifies how many levels of stack to skip while getting caller name.
 
         Returns:
-            package : str
+            package: str
                 Caller package.
-            module : str
+            module: str
                 Caller module.
-            klass : str
+            klass: str
                 Caller classname if one otherwise None.
-            caller : str
+            caller: str
                 Caller function or method (if a class exist).
-            line : int
+            line: int
                 The line of the call.
 
 
@@ -180,7 +180,7 @@ class CatLogEngine:
         Args:
             msg :
                 Message to be logged.
-            level : str
+            level: str
                 Logging level."""
 
         (package, module, klass, caller, line) = self.get_caller_info()

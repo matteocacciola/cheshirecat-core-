@@ -27,7 +27,7 @@ def settings_schema():
        `cat.mad_hatter.plugin.Plugin::settings_schema`
 
     Returns:
-        schema : Dict
+        schema: Dict
             JSON schema of the settings.
     """
 
@@ -45,7 +45,7 @@ def settings_model():
        `cat.mad_hatter.plugin.Plugin::settings_model`
 
     Returns:
-        model : class
+        model: class
             Pydantic model of the settings.
     """
 
@@ -63,7 +63,7 @@ def load_settings():
        It loads the settings from the Redis database.
 
     Returns:
-        settings : Dict
+        settings: Dict
             Settings.
     """
 
@@ -82,11 +82,11 @@ def save_settings(settings):
        It just saves contents into the Redis database
 
     Args:
-        settings : Dict
+        settings: Dict
             Settings to be saved.
 
     Returns:
-        settings : Dict
+        settings: Dict
             Saved settings.
     """
 

@@ -16,7 +16,7 @@ def before_agent_starts(agent_input: Dict, cat) -> Dict:
     Args:
         agent_input: Dict
             Input that is about to be passed to the agent.
-        cat : StrayCat
+        cat: StrayCat
             Stray Cat instance.
 
     Returns:
@@ -34,11 +34,11 @@ def agent_fast_reply(fast_reply: Dict, cat) -> Dict | None:
     Args:
         fast_reply: Dict
             Input is a dictionary (initially empty), which can be enriched with an "output" key with the shortcut response.
-        cat : StrayCat
+        cat: StrayCat
             Stray Cat instance.
 
     Returns:
-        response : Dict | None
+        response: Dict | None
             Cat response if you want to avoid using the agent, or None / {} if you want the agent to be executed.
             See below for examples of Cat response
 
@@ -77,13 +77,13 @@ def agent_allowed_tools(allowed_tools: List[str], cat) -> List[str]:
     and launch custom chains with `cat.llm`.
 
     Args:
-        allowed_tools : List[str]
+        allowed_tools: List[str]
             List of tools that are allowed to be used by the *
-        cat : StrayCat
+        cat: StrayCat
             Stray Cat instance.
 
     Returns:
-        tools : List[str]
+        tools: List[str]
             List of allowed Langchain tools.
     """
 

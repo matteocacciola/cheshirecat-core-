@@ -25,7 +25,7 @@ def to_camel_case(text: str) -> str:
     Takes a string of words separated by either hyphens or underscores and returns a string of words in camel case.
 
     Args:
-        text : str
+        text: str
             String of hyphens or underscores separated words.
 
     Returns:
@@ -45,7 +45,7 @@ def verbal_timedelta(td: timedelta) -> str:
     The function takes a timedelta and converts it to a human-readable string format.
 
     Args:
-        td : timedelta
+        td: timedelta
             Difference between two dates.
 
     Returns:

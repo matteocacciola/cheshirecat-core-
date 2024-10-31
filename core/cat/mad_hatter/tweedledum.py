@@ -54,11 +54,12 @@ class Tweedledum(MadHatter):
         # get plugin id (will be its folder name)
         plugin_id = os.path.basename(plugin_path)
 
-        # create plugin obj
-        self.__load_plugin(plugin_path)
+        if plugin_id != "core_plugin":
+            # create plugin obj
+            self.__load_plugin(plugin_path)
 
-        # activate it
-        self.toggle_plugin(plugin_id)
+            # activate it
+            self.toggle_plugin(plugin_id)
 
         # notify install has finished (the Lizard will ensure to notify the already loaded Cheshire Cats about the
         # plugin)
@@ -67,7 +68,7 @@ class Tweedledum(MadHatter):
         return plugin_id
 
     def uninstall_plugin(self, plugin_id: str):
-        if self.plugin_exists(plugin_id) and (plugin_id != "core_plugin"):
+        if self.plugin_exists(plugin_id) and plugin_id != "core_plugin":
             # deactivate plugin if it is active (will sync cache)
             if plugin_id in self.active_plugins:
                 self.toggle_plugin(plugin_id)
@@ -145,11 +146,12 @@ class Tweedledum(MadHatter):
 
         # update list of active plugins
         if plugin_is_active:
-            log.warning(f"Toggle plugin {plugin_id}: Deactivate")
-
             # Deactivate the plugin
-            self._deactivate_plugin(plugin_id)
-            self.plugins[plugin_id].deactivate(self.agent_key)
+            if plugin_id != "core_plugin":
+                log.warning(f"Toggle plugin {plugin_id}: Deactivate")
+
+                self.deactivate_plugin(plugin_id)
+                self.plugins[plugin_id].deactivate(self.agent_key)
         else:
             log.warning(f"Toggle plugin {plugin_id}: Activate")
 

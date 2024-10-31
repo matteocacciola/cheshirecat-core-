@@ -29,7 +29,7 @@ class Tweedledee(MadHatter):
     def find_plugins(self):
         # plugins are already loaded when BillTheLizard is created, since its plugin manager scans the plugins folder
         # then, we just need to grab the plugins from there
-        self.plugins = self.system_plugin_manager.plugins
+        self.plugins = self.system_plugin_manager.plugins.copy()
 
         self.active_plugins = self.load_active_plugins_from_db()
 
@@ -60,7 +60,7 @@ class Tweedledee(MadHatter):
         if plugin_is_active:
             log.warning(f"Toggle plugin {plugin_id}: Deactivate")
 
-            self._deactivate_plugin(plugin_id)
+            self.deactivate_plugin(plugin_id)
             self.plugins[plugin_id].deactivate_settings(self.agent_key)
         else:
             log.warning(f"Toggle plugin {plugin_id}: Activate")

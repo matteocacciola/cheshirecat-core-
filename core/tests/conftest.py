@@ -260,7 +260,7 @@ def embedder(lizard):
 
 @pytest.fixture
 def llm(cheshire_cat):
-    yield cheshire_cat.llm
+    yield cheshire_cat.large_language_model
 
 
 @pytest.fixture

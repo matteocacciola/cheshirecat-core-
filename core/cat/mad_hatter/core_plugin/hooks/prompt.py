@@ -18,13 +18,13 @@ def agent_prompt_prefix(prefix, cat) -> str:
     The prefix is then completed with the `agent_prompt_suffix`.
 
     Args:
-        prefix : str
+        prefix: str
             Main / System prompt with personality and general task to be accomplished.
-        cat : StrayCat
+        cat: StrayCat
             Stray Cat instance.
 
     Returns:
-        prefix : str
+        prefix: str
             Main / System prompt.
 
     Notes
@@ -42,13 +42,13 @@ def agent_prompt_instructions(instructions: str, cat) -> str:
     Allows to edit the instructions that the Cat feeds to the *Agent* to select tools and forms.
 
     Args:
-        instructions : str
+        instructions: str
             Instructions prompt to select tool or form.
-        cat : StrayCat
+        cat: StrayCat
             Stray Cat instance.
 
     Returns:
-        instructions : str
+        instructions: str
             Instructions prompt to select tool or form
 
     Notes
@@ -68,13 +68,13 @@ def agent_prompt_suffix(prompt_suffix: str, cat) -> str:
     The suffix is concatenated to `agent_prompt_prefix` when RAG context is used.
 
     Args:
-        prompt_suffix : str
+        prompt_suffix: str
             The suffix string to be concatenated to the *Main Prompt* (prefix
-        cat : StrayCat
+        cat: StrayCat
             Stray Cat instance.
 
     Returns:
-        prompt_suffix : str
+        prompt_suffix: str
             The suffix string to be concatenated to the *Main Prompt* (prefix).
 
     Notes

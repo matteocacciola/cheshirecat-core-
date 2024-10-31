@@ -35,4 +35,4 @@ def delete_history(agent_id: str, user_id: str) -> None:
 
 
 def destroy_all(agent_id: str) -> None:
-    crud.delete(format_key(agent_id, "*"))
+    crud.destroy(format_key(agent_id, "*"))

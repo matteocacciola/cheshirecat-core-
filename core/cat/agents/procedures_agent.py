@@ -134,7 +134,7 @@ class ProceduresAgent(BaseAgent):
         chain = (
             prompt
             | RunnableLambda(lambda x: utils.langchain_log_prompt(x, "TOOL PROMPT"))
-            | stray.cheshire_cat.llm
+            | stray.cheshire_cat.large_language_model
             | RunnableLambda(lambda x: utils.langchain_log_output(x, "TOOL PROMPT OUTPUT"))
             | ChooseProcedureOutputParser() # ensures output is a LLMAction
         )
