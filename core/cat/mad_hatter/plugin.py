@@ -76,19 +76,30 @@ class Plugin:
         except Exception as e:
             raise e
 
-        self.activate_settings(agent_id)
+        self.activate_settings(agent_id, False)
 
-    def activate_settings(self, agent_id: str):
+    def activate_settings(self, agent_id: str, incremental: bool = True):
         # load hooks and tools
         self._load_decorated_functions()
 
-        # by default, plugin settings are saved inside the Redis database
-        setting = crud_plugins.get_setting(agent_id, self._id)
+        if incremental:
+            # by default, plugin settings are saved inside the Redis database
+            current_setting = crud_plugins.get_setting(agent_id, self._id)
+            # the new setting coming from the model to be activated
+            new_setting = self._get_settings_from_model()
 
-        # try to create the setting into the Redis database
-        if not setting:
+            final_setting = {**new_setting, **current_setting} if new_setting else current_setting
+
+            incremental_setting = {
+                "new": {k: v for k, v in new_setting.items() if k not in current_setting},
+                "deprecated": {k: v for k, v in current_setting.items() if k not in new_setting},
+            }
+            log.info(f"Plugin {self._id} for agent {agent_id} incremental settings: {incremental_setting}")
+
+            # try to create the new incremental settings into the Redis database
+            crud_plugins.set_setting(agent_id, self._id, final_setting)
+        else:
             self._create_settings_from_model(agent_id)
-
         self._active = True
 
     def deactivate(self, agent_id: str):
@@ -174,25 +185,27 @@ class Plugin:
             traceback.print_exc()
             return {}
 
-    def _create_settings_from_model(self, agent_id: str) -> bool:
+    def _get_settings_from_model(self) -> Dict | None:
         try:
             model = self.settings_model()
             # if some settings have no default value this will raise a ValidationError
             settings = model().model_dump()
 
-            # If each field have a default value and the model is correct,
-            # create the settings with default values
-            crud_plugins.set_setting(agent_id, self._id, settings)
-            log.debug(
-                f"{self.id} have no settings, created with settings model default values"
-            )
-
-            return True
+            return settings
         except ValidationError:
-            log.debug(
-                f"{self.id} settings model have missing default values, no settings created"
-            )
+            return None
+
+    def _create_settings_from_model(self, agent_id: str) -> bool:
+        settings = self._get_settings_from_model()
+        if settings is None:
+            log.debug(f"{self.id} settings model have missing default values, no settings created")
             return False
+
+        # If each field have a default value and the model is correct, create the settings with default values
+        crud_plugins.set_setting(agent_id, self._id, settings)
+        log.debug(f"{self.id} have no settings, created with settings model default values")
+
+        return True
 
     def _load_manifest(self):
         plugin_json_metadata_file_name = "plugin.json"

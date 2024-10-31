@@ -150,6 +150,18 @@ class BaseFileManager(ABC):
             log.error(f"Error while transferring files from the old file manager to the new one: {e}")
             return False
 
+    def file_exists(self, file_path: str) -> bool:
+        """
+        Check if a file exists in the storage.
+
+        Args:
+            file_path: The path of the file to check
+
+        Returns:
+            True if the file exists, False otherwise
+        """
+        return file_path in self.list_files()
+
     def _build_destination_path_for_download(self, file_path: str, local_dir: str) -> str | None:
         rel_path = os.path.relpath(file_path, self.storage_dir)
         local_path = os.path.join(local_dir, rel_path)
