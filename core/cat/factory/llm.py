@@ -11,7 +11,7 @@ from langchain_cohere import ChatCohere
 from langchain_google_genai import ChatGoogleGenerativeAI
 from typing import Type, List, Dict
 import json
-from pydantic import BaseModel, ConfigDict
+from pydantic import ConfigDict
 
 from cat.factory.base_factory import BaseFactory, BaseConfigModel
 from cat.factory.custom_llm import LLMDefault, LLMCustom, CustomOpenAI, CustomOllama
@@ -299,7 +299,7 @@ class LLMFactory(BaseFactory):
             LLMDefaultConfig,
         ]
 
-        list_llms = self._march_hare.execute_hook(
+        list_llms = self._hook_manager.execute_hook(
             "factory_allowed_llms", list_llms_default, cat=None
         )
         return list_llms

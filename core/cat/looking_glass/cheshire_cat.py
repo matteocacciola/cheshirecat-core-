@@ -27,6 +27,7 @@ from cat.factory.custom_auth_handler import BaseAuthHandler
 from cat.factory.llm import LLMFactory
 from cat.log import log
 from cat.mad_hatter.mad_hatter import MadHatter
+from cat.mad_hatter.tweedledee import Tweedledee
 from cat.memory.long_term_memory import LongTermMemory
 from cat.utils import langchain_log_prompt, langchain_log_output, get_caller_info
 
@@ -56,14 +57,14 @@ class CheshireCat:
 
         self.__strays: set = set()  # set of StrayCat instances
 
-        # instantiate MadHatter (loads all plugins' hooks and tools)
-        self.mad_hatter = MadHatter(self.id)
+        # instantiate plugin manager (loads all plugins' hooks and tools)
+        self.plugin_manager = Tweedledee(self.id)
 
         # load AuthHandler
         self.load_auth()
 
         # allows plugins to do something before cat components are loaded
-        self.mad_hatter.execute_hook("before_cat_bootstrap", cat=self)
+        self.plugin_manager.execute_hook("before_cat_bootstrap", cat=self)
 
         # load LLM
         self.load_language_model()
@@ -72,8 +73,9 @@ class CheshireCat:
         self.load_memory()
 
         # After memory is loaded, we can get/create tools embeddings
-        # every time the mad_hatter finishes syncing hooks, tools and forms, it will notify the Cat (so it can embed tools in vector memory)
-        self.mad_hatter.on_finish_plugins_sync_callback = self.embed_procedures
+        # every time the plugin_manager finishes syncing hooks, tools and forms, it will notify the Cat (so it can
+        # embed tools in vector memory)
+        self.plugin_manager.on_finish_plugins_sync_callback = self.embed_procedures
         self.embed_procedures()  # first time launched manually
 
         # Initialize the default user if not present
@@ -81,7 +83,7 @@ class CheshireCat:
             self.__initialize_users()
 
         # allows plugins to do something after the cat bootstrap is complete
-        self.mad_hatter.execute_hook("after_cat_bootstrap", cat=self)
+        self.plugin_manager.execute_hook("after_cat_bootstrap", cat=self)
 
     def __eq__(self, other: "CheshireCat") -> bool:
         """Check if two cats are equal."""
@@ -160,7 +162,7 @@ class CheshireCat:
 
         self.memory = None
         self.custom_auth_handler = None
-        self.mad_hatter = None
+        self.plugin_manager = None
         self.llm = None
 
     def destroy(self):
@@ -177,7 +179,7 @@ class CheshireCat:
     def load_language_model(self):
         """Large Language Model (LLM) selection."""
 
-        factory = LLMFactory(self.mad_hatter)
+        factory = LLMFactory(self.plugin_manager)
 
         # Custom llm
         selected_config = FactoryAdapter(factory).get_factory_config_by_settings(self.id)
@@ -185,7 +187,7 @@ class CheshireCat:
         self.llm = factory.get_from_config_name(self.id, selected_config["value"]["name"])
 
     def load_auth(self):
-        factory = AuthHandlerFactory(self.mad_hatter)
+        factory = AuthHandlerFactory(self.plugin_manager)
 
         # Custom auth_handler
         selected_config = FactoryAdapter(factory).get_factory_config_by_settings(self.id)
@@ -230,14 +232,14 @@ class CheshireCat:
         embedded_procedures, _ = self.memory.vectors.procedural.get_all_points()
         embedded_procedures_hashes = {get_key_embedded_procedures_hashes(ep): ep.id for ep in embedded_procedures}
 
-        # Easy access to active procedures in mad_hatter (source of truth!)
+        # Easy access to active procedures in plugin_manager (source of truth!)
         active_procedures_hashes = {get_key_active_procedures_hashes(ap, trigger_type, trigger_content): {
             "obj": ap,
             "source": ap.name,
             "type": ap.procedure_type,
             "trigger_type": trigger_type,
             "content": trigger_content,
-        } for ap in self.mad_hatter.procedures for trigger_type, trigger_list in ap.triggers_map.items() for
+        } for ap in self.plugin_manager.procedures for trigger_type, trigger_list in ap.triggers_map.items() for
             trigger_content in trigger_list}
 
         # points_to_be_kept = set(active_procedures_hashes.keys()) and set(embedded_procedures_hashes.keys()) not necessary
@@ -311,7 +313,7 @@ class CheshireCat:
             The dictionary resuming the new name and settings of the LLM
         """
 
-        adapter = FactoryAdapter(LLMFactory(self.mad_hatter))
+        adapter = FactoryAdapter(LLMFactory(self.plugin_manager))
         updater = adapter.upsert_factory_config_by_settings(self.id, language_model_name, settings)
 
         try:
@@ -329,7 +331,7 @@ class CheshireCat:
             raise e
 
         # recreate tools embeddings
-        self.mad_hatter.find_plugins()
+        self.plugin_manager.find_plugins()
 
         return ReplacedNLPConfig(name=language_model_name, value=updater.new_setting["value"])
 
@@ -345,7 +347,7 @@ class CheshireCat:
         """
 
         updater = FactoryAdapter(
-            AuthHandlerFactory(self.mad_hatter)
+            AuthHandlerFactory(self.plugin_manager)
         ).upsert_factory_config_by_settings(self.id, auth_handler_name, settings)
 
         self.load_auth()
@@ -377,6 +379,10 @@ class CheshireCat:
     def main_agent(self) -> "MainAgent":
         return self.lizard.main_agent
 
+    @property
+    def mad_hatter(self) -> MadHatter:
+        return self.plugin_manager
+
     # each time we access the file handlers, plugins can intervene
     @property
     def file_handlers(self) -> Dict:
@@ -389,7 +395,7 @@ class CheshireCat:
         }
 
         # no access to stray
-        file_handlers = self.mad_hatter.execute_hook(
+        file_handlers = self.plugin_manager.execute_hook(
             "rabbithole_instantiates_parsers", file_handlers, cat=self
         )
 
@@ -409,7 +415,7 @@ class CheshireCat:
         )
 
         # no access to stray
-        text_splitter = self.mad_hatter.execute_hook(
+        text_splitter = self.plugin_manager.execute_hook(
             "rabbithole_instantiates_splitter", text_splitter, cat=self
         )
         return text_splitter

@@ -7,7 +7,7 @@ from tests.utils import create_new_user, new_user_password, agent_id
 
 
 def test_get_all_llm_settings(secure_client, secure_client_headers, cheshire_cat):
-    llms_schemas = LLMFactory(cheshire_cat.mad_hatter).get_schemas()
+    llms_schemas = LLMFactory(cheshire_cat.plugin_manager).get_schemas()
 
     response = secure_client.get("/llm/settings", headers=secure_client_headers)
     json = response.json()

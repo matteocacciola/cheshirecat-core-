@@ -7,7 +7,7 @@ import cat.utils as utils
 
 
 def test_get_all_plugin_filemanager_settings(secure_client, secure_client_headers, lizard):
-    filemanager_schemas = PluginFileManagerFactory(lizard.march_hare).get_schemas()
+    filemanager_schemas = PluginFileManagerFactory(lizard.plugin_manager).get_schemas()
     response = secure_client.get("/plugin_filemanager/settings", headers=secure_client_headers)
     json = response.json()
 

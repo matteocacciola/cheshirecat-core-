@@ -50,7 +50,7 @@ async def destroy_collections(
     to_return = {str(c): ccat.memory.vectors.collections[str(c)].destroy() for c in VectoryMemoryCollectionTypes}
 
     ccat.load_memory()  # recreate the long term memories
-    ccat.mad_hatter.find_plugins()
+    ccat.plugin_manager.find_plugins()
 
     return WipeCollectionsResponse(deleted=to_return)
 
@@ -71,6 +71,6 @@ async def destroy_single_collection(
     ret = ccat.memory.vectors.collections[collection_id].destroy()
 
     ccat.load_memory()  # recreate the long term memories
-    ccat.mad_hatter.find_plugins()
+    ccat.plugin_manager.find_plugins()
 
     return WipeCollectionsResponse(deleted={collection_id: ret})

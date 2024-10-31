@@ -21,7 +21,8 @@ from cat.jobs import job_on_idle_strays
 from cat.log import log
 from cat.looking_glass.cheshire_cat import CheshireCat
 from cat.looking_glass.white_rabbit import WhiteRabbit
-from cat.mad_hatter.march_hare import MarchHare
+from cat.mad_hatter.mad_hatter import MadHatter
+from cat.mad_hatter.tweedledum import Tweedledum
 from cat.rabbit_hole import RabbitHole
 from cat.utils import singleton
 
@@ -64,7 +65,7 @@ class BillTheLizard:
             lambda: job_on_idle_strays(self, asyncio.new_event_loop()), second=int(get_env("CCAT_STRAYCAT_TIMEOUT"))
         )
 
-        self.march_hare = MarchHare()
+        self.plugin_manager = Tweedledum()
 
         # load embedder
         self.load_language_embedder()
@@ -80,8 +81,8 @@ class BillTheLizard:
         # Main agent instance (for reasoning)
         self.main_agent = MainAgent()
 
-        self.march_hare.on_finish_plugin_install_callback = self.notify_plugin_installed
-        self.march_hare.on_finish_plugin_uninstall_callback = self.clean_up_plugin_uninstall
+        self.plugin_manager.on_finish_plugin_install_callback = self.notify_plugin_installed
+        self.plugin_manager.on_finish_plugin_uninstall_callback = self.clean_up_plugin_uninstall
 
         # Initialize the default admin if not present
         if not crud_users.get_users(self.__key):
@@ -95,7 +96,7 @@ class BillTheLizard:
 
         for ccat in self.__cheshire_cats.values():
             # inform the Cheshire Cats about the new plugin available in the system
-            ccat.mad_hatter.find_plugins()
+            ccat.plugin_manager.find_plugins()
 
     def clean_up_plugin_uninstall(self, plugin_id: str):
         """
@@ -109,7 +110,7 @@ class BillTheLizard:
         crud_plugins.destroy_plugin(plugin_id)
         for ccat in self.__cheshire_cats.values():
             # deactivate plugins in the Cheshire Cats
-            ccat.mad_hatter.toggle_plugin(plugin_id)
+            ccat.plugin_manager.toggle_plugin(plugin_id)
 
     def __initialize_users(self):
         admin_id = str(uuid4())
@@ -129,7 +130,7 @@ class BillTheLizard:
         Hook into the embedder selection. Allows to modify how the Lizard selects the embedder at bootstrap time.
         """
 
-        factory = EmbedderFactory(self.march_hare)
+        factory = EmbedderFactory(self.plugin_manager)
 
         selected_config = FactoryAdapter(factory).get_factory_config_by_settings(self.__key)
 
@@ -141,7 +142,7 @@ class BillTheLizard:
         bootstrap time.
         """
 
-        factory = PluginFileManagerFactory(self.march_hare)
+        factory = PluginFileManagerFactory(self.plugin_manager)
 
         selected_config = FactoryAdapter(factory).get_factory_config_by_settings(self.__key)
 
@@ -159,7 +160,7 @@ class BillTheLizard:
             The dictionary resuming the new name and settings of the embedder
         """
 
-        adapter = FactoryAdapter(EmbedderFactory(self.march_hare))
+        adapter = FactoryAdapter(EmbedderFactory(self.plugin_manager))
         updater = adapter.upsert_factory_config_by_settings(self.__key, language_embedder_name, settings)
 
         # reload the embedder of the lizard
@@ -181,7 +182,7 @@ class BillTheLizard:
                 raise LoadMemoryException(f"Load memory exception: {utils.explicit_error_message(e)}")
 
         # recreate tools embeddings
-        self.march_hare.find_plugins()
+        self.plugin_manager.find_plugins()
 
         return ReplacedNLPConfig(name=language_embedder_name, value=updater.new_setting["value"])
 
@@ -198,7 +199,7 @@ class BillTheLizard:
             The dictionary resuming the new name and settings of the plugin file manager
         """
 
-        adapter = FactoryAdapter(PluginFileManagerFactory(self.march_hare))
+        adapter = FactoryAdapter(PluginFileManagerFactory(self.plugin_manager))
         updater = adapter.upsert_factory_config_by_settings(self.__key, plugin_filemanager_name, settings)
 
         try:
@@ -293,7 +294,7 @@ class BillTheLizard:
 
         self.white_rabbit = None
         self.core_auth_handler = None
-        self.march_hare = None
+        self.plugin_manager = None
         self.rabbit_hole = None
         self.main_agent = None
         self.embedder = None
@@ -314,3 +315,7 @@ class BillTheLizard:
     @property
     def job_ids(self) -> List:
         return [self.__check_idle_strays_job_id]
+
+    @property
+    def mad_hatter(self) -> MadHatter:
+        return self.plugin_manager

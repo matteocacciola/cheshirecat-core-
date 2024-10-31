@@ -1,7 +1,7 @@
 from abc import ABC
 from typing import Type, List, Dict
 from langchain_core.embeddings import Embeddings
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import ConfigDict, Field
 from langchain_cohere import CohereEmbeddings
 from langchain_community.embeddings import FakeEmbeddings, FastEmbedEmbeddings
 from langchain_openai import OpenAIEmbeddings, AzureOpenAIEmbeddings
@@ -186,7 +186,7 @@ class EmbedderFactory(BaseFactory):
             EmbedderFakeConfig,
         ]
 
-        list_embedder = self._march_hare.execute_hook(
+        list_embedder = self._hook_manager.execute_hook(
             "factory_allowed_embedders", list_embedder_default, cat=None
         )
         return list_embedder

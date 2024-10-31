@@ -87,7 +87,7 @@ async def recall_memory_points_from_text(
         build_memory_dict(metadata, score, vector, id) for metadata, score, vector, id in get_memories(c)
     ] for c in VectoryMemoryCollectionTypes}
 
-    config_class = EmbedderFactory(ccat.mad_hatter).get_config_class_from_adapter(ccat.embedder.__class__)
+    config_class = EmbedderFactory(ccat.plugin_manager).get_config_class_from_adapter(ccat.embedder.__class__)
 
     return RecallResponse(
         query=RecallResponseQuery(text=text, vector=query_embedding),

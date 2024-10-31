@@ -64,10 +64,10 @@ class ProceduresAgent(BaseAgent):
             AgentOutput instance
         """
 
-        mad_hatter = stray.cheshire_cat.mad_hatter
+        plugin_manager = stray.cheshire_cat.plugin_manager
 
         # get procedures prompt from plugins
-        procedures_prompt_template = mad_hatter.execute_hook(
+        procedures_prompt_template = plugin_manager.execute_hook(
             "agent_prompt_instructions", prompts.TOOL_PROMPT, cat=stray
         )
 
@@ -78,12 +78,12 @@ class ProceduresAgent(BaseAgent):
                 "description", "start_example"
             ]
         }
-        recalled_procedures_names = mad_hatter.execute_hook(
+        recalled_procedures_names = plugin_manager.execute_hook(
             "agent_allowed_tools", recalled_procedures_names, cat=stray
         )
 
         # Prepare allowed procedures (tools instances and form classes)
-        allowed_procedures = {p.name: p for p in mad_hatter.procedures if p.name in recalled_procedures_names}
+        allowed_procedures = {p.name: p for p in plugin_manager.procedures if p.name in recalled_procedures_names}
 
         # Execute chain and obtain a choice of procedure from the LLM
         llm_action = await self.execute_chain(stray, procedures_prompt_template, allowed_procedures)

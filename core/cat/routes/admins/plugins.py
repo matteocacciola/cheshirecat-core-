@@ -36,7 +36,7 @@ async def get_lizard_available_plugins(
 ) -> GetAvailablePluginsResponse:
     """List available plugins"""
 
-    return await get_available_plugins(lizard.march_hare, query)
+    return await get_available_plugins(lizard.plugin_manager, query)
 
 
 @router.post("/upload", response_model=InstallPluginResponse)
@@ -58,7 +58,7 @@ async def install_plugin(
     async with aiofiles.open(plugin_archive_path, "wb+") as f:
         content = await file.read()
         await f.write(content)
-    lizard.march_hare.install_plugin(plugin_archive_path)
+    lizard.plugin_manager.install_plugin(plugin_archive_path)
 
     return InstallPluginResponse(
         filename=file.filename,
@@ -77,7 +77,7 @@ async def install_plugin_from_registry(
     # download zip from registry
     try:
         tmp_plugin_path = await registry_download_plugin(payload["url"])
-        lizard.march_hare.install_plugin(tmp_plugin_path)
+        lizard.plugin_manager.install_plugin(tmp_plugin_path)
     except Exception as e:
         raise CustomValidationException(f"Could not download plugin form registry: {e}")
 
@@ -90,7 +90,7 @@ async def get_lizard_plugins_settings(
 ) -> PluginsSettingsResponse:
     """Returns the default settings of all the plugins"""
 
-    return get_plugins_settings(lizard.march_hare, lizard.config_key)
+    return get_plugins_settings(lizard.plugin_manager, lizard.config_key)
 
 
 @router.get("/settings/{plugin_id}", response_model=GetSettingResponse)
@@ -100,7 +100,7 @@ async def get_lizard_plugin_settings(
 ) -> GetSettingResponse:
     """Returns the default settings of a specific plugin"""
 
-    return get_plugin_settings(lizard.march_hare, plugin_id, lizard.config_key)
+    return get_plugin_settings(lizard.plugin_manager, plugin_id, lizard.config_key)
 
 
 @router.get("/{plugin_id}", response_model=GetPluginDetailsResponse)
@@ -110,12 +110,12 @@ async def get_plugin_details(
 ) -> GetPluginDetailsResponse:
     """Returns information on a single plugin, at a system level"""
 
-    if not lizard.march_hare.plugin_exists(plugin_id):
+    if not lizard.plugin_manager.plugin_exists(plugin_id):
         raise CustomNotFoundException("Plugin not found")
 
-    active_plugins = lizard.march_hare.load_active_plugins_from_db()
+    active_plugins = lizard.plugin_manager.load_active_plugins_from_db()
 
-    plugin = lizard.march_hare.plugins[plugin_id]
+    plugin = lizard.plugin_manager.plugins[plugin_id]
 
     # get manifest and active True/False. We make a copy to avoid modifying the original obj
     plugin_info = deepcopy(plugin.manifest)
@@ -135,10 +135,10 @@ async def delete_plugin(
 ) -> DeletePluginResponse:
     """Physically remove plugin at a system level."""
 
-    if not lizard.march_hare.plugin_exists(plugin_id):
+    if not lizard.plugin_manager.plugin_exists(plugin_id):
         raise CustomNotFoundException("Plugin not found")
 
     # remove folder, hooks and tools
-    lizard.march_hare.uninstall_plugin(plugin_id)
+    lizard.plugin_manager.uninstall_plugin(plugin_id)
 
     return DeletePluginResponse(deleted=plugin_id)

@@ -28,7 +28,7 @@ async def get_cheshirecat_available_plugins(
 ) -> GetAvailablePluginsResponse:
     """List available plugins"""
 
-    return await get_available_plugins(cats.cheshire_cat.mad_hatter, query)
+    return await get_available_plugins(cats.cheshire_cat.plugin_manager, query)
 
 
 @router.put("/toggle/{plugin_id}", status_code=200, response_model=TogglePluginResponse)
@@ -42,11 +42,11 @@ async def toggle_plugin(
     ccat = cats.cheshire_cat
 
     # check if plugin exists
-    if not ccat.mad_hatter.plugin_exists(plugin_id):
+    if not ccat.plugin_manager.plugin_exists(plugin_id):
         raise CustomNotFoundException("Plugin not found")
 
     # toggle plugin
-    ccat.mad_hatter.toggle_plugin(plugin_id)
+    ccat.plugin_manager.toggle_plugin(plugin_id)
     return TogglePluginResponse(info=f"Plugin {plugin_id} toggled")
 
 
@@ -56,7 +56,7 @@ async def get_cheshirecat_plugins_settings(
 ) -> PluginsSettingsResponse:
     """Returns the settings of all the plugins"""
 
-    return get_plugins_settings(cats.cheshire_cat.mad_hatter, cats.cheshire_cat.id)
+    return get_plugins_settings(cats.cheshire_cat.plugin_manager, cats.cheshire_cat.id)
 
 
 @router.get("/settings/{plugin_id}", response_model=GetSettingResponse)
@@ -66,7 +66,7 @@ async def get_cheshirecat_plugin_settings(
 ) -> GetSettingResponse:
     """Returns the settings of a specific plugin"""
 
-    return get_plugin_settings(cats.cheshire_cat.mad_hatter, plugin_id, cats.cheshire_cat.id)
+    return get_plugin_settings(cats.cheshire_cat.plugin_manager, plugin_id, cats.cheshire_cat.id)
 
 
 @router.put("/settings/{plugin_id}", response_model=GetSettingResponse)
@@ -80,11 +80,11 @@ async def upsert_cheshirecat_plugin_settings(
     # access cat instance
     ccat = cats.cheshire_cat
 
-    if not ccat.mad_hatter.plugin_exists(plugin_id):
+    if not ccat.plugin_manager.plugin_exists(plugin_id):
         raise CustomNotFoundException("Plugin not found")
 
     # Get the plugin object
-    plugin = ccat.mad_hatter.plugins[plugin_id]
+    plugin = ccat.plugin_manager.plugins[plugin_id]
 
     try:
         # Load the plugin settings Pydantic model

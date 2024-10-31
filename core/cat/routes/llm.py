@@ -20,7 +20,7 @@ def get_llms_settings(
     """Get the list of the Large Language Models"""
 
     ccat = cats.cheshire_cat
-    factory = LLMFactory(ccat.mad_hatter)
+    factory = LLMFactory(ccat.plugin_manager)
 
     # get selected LLM, if any
     selected = crud_settings.get_setting_by_name(ccat.id, factory.setting_name)
@@ -47,7 +47,7 @@ def get_llm_settings(
     """Get settings and scheme of the specified Large Language Model"""
 
     ccat = cats.cheshire_cat
-    llm_schemas = LLMFactory(ccat.mad_hatter).get_schemas()
+    llm_schemas = LLMFactory(ccat.plugin_manager).get_schemas()
 
     # check that language_model_name is a valid name
     allowed_configurations = list(llm_schemas.keys())
@@ -71,7 +71,7 @@ def upsert_llm_setting(
     """Upsert the Large Language Model setting"""
 
     ccat = cats.cheshire_cat
-    llm_schemas = LLMFactory(ccat.mad_hatter).get_schemas()
+    llm_schemas = LLMFactory(ccat.plugin_manager).get_schemas()
 
     # check that language_model_name is a valid name
     allowed_configurations = list(llm_schemas.keys())

@@ -2,9 +2,9 @@ from abc import ABC, abstractmethod
 from typing import Type, List, Dict, Any
 from pydantic import BaseModel
 
-from cat.log import log
-from cat.mad_hatter.march_hare import MarchHare
 from cat.db.cruds import settings as crud_settings
+from cat.log import log
+from cat.mad_hatter.mad_hatter import MadHatter
 
 
 class ReplacedNLPConfig(BaseModel):
@@ -32,8 +32,8 @@ class BaseConfigModel(ABC, BaseModel):
 
 
 class BaseFactory(ABC):
-    def __init__(self, march_hare: MarchHare):
-        self._march_hare = march_hare
+    def __init__(self, hook_manager: MadHatter):
+        self._hook_manager = hook_manager
 
     def get_config_class_from_adapter(self, cls: Type) -> Type[BaseModel] | None:
         return next(

@@ -7,8 +7,8 @@ from cat.factory.auth_handler import AuthHandlerFactory
 from tests.utils import api_key, api_key_ws
 
 
-def test_get_all_auth_handler_settings(secure_client, secure_client_headers, mad_hatter):
-    auth_handler_schemas = AuthHandlerFactory(mad_hatter).get_schemas()
+def test_get_all_auth_handler_settings(secure_client, secure_client_headers, agent_plugin_manager):
+    auth_handler_schemas = AuthHandlerFactory(agent_plugin_manager).get_schemas()
     response = secure_client.get("/auth_handler/settings", headers=secure_client_headers)
     json = response.json()
 

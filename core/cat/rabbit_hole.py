@@ -329,12 +329,12 @@ class RabbitHole:
 
         ccat = stray.cheshire_cat
 
-        mad_hatter = ccat.mad_hatter
+        plugin_manager = ccat.plugin_manager
         embedder = ccat.embedder
         memory = ccat.memory
 
         # hook the docs before they are stored in the vector memory
-        docs = mad_hatter.execute_hook(
+        docs = plugin_manager.execute_hook(
             "before_rabbithole_stores_documents", docs, cat=ccat
         )
 
@@ -359,7 +359,7 @@ class RabbitHole:
             # add custom metadata (sent via endpoint)
             doc.metadata = {**doc.metadata, **{k: v for k, v in metadata.items()}}
 
-            doc = mad_hatter.execute_hook(
+            doc = plugin_manager.execute_hook(
                 "before_rabbithole_insert_memory", doc, cat=ccat
             )
             inserting_info = f"{d + 1}/{len(docs)}):    {doc.page_content}"
@@ -380,7 +380,7 @@ class RabbitHole:
             time.sleep(0.05)
 
         # hook the points after they are stored in the vector memory
-        mad_hatter.execute_hook(
+        plugin_manager.execute_hook(
             "after_rabbithole_stored_documents", source, stored_points, cat=ccat
         )
 
@@ -429,10 +429,10 @@ class RabbitHole:
         """
 
         ccat = stray.cheshire_cat
-        mad_hatter = ccat.mad_hatter
+        plugin_manager = ccat.plugin_manager
 
         # do something on the text before it is split
-        text = mad_hatter.execute_hook(
+        text = plugin_manager.execute_hook(
             "before_rabbithole_splits_text", text, cat=ccat
         )
 
@@ -451,7 +451,7 @@ class RabbitHole:
         docs = list(filter(lambda d: len(d.page_content) > 10, docs))
 
         # do something on the text after it is split
-        docs = mad_hatter.execute_hook(
+        docs = plugin_manager.execute_hook(
             "after_rabbithole_splitted_text", docs, cat=ccat
         )
 

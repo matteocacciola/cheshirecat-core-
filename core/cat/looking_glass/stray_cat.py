@@ -26,6 +26,7 @@ from cat.log import log
 from cat.looking_glass.callbacks import NewTokenHandler, ModelInteractionHandler
 from cat.looking_glass.white_rabbit import WhiteRabbit
 from cat.mad_hatter.mad_hatter import MadHatter
+from cat.mad_hatter.tweedledee import Tweedledee
 from cat.memory.long_term_memory import LongTermMemory
 from cat.memory.vector_memory_collection import VectoryMemoryCollectionTypes
 from cat.memory.working_memory import WorkingMemory
@@ -287,8 +288,8 @@ class StrayCat:
         recall_query = query if query is not None else self.working_memory.user_message_json.text
 
         # We may want to search in memory
-        mad_hatter = cheshire_cat.mad_hatter
-        recall_query = mad_hatter.execute_hook(
+        plugin_manager = self.plugin_manager
+        recall_query = plugin_manager.execute_hook(
             "cat_recall_query", recall_query, cat=self
         )
         log.info(f"Recall query: '{recall_query}'")
@@ -307,22 +308,22 @@ class StrayCat:
         )
 
         # hook to do something before recall begins
-        mad_hatter.execute_hook("before_cat_recalls_memories", cat=self)
+        plugin_manager.execute_hook("before_cat_recalls_memories", cat=self)
 
         # Setting default recall configs for each memory
         # hooks to change recall configs for each memory
         recall_configs = [
-            mad_hatter.execute_hook(
+            plugin_manager.execute_hook(
                 "before_cat_recalls_episodic_memories",
                 RecallSettings(embedding=recall_query_embedding, metadata={"source": self.user.id}),
                 cat=self,
             ),
-            mad_hatter.execute_hook(
+            plugin_manager.execute_hook(
                 "before_cat_recalls_declarative_memories",
                 RecallSettings(embedding=recall_query_embedding),
                 cat=self,
             ),
-            mad_hatter.execute_hook(
+            plugin_manager.execute_hook(
                 "before_cat_recalls_procedural_memories",
                 RecallSettings(embedding=recall_query_embedding),
                 cat=self,
@@ -341,7 +342,7 @@ class StrayCat:
             )
 
         # hook to modify/enrich retrieved memories
-        mad_hatter.execute_hook("after_cat_recalls_memories", cat=self)
+        plugin_manager.execute_hook("after_cat_recalls_memories", cat=self)
 
     def llm_response(self, prompt: str, stream: bool = False) -> str:
         """Generate a response using the LLM model.
@@ -422,9 +423,8 @@ class StrayCat:
         self.working_memory.model_interactions = []
 
         # hook to modify/enrich user input
-        cheshire_cat = self.cheshire_cat
-        mad_hatter = cheshire_cat.mad_hatter
-        self.working_memory.user_message_json = mad_hatter.execute_hook(
+        plugin_manager = self.plugin_manager
+        self.working_memory.user_message_json = plugin_manager.execute_hook(
             "before_cat_reads_message", self.working_memory.user_message_json, cat=self
         )
 
@@ -476,12 +476,13 @@ class StrayCat:
             page_content=user_message_text,
             metadata={"source": self.user.id, "when": time.time()},
         )
-        doc = mad_hatter.execute_hook(
+        doc = plugin_manager.execute_hook(
             "before_cat_stores_episodic_memory", doc, cat=self
         )
         # store user message in episodic memory
         # TODO: vectorize and store also conversation chunks
         #   (not raw dialog, but summarization)
+        cheshire_cat = self.cheshire_cat
         user_message_embedding = cheshire_cat.embedder.embed_documents([user_message_text])
         _ = cheshire_cat.memory.vectors.episodic.add_point(
             doc.page_content,
@@ -501,7 +502,7 @@ class StrayCat:
         )
 
         # run message through plugins
-        final_output = mad_hatter.execute_hook(
+        final_output = plugin_manager.execute_hook(
             "before_cat_sends_message", final_output, cat=self
         )
 
@@ -697,8 +698,12 @@ Allowed classes are:
         return BillTheLizard().rabbit_hole
 
     @property
+    def plugin_manager(self) -> Tweedledee:
+        return self.cheshire_cat.plugin_manager
+
+    @property
     def mad_hatter(self) -> MadHatter:
-        return self.cheshire_cat.mad_hatter
+        return self.cheshire_cat.plugin_manager
 
     @property
     def main_agent(self) -> MainAgent:

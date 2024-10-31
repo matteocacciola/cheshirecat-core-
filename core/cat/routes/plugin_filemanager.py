@@ -20,7 +20,7 @@ def get_plugin_filemanager_settings(
 ) -> GetSettingsResponse:
     """Get the list of the Plugin File Managers and their settings"""
 
-    factory = PluginFileManagerFactory(lizard.march_hare)
+    factory = PluginFileManagerFactory(lizard.plugin_manager)
 
     selected = crud_settings.get_setting_by_name(lizard.config_key, factory.setting_name)
     if selected is not None:
@@ -45,7 +45,7 @@ def get_plugin_filemanager_settings(
 ) -> GetSettingResponse:
     """Get settings and scheme of the specified Plugin File Manager"""
 
-    plugin_filemanager_schemas = PluginFileManagerFactory(lizard.march_hare).get_schemas()
+    plugin_filemanager_schemas = PluginFileManagerFactory(lizard.plugin_manager).get_schemas()
     # check that plugin_filemanager_name is a valid name
     allowed_configurations = list(plugin_filemanager_schemas.keys())
     if plugin_filemanager_name not in allowed_configurations:
@@ -69,7 +69,7 @@ def upsert_plugin_filemanager_setting(
 ) -> ReplacedNLPConfig:
     """Upsert the Plugin File Manager setting"""
 
-    plugin_filemanager_schemas = PluginFileManagerFactory(lizard.march_hare).get_schemas()
+    plugin_filemanager_schemas = PluginFileManagerFactory(lizard.plugin_manager).get_schemas()
     # check that plugin_filemanager_name is a valid name
     allowed_configurations = list(plugin_filemanager_schemas.keys())
     if plugin_filemanager_name not in allowed_configurations:

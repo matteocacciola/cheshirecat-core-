@@ -229,36 +229,28 @@ def cheshire_cat(lizard):
 
 
 @pytest.fixture
-def march_hare(lizard):
-    march_hare = lizard.march_hare
+def plugin_manager(lizard):
+    plugin_manager = lizard.plugin_manager
 
     # install plugin
     new_plugin_zip_path = create_mock_plugin_zip(flat=True)
-    march_hare.install_plugin(new_plugin_zip_path)
+    plugin_manager.install_plugin(new_plugin_zip_path)
 
-    yield march_hare
-
-
-@pytest.fixture
-def march_hare_no_plugins(lizard):
-    yield lizard.march_hare
+    yield plugin_manager
 
 
 @pytest.fixture
-def mad_hatter_no_plugins(cheshire_cat):
-    yield cheshire_cat.mad_hatter
+def agent_plugin_manager(cheshire_cat):
+    plugin_manager = cheshire_cat.plugin_manager
 
-
-@pytest.fixture
-def mad_hatter(mad_hatter_no_plugins):
     # install plugin
     new_plugin_zip_path = create_mock_plugin_zip(flat=True)
-    plugin_id = mad_hatter_no_plugins.march_hare.install_plugin(new_plugin_zip_path)
+    plugin_id = cheshire_cat.lizard.plugin_manager.install_plugin(new_plugin_zip_path)
 
-    # activate the plugin within the Cheshire Cat whose Mad Hatter is being used
-    mad_hatter_no_plugins.toggle_plugin(plugin_id)
+    # activate the plugin within the Cheshire Cat whose plugin manager is being used
+    plugin_manager.toggle_plugin(plugin_id)
 
-    yield mad_hatter_no_plugins
+    yield plugin_manager
 
 
 @pytest.fixture
@@ -288,10 +280,10 @@ def stray_no_memory(client, cheshire_cat, lizard) -> StrayCat:
 
     # install plugin
     new_plugin_zip_path = create_mock_plugin_zip(flat=True)
-    plugin_id = lizard.march_hare.install_plugin(new_plugin_zip_path)
+    plugin_id = lizard.plugin_manager.install_plugin(new_plugin_zip_path)
 
-    # activate the plugin within the Cheshire Cat whose Mad Hatter is being used
-    cheshire_cat.mad_hatter.toggle_plugin(plugin_id)
+    # activate the plugin within the Cheshire Cat whose plugin manager is being used
+    cheshire_cat.plugin_manager.toggle_plugin(plugin_id)
 
     yield stray_cat
 

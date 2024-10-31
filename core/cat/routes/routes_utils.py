@@ -6,7 +6,7 @@ from fastapi import Request
 
 from cat.exceptions import CustomForbiddenException, CustomValidationException, CustomNotFoundException
 from cat.factory.base_factory import ReplacedNLPConfig
-from cat.mad_hatter.march_hare import MarchHare
+from cat.mad_hatter.mad_hatter import MadHatter
 from cat.mad_hatter.registry import registry_search_plugins
 
 
@@ -90,11 +90,11 @@ async def auth_token(request: Request, credentials: UserCredentials, agent_id: s
     raise CustomForbiddenException("Invalid Credentials")
 
 
-async def get_plugins(march_hare: MarchHare, query: str = None) -> Plugins:
+async def get_plugins(plugin_manager: MadHatter, query: str = None) -> Plugins:
     """
-    Get the plugins related to the passed MarchHare / MadHatter instance and the query.
+    Get the plugins related to the passed plugin manager instance and the query.
     Args:
-        march_hare: the instance of MarchHare / MadHatter
+        plugin_manager: the instance of MadHatter
         query: the query to look for
 
     Returns:
@@ -106,11 +106,11 @@ async def get_plugins(march_hare: MarchHare, query: str = None) -> Plugins:
     registry_plugins_index = {p["url"]: p for p in registry_plugins}
 
     # get active plugins
-    active_plugins = march_hare.load_active_plugins_from_db()
+    active_plugins = plugin_manager.load_active_plugins_from_db()
 
     # list installed plugins' manifest
     installed_plugins = []
-    for p in march_hare.plugins.values():
+    for p in plugin_manager.plugins.values():
         # get manifest
         manifest = deepcopy(p.manifest)  # we make a copy to avoid modifying the plugin obj
         manifest["active"] = (p.id in active_plugins)  # pass along if plugin is active or not
@@ -134,14 +134,14 @@ async def get_plugins(march_hare: MarchHare, query: str = None) -> Plugins:
 
 
 async def get_available_plugins(
-    march_hare: MarchHare,
+    plugin_manager: MadHatter,
     query: str = None,
     # author: str = None, to be activated in case of more granular search
     # tag: str = None, to be activated in case of more granular search
 ) -> GetAvailablePluginsResponse:
     """List available plugins"""
 
-    plugins = await get_plugins(march_hare, query)
+    plugins = await get_plugins(plugin_manager, query)
 
     return GetAvailablePluginsResponse(
         filters={
@@ -153,11 +153,11 @@ async def get_available_plugins(
         registry=plugins.registry,
     )
 
-def get_plugins_settings(march_hare: MarchHare, agent_id: str) -> PluginsSettingsResponse:
+def get_plugins_settings(plugin_manager: MadHatter, agent_id: str) -> PluginsSettingsResponse:
     settings = []
 
-    # plugins are managed by the MarchHare / MadHatter class
-    for plugin in march_hare.plugins.values():
+    # plugins are managed by the MadHatter class (and its inherits)
+    for plugin in plugin_manager.plugins.values():
         try:
             plugin_settings = plugin.load_settings(agent_id)
             plugin_schema = plugin.settings_schema()
@@ -175,14 +175,14 @@ def get_plugins_settings(march_hare: MarchHare, agent_id: str) -> PluginsSetting
     return PluginsSettingsResponse(settings=settings)
 
 
-def get_plugin_settings(march_hare: MarchHare, plugin_id: str, agent_id: str) -> GetSettingResponse:
+def get_plugin_settings(plugin_manager: MadHatter, plugin_id: str, agent_id: str) -> GetSettingResponse:
     """Returns the settings of a specific plugin"""
 
-    if not march_hare.plugin_exists(plugin_id):
+    if not plugin_manager.plugin_exists(plugin_id):
         raise CustomNotFoundException("Plugin not found")
 
-    settings = march_hare.plugins[plugin_id].load_settings(agent_id)
-    scheme = march_hare.plugins[plugin_id].settings_schema()
+    settings = plugin_manager.plugins[plugin_id].load_settings(agent_id)
+    scheme = plugin_manager.plugins[plugin_id].settings_schema()
 
     if scheme["properties"] == {}:
         scheme = {}

@@ -7,7 +7,7 @@ from cat.agents import AgentInput, AgentOutput, BaseAgent
 from cat.agents.memory_agent import MemoryAgent
 from cat.agents.procedures_agent import ProceduresAgent
 from cat.looking_glass import prompts
-from cat.utils import verbal_timedelta, BaseModelDict
+from cat.utils import verbal_timedelta
 from cat.env import get_env
 
 
@@ -25,10 +25,10 @@ class MainAgent(BaseAgent):
         # prepare input to be passed to the agent.
         #   Info will be extracted from working memory
         # Note: agent_input works both as a dict and as an object
-        mad_hatter = stray.cheshire_cat.mad_hatter
+        plugin_manager = stray.cheshire_cat.plugin_manager
 
         agent_input = self.format_agent_input(stray)
-        agent_input = mad_hatter.execute_hook(
+        agent_input = plugin_manager.execute_hook(
             "before_agent_starts", agent_input, cat=stray
         )
 
@@ -37,7 +37,7 @@ class MainAgent(BaseAgent):
 
         # should we run the default agents?
         fast_reply = {}
-        fast_reply = mad_hatter.execute_hook(
+        fast_reply = plugin_manager.execute_hook(
             "agent_fast_reply", fast_reply, cat=stray
         )
         if isinstance(fast_reply, AgentOutput):
@@ -46,10 +46,10 @@ class MainAgent(BaseAgent):
             return AgentOutput(**fast_reply)
 
         # obtain prompt parts from plugins
-        prompt_prefix = mad_hatter.execute_hook(
+        prompt_prefix = plugin_manager.execute_hook(
             "agent_prompt_prefix", prompts.MAIN_PROMPT_PREFIX, cat=stray
         )
-        prompt_suffix = mad_hatter.execute_hook(
+        prompt_suffix = plugin_manager.execute_hook(
             "agent_prompt_suffix", prompts.MAIN_PROMPT_SUFFIX, cat=stray
         )
 

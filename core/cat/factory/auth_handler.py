@@ -1,6 +1,6 @@
 from abc import ABC
 from typing import Type, Dict
-from pydantic import BaseModel, ConfigDict
+from pydantic import ConfigDict
 
 from cat.factory.base_factory import BaseFactory, BaseConfigModel
 from cat.factory.custom_auth_handler import (
@@ -51,7 +51,7 @@ class AuthHandlerFactory(BaseFactory):
             # ApiKeyAuthConfig,
         ]
 
-        list_auth_handler = self._march_hare.execute_hook(
+        list_auth_handler = self._hook_manager.execute_hook(
             "factory_allowed_auth_handlers", list_auth_handler_default, cat=None
         )
 

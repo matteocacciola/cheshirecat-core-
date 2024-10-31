@@ -4,7 +4,7 @@ import shutil
 
 from cat.db.database import DEFAULT_SYSTEM_KEY
 from cat.log import log
-from cat.mad_hatter.humpty_dumpty import HumptyDumpty
+from cat.mad_hatter.mad_hatter import MadHatter
 from cat.mad_hatter.plugin_extractor import PluginExtractor
 from cat.mad_hatter.plugin import Plugin
 import cat.utils as utils
@@ -12,9 +12,9 @@ from cat.utils import singleton
 
 
 @singleton
-class MarchHare(HumptyDumpty):
+class Tweedledum(MadHatter):
     """
-    March Hare is the plugin manager of the Lizard. It is responsible for:
+    Tweedledum is the plugin manager of the Lizard. It is responsible for:
     - Installing a plugin
     - Uninstalling a plugin
     - Loading plugins
@@ -24,7 +24,7 @@ class MarchHare(HumptyDumpty):
 
     Notes:
     ------
-    March Hare is the one that knows about the plugins, the hooks, the tools and the forms. It is the one that
+    Tweedledum is the one that knows about the plugins, the hooks, the tools and the forms. It is the one that
     executes the hooks and the tools, and the one that loads the forms. It:
     - loads and execute plugins
     - enter into the plugin folder and loads everything that is decorated or named properly

@@ -1,6 +1,6 @@
 from abc import ABC
 from typing import Type, List, Dict
-from pydantic import BaseModel, ConfigDict
+from pydantic import ConfigDict
 
 from cat.factory.base_factory import BaseFactory, BaseConfigModel
 from cat.factory.custom_filemanager import (
@@ -107,7 +107,7 @@ class PluginFileManagerFactory(BaseFactory):
             DigitalOceanPluginFileManagerConfig,
         ]
 
-        list_file_managers_default = self._march_hare.execute_hook(
+        list_file_managers_default = self._hook_manager.execute_hook(
             "factory_allowed_plugin_file_managers", list_file_managers_default, cat=None
         )
         return list_file_managers_default

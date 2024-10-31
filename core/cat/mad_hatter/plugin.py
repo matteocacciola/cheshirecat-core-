@@ -57,8 +57,8 @@ class Plugin:
         self._manifest = self._load_manifest()
 
         # list of tools, forms and hooks contained in the plugin.
-        #   The MadHatter will cache them for easier access,
-        #   but they are created and stored in each plugin instance
+        # The plugin manager will cache them for easier access,
+        # but they are created and stored in each plugin instance
         self._hooks: List[CatHook] = []  # list of plugin hooks
         self._tools: List[CatTool] = []  # list of plugin tools
         self._forms: List[CatForm] = []  # list of plugin forms

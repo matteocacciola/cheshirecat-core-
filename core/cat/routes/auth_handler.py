@@ -19,7 +19,7 @@ def get_auth_handler_settings(
     """Get the list of the AuthHandlers"""
 
     ccat = cats.cheshire_cat
-    factory = AuthHandlerFactory(ccat.mad_hatter)
+    factory = AuthHandlerFactory(ccat.plugin_manager)
 
     # get selected AuthHandler
     selected = crud_settings.get_setting_by_name(ccat.id, factory.setting_name)
@@ -45,7 +45,7 @@ def get_auth_handler_setting(
 ) -> GetSettingResponse:
     """Get the settings of a specific AuthHandler"""
 
-    auth_handler_schemas = AuthHandlerFactory(cats.cheshire_cat.mad_hatter).get_schemas()
+    auth_handler_schemas = AuthHandlerFactory(cats.cheshire_cat.plugin_manager).get_schemas()
 
     allowed_configurations = list(auth_handler_schemas.keys())
     if auth_handler_name not in allowed_configurations:
@@ -68,7 +68,7 @@ def upsert_authenticator_setting(
     """Upsert the settings of a specific AuthHandler"""
 
     ccat = cats.cheshire_cat
-    auth_handler_schemas = AuthHandlerFactory(ccat.mad_hatter).get_schemas()
+    auth_handler_schemas = AuthHandlerFactory(ccat.plugin_manager).get_schemas()
 
     allowed_configurations = list(auth_handler_schemas.keys())
     if auth_handler_name not in allowed_configurations:

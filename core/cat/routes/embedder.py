@@ -20,7 +20,7 @@ def get_embedders_settings(
 ) -> GetSettingsResponse:
     """Get the list of the Embedders"""
 
-    factory = EmbedderFactory(lizard.march_hare)
+    factory = EmbedderFactory(lizard.plugin_manager)
 
     selected = crud_settings.get_setting_by_name(lizard.config_key, factory.setting_name)
     if selected is not None:
@@ -45,7 +45,7 @@ def get_embedder_settings(
 ) -> GetSettingResponse:
     """Get settings and scheme of the specified Embedder"""
 
-    embedder_schemas = EmbedderFactory(lizard.march_hare).get_schemas()
+    embedder_schemas = EmbedderFactory(lizard.plugin_manager).get_schemas()
     # check that embedder_name is a valid name
     allowed_configurations = list(embedder_schemas.keys())
     if embedder_name not in allowed_configurations:
@@ -67,7 +67,7 @@ def upsert_embedder_setting(
 ) -> ReplacedNLPConfig:
     """Upsert the Embedder setting"""
 
-    embedder_schemas = EmbedderFactory(lizard.march_hare).get_schemas()
+    embedder_schemas = EmbedderFactory(lizard.plugin_manager).get_schemas()
     # check that embedder_name is a valid name
     allowed_configurations = list(embedder_schemas.keys())
     if embedder_name not in allowed_configurations:
