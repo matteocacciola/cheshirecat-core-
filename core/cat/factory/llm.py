@@ -1,5 +1,6 @@
 from abc import ABC
 from langchain_core.language_models import BaseLanguageModel
+from langchain_groq import ChatGroq
 from langchain_openai import AzureChatOpenAI
 from langchain_openai import AzureOpenAI
 from langchain_community.llms import (
@@ -9,6 +10,8 @@ from langchain_community.llms import (
 from langchain_openai import ChatOpenAI, OpenAI
 from langchain_cohere import ChatCohere
 from langchain_google_genai import ChatGoogleGenerativeAI
+from langchain_anthropic import ChatAnthropic
+from langchain_mistralai import ChatMistralAI
 from typing import Type, List, Dict
 import json
 from pydantic import ConfigDict
@@ -250,7 +253,8 @@ class LLMOllamaConfig(LLMSettings):
 
 
 class LLMGeminiChatConfig(LLMSettings):
-    """Configuration for the Gemini large language model (LLM).
+    """
+    Configuration for the Gemini large language model (LLM).
 
     This class inherits from the `LLMSettings` class and provides default values for the following attributes:
 
@@ -282,6 +286,63 @@ class LLMGeminiChatConfig(LLMSettings):
     )
 
 
+class LLMAnthropicChatConfig(LLMSettings):
+    api_key: str
+    model: str = "claude-3-5-sonnet-20241022"
+    temperature: float = 0.7
+    max_tokens: int = 8192
+    max_retries: int = 2
+    top_k: int | None = None
+    top_p: float | None = None
+
+    _pyclass: Type = ChatAnthropic
+
+    model_config = ConfigDict(
+        json_schema_extra={
+            "humanReadableName": "Anthropic",
+            "description": "Configuration for Anthropic",
+            "link": "https://www.anthropic.com/",
+        }
+    )
+
+
+class LLMMistralAIChatConfig(LLMSettings):
+    api_key: str | None = None
+    model: str = "mistral-large-latest"
+    temperature: float = 0.7
+    max_tokens: int = 8192
+    max_retries: int = 2
+    top_p: float | None = 1
+
+    _pyclass: Type = ChatMistralAI
+
+    model_config = ConfigDict(
+        json_schema_extra={
+            "humanReadableName": "MistralAI",
+            "description": "Configuration for MistralAI",
+            "link": "https://mistral.ai/",
+        }
+    )
+
+
+class LLMMGroqChatConfig(LLMSettings):
+    api_key: str | None = None
+    model: str = "mixtral-8x7b-32768"
+    temperature: float = 0.7
+    max_tokens: int | None = None
+    max_retries: int = 2
+
+    _pyclass: Type = ChatGroq
+
+    model_config = ConfigDict(
+        json_schema_extra={
+            "humanReadableName": "Groq",
+            "description": "Configuration for Groq",
+            "link": "https://groq.com/",
+        }
+    )
+
+
 class LLMFactory(BaseFactory):
     def get_allowed_classes(self) -> List[Type[LLMSettings]]:
         list_llms_default = [
@@ -297,6 +358,9 @@ class LLMFactory(BaseFactory):
             LLMHuggingFaceTextGenInferenceConfig,
             LLMCustomConfig,
             LLMDefaultConfig,
+            LLMAnthropicChatConfig,
+            LLMMistralAIChatConfig,
+            LLMMGroqChatConfig,
         ]
 
         list_llms = self._hook_manager.execute_hook(

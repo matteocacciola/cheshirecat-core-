@@ -1,6 +1,8 @@
 from abc import ABC
 from typing import Type, List, Dict
 from langchain_core.embeddings import Embeddings
+from langchain_mistralai import MistralAIEmbeddings
+from langchain_voyageai import VoyageAIEmbeddings
 from pydantic import ConfigDict, Field
 from langchain_cohere import CohereEmbeddings
 from langchain_community.embeddings import FakeEmbeddings, FastEmbedEmbeddings
@@ -173,6 +175,51 @@ class EmbedderGeminiChatConfig(EmbedderSettings):
     )
 
 
+class EmbedderMistralAIChatConfig(EmbedderSettings):
+    """
+    Configuration for Mistral AI Chat Embedder.
+
+    This class contains the configuration for the Mistral AI Embedder.
+    """
+
+    api_key: str
+    model: str = "mistral-embed"
+    max_retries: int = 5
+    max_concurrent_requests: int = 64
+
+    _pyclass: Type = MistralAIEmbeddings
+
+    model_config = ConfigDict(
+        json_schema_extra={
+            "humanReadableName": "Mistral AI Embedder",
+            "description": "Configuration for MistralAI Embedder",
+            "link": "https://docs.mistral.ai/capabilities/embeddings/",
+        }
+    )
+
+
+class EmbedderVoyageAIChatConfig(EmbedderSettings):
+    """
+    Configuration for Voyage AI Chat Text Embedder.
+
+    This class contains the configuration for the Voyage AI Text Embedder.
+    """
+
+    api_key: str
+    model: str = "voyage-3"
+    batch_size: int
+
+    _pyclass: Type = VoyageAIEmbeddings
+
+    model_config = ConfigDict(
+        json_schema_extra={
+            "humanReadableName": "Voyage AI Embedder",
+            "description": "Configuration for Voyage AI Embedder",
+            "link": "https://docs.voyageai.com/docs/embeddings",
+        }
+    )
+
+
 class EmbedderFactory(BaseFactory):
     def get_allowed_classes(self) -> List[Type[EmbedderSettings]]:
         list_embedder_default = [
@@ -184,6 +231,8 @@ class EmbedderFactory(BaseFactory):
             EmbedderCohereConfig,
             EmbedderDumbConfig,
             EmbedderFakeConfig,
+            EmbedderMistralAIChatConfig,
+            EmbedderVoyageAIChatConfig,
         ]
 
         list_embedder = self._hook_manager.execute_hook(
