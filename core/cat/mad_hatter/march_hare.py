@@ -1,6 +1,7 @@
 import os
 import hashlib
 import shutil
+import uuid
 import redis
 import time
 from datetime import datetime
@@ -183,12 +184,12 @@ class MarchHare:
             return False
 
         try:
-            plugin_path = os.path.join(self.__file_manager.storage_dir, plugin_name)
-            if not self.__file_manager.file_exists(plugin_path):
+            plugin_remote_path = os.path.join(self.__file_manager.storage_dir, plugin_name)
+            if not self.__file_manager.file_exists(plugin_remote_path):
                 log.warning(f"Plugin {plugin_name} not found")
                 return False
 
-            self.__file_manager.remove_file_from_storage(plugin_path)
+            self.__file_manager.remove_file_from_storage(plugin_remote_path)
             self.__redis_client.delete(f"plugin:{plugin_name}")
             self.__update_last_modified()
             if notify:
@@ -208,6 +209,11 @@ class MarchHare:
         # install the downloaded archive
         self.__plugin_manager.install_plugin(archive_path)
 
+    def __make_archive(self, source: str, destination_folder: str, destination_name: str):
+        name, ext = os.path.splitext(destination_name)
+        ext = ext.replace(".", "")
+        return shutil.make_archive(os.path.join(destination_folder, name), ext, source)
+
     def sync_plugins(self) -> None:
         try:
             remote_plugins = self.list_plugins()
@@ -218,21 +224,21 @@ class MarchHare:
                 if not any(os.path.splitext(plugin_info["name"])[0] == local_plugin for plugin_info in remote_plugins):
                     self.__plugin_manager.uninstall_plugin(local_plugin)
 
+            # download and install the plugins that are not present locally or that are updated
             for plugin_info in remote_plugins:
-                plugin_name, plugin_extension = os.path.splitext(plugin_info["name"])
-                local_plugin_path = os.path.join(self.__plugin_dir, plugin_name)
+                remote_plugin_name, _ = os.path.splitext(plugin_info["name"])
+                local_plugin_path = os.path.join(self.__plugin_dir, remote_plugin_name)
 
                 # create a temporary directory to zip/unzip the local_path_plugin and compare checksum
-                tmp_path = f"/tmp/{plugin_name}"
+                tmp_path = f"/tmp/{uuid.uuid4()}"
+                os.makedirs(tmp_path, exist_ok=True)
 
                 # the plugin exists
                 if os.path.exists(local_plugin_path):
                     # create a zip file with the entire content of current local_plugin_path
-                    shutil.make_archive(plugin_name, plugin_extension, tmp_path, local_plugin_path)
+                    res = self.__make_archive(local_plugin_path, tmp_path, plugin_info["name"])
 
-                    local_checksum = self.__calculate_checksum(
-                        os.path.join(tmp_path, f"{plugin_name}.{plugin_extension}")
-                    )
+                    local_checksum = self.__calculate_checksum(res)
 
                     # check if the plugin is updated by comparing the checksum of the local plugin archive and the
                     # remote one stored within the Redis

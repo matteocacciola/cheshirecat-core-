@@ -296,7 +296,7 @@ class StrayCat:
         # Embed recall query
         recall_query_embedding = cheshire_cat.embedder.embed_query(recall_query)
         self.working_memory.recall_query = recall_query
-        
+
         # keep track of embedder model usage
         self.working_memory.model_interactions.append(
             EmbedderModelInteraction(
@@ -372,7 +372,7 @@ class StrayCat:
         prompt = ChatPromptTemplate(
             messages=[
                 SystemMessage(content=prompt)
-                # TODO: add here optional convo history passed to the method, 
+                # TODO: add here optional convo history passed to the method,
                 #  or taken from working memory
             ]
         )
@@ -403,11 +403,11 @@ class StrayCat:
 
         Returns:
             final_output: CatMessage
-                Dictionary with the Cat's answer to be sent to the client.
+                Cat Message object, the Cat's answer to be sent to the client.
 
         Notes
         -----
-        Here happens the main pipeline of the Cat. Namely, the Cat receives the user's input and recall the memories.
+        Here happens the main pipeline of the Cat. Namely, the Cat receives the user's input and recalls the memories.
         The retrieved context is formatted properly and given in input to the Agent that uses the LLM to produce the
         answer. This is formatted in a dictionary to be sent as a JSON via Websocket to the client.
         """

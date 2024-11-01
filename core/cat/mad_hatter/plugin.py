@@ -40,6 +40,7 @@ class Plugin:
 
         # where the plugin is on disk
         self._path: str = plugin_path
+        self._settings_file_path = os.path.join(self._path, "settings.json")
 
         # search for .py files in folder
         py_files_path = os.path.join(self._path, "**/*.py")
@@ -76,30 +77,19 @@ class Plugin:
         except Exception as e:
             raise e
 
-        self.activate_settings(agent_id, False)
+        self.activate_settings(agent_id)
 
-    def activate_settings(self, agent_id: str, incremental: bool = True):
+    def activate_settings(self, agent_id: str):
         # load hooks and tools
         self._load_decorated_functions()
 
-        if incremental:
-            # by default, plugin settings are saved inside the Redis database
-            current_setting = crud_plugins.get_setting(agent_id, self._id)
-            # the new setting coming from the model to be activated
-            new_setting = self._get_settings_from_model()
+        # by default, plugin settings are saved inside the Redis database
+        setting = crud_plugins.get_setting(agent_id, self._id)
 
-            final_setting = {**new_setting, **current_setting} if new_setting else current_setting
-
-            incremental_setting = {
-                "new": {k: v for k, v in new_setting.items() if k not in current_setting},
-                "deprecated": {k: v for k, v in current_setting.items() if k not in new_setting},
-            }
-            log.info(f"Plugin {self._id} for agent {agent_id} incremental settings: {incremental_setting}")
-
-            # try to create the new incremental settings into the Redis database
-            crud_plugins.set_setting(agent_id, self._id, final_setting)
-        else:
+        # try to create the setting into the Redis database
+        if not setting:
             self._create_settings_from_model(agent_id)
+
         self._active = True
 
     def deactivate(self, agent_id: str):

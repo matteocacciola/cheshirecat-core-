@@ -5,7 +5,6 @@ import mimetypes
 from slugify import slugify
 
 
-
 class PluginExtractor:
     admitted_mime_types = ["application/zip", "application/x-tar"]
 
@@ -53,25 +52,23 @@ class PluginExtractor:
         contents = os.listdir(tmp_folder_name)
 
         # if it is just one folder and nothing else, that is the plugin
-        if len(contents) == 1 and os.path.isdir(
-            os.path.join(tmp_folder_name, contents[0])
-        ):
-            folder_to_copy = os.path.join(tmp_folder_name, contents[0])
+        if len(contents) == 1 and os.path.isdir(os.path.join(tmp_folder_name, contents[0])):
+            tmp_folder_to = os.path.join(tmp_folder_name, contents[0])
         else:  # flat zip
-            folder_to_copy = tmp_folder_name
+            tmp_folder_to = tmp_folder_name
 
         # move plugin folder to cat plugins folder
-        extracted_path = os.path.join(to, self._id)
+        folder_to = os.path.join(to, self._id)
         # if folder exists, delete it as it will be replaced
-        if os.path.exists(extracted_path):
-            shutil.rmtree(extracted_path)
+        if os.path.exists(folder_to):
+            shutil.rmtree(folder_to)
 
         # extracted plugin in plugins folder!
-        shutil.move(folder_to_copy, extracted_path)
+        shutil.move(tmp_folder_to, folder_to)
 
         # cleanup
         if os.path.exists(tmp_folder_name):
             shutil.rmtree(tmp_folder_name)
 
         # return extracted dir path
-        return extracted_path
+        return folder_to

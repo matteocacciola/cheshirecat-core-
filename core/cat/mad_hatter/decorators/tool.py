@@ -1,6 +1,5 @@
 import inspect
 from typing import Callable, List
-from inspect import signature
 from langchain_core.tools import BaseTool
 
 
@@ -35,7 +34,7 @@ class CatTool(BaseTool):
             "start_example": examples,
         }
         # remove cat argument from signature so it does not end up in prompts
-        self.signature = f"{signature(self.func)}".replace(", cat)", ")")
+        self.signature = f"{inspect.signature(self.func)}".replace(", cat)", ")")
 
     @property
     def start_examples(self):
