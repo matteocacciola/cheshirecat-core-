@@ -291,7 +291,7 @@ def stray_no_memory(client, cheshire_cat, lizard) -> StrayCat:
 # fixture to have available an instance of StrayCat
 @pytest.fixture
 def stray(stray_no_memory):
-    stray_no_memory.working_memory.user_message_json = UserMessage(
+    stray_no_memory.working_memory.user_message = UserMessage(
         user_id=stray_no_memory.user.id, text="meow", agent_id=stray_no_memory.agent_id
     )
 

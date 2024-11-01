@@ -6,6 +6,7 @@ Here is a collection of methods to hook into the Cat execution pipeline.
 from typing import Dict
 from langchain.docstore.document import Document
 
+from cat.convo.messages import CatMessage
 from cat.looking_glass.stray_cat import RecallSettings
 from cat.mad_hatter.decorators import hook
 
@@ -13,7 +14,8 @@ from cat.mad_hatter.decorators import hook
 # Called before cat bootstrap
 @hook(priority=0)
 def before_cat_bootstrap(cat) -> None:
-    """Hook into the Cat start up.
+    """
+    Hook into the Cat start up.
 
     Bootstrapping is the process of loading the plugins, the natural language objects (e.g. the LLM), the memories,
     the *Main Agent*, the *Rabbit Hole* and the *White Rabbit*.
@@ -33,7 +35,8 @@ def before_cat_bootstrap(cat) -> None:
 # Called after cat bootstrap
 @hook(priority=0)
 def after_cat_bootstrap(cat) -> None:
-    """Hook into the end of the Cat start up.
+    """
+    Hook into the end of the Cat start up.
 
     Bootstrapping is the process of loading the plugins, the natural language objects (e.g. the LLM), the memories,
     the *Main Agent*, the *Rabbit Hole* and the *White Rabbit*.
@@ -54,7 +57,8 @@ def after_cat_bootstrap(cat) -> None:
 # Useful to edit/enrich user input (e.g. translation)
 @hook(priority=0)
 def before_cat_reads_message(user_message_json: Dict, cat) -> Dict:
-    """Hook the incoming user's JSON dictionary.
+    """
+    Hook the incoming user's JSON dictionary.
 
     Allows to edit and enrich the incoming message received from the WebSocket connection.
 
@@ -94,7 +98,8 @@ def before_cat_reads_message(user_message_json: Dict, cat) -> Dict:
 # Here you can do HyDE embedding, condense recent conversation or condition recall query on something else important to your AI
 @hook(priority=0)
 def cat_recall_query(user_message: str, cat) -> str:
-    """Hook the semantic search query.
+    """
+    Hook the semantic search query.
 
     This hook allows to edit the user's message used as a query for context retrieval from memories.
     As a result, the retrieved context can be conditioned editing the user's message.
@@ -130,7 +135,8 @@ def cat_recall_query(user_message: str, cat) -> str:
 # Called just before the cat recalls memories.
 @hook(priority=0)
 def before_cat_recalls_memories(cat) -> None:
-    """Hook into semantic search in memories.
+    """
+    Hook into semantic search in memories.
 
     Allows to intercept when the Cat queries the memories using the embedded user's input.
 
@@ -147,7 +153,8 @@ def before_cat_recalls_memories(cat) -> None:
 
 @hook(priority=0)
 def before_cat_recalls_episodic_memories(episodic_recall_config: RecallSettings, cat) -> RecallSettings:
-    """Hook into semantic search in memories.
+    """
+    Hook into semantic search in memories.
 
     Allows to intercept when the Cat queries the memories using the embedded user's input.
 
@@ -174,7 +181,8 @@ def before_cat_recalls_episodic_memories(episodic_recall_config: RecallSettings,
 
 @hook(priority=0)
 def before_cat_recalls_declarative_memories(declarative_recall_config: RecallSettings, cat) -> RecallSettings:
-    """Hook into semantic search in memories.
+    """
+    Hook into semantic search in memories.
 
     Allows to intercept when the Cat queries the memories using the embedded user's input.
 
@@ -201,7 +209,8 @@ def before_cat_recalls_declarative_memories(declarative_recall_config: RecallSet
 
 @hook(priority=0)
 def before_cat_recalls_procedural_memories(procedural_recall_config: RecallSettings, cat) -> RecallSettings:
-    """Hook into semantic search in memories.
+    """
+    Hook into semantic search in memories.
 
     Allows to intercept when the Cat queries the memories using the embedded user's input.
 
@@ -229,7 +238,8 @@ def before_cat_recalls_procedural_memories(procedural_recall_config: RecallSetti
 # Called just before the cat recalls memories.
 @hook(priority=0)
 def after_cat_recalls_memories(cat) -> None:
-    """Hook after semantic search in memories.
+    """
+    Hook after semantic search in memories.
 
     The hook is executed just after the Cat searches for the meaningful context in memories
     and stores it in the *Working Memory*.
@@ -245,7 +255,8 @@ def after_cat_recalls_memories(cat) -> None:
 # Hook called just before sending response to a client.
 @hook(priority=0)
 def before_cat_sends_message(message: Dict, cat) -> Dict:
-    """Hook the outgoing Cat's message.
+    """
+    Hook the outgoing Cat's message.
 
     Allows to edit the JSON dictionary that will be sent to the client via WebSocket connection.
 
@@ -289,7 +300,8 @@ def before_cat_sends_message(message: Dict, cat) -> Dict:
 # Hook called just before of inserting the user message document in vector memory
 @hook(priority=0)
 def before_cat_stores_episodic_memory(doc: Document, cat) -> Document:
-    """Hook the user message `Document` before is inserted in the vector memory.
+    """
+    Hook the user message `Document` before is inserted in the vector memory.
 
     Allows editing and enhancing a single `Document` before the Cat add it to the episodic vector memory.
 
@@ -313,3 +325,36 @@ def before_cat_stores_episodic_memory(doc: Document, cat) -> Document:
             `when`: timestamp to track when it's been uploaded.
     """
     return doc
+
+
+@hook(priority=0)
+def fast_reply(f_reply: Dict, cat) -> CatMessage | Dict | None:
+    """
+    This hook allows for an immediate response, bypassing memory recall and agent execution.
+    It's useful for canned replies, custom LLM chains / agents, topic evaluation, direct LLM interaction and so on.
+
+    Args:
+        f_reply: Dict
+            An initially empty dict that can be populated with a response.
+        cat : StrayCat
+            Stray Cat instance.
+
+    Returns:
+        response : CatMessage | Dict | None
+            If you want to short-circuit the normal flow, return a CatMessage or a Dict with a valid `output` key.
+            Return None or an empty Dict or a Dict without a valid `output` key to continue with normal execution.
+            See below for examples of Cat response
+
+    Examples
+    --------
+    Example 1: can't talk about this topic
+    ```python
+    # here you could use cat._llm to do topic evaluation
+    if "dog" in cat.working_memory.user_message_json.text:
+        return {
+            "output": "You went out of topic. Can't talk about dog."
+        }
+    ```
+    """
+
+    return f_reply

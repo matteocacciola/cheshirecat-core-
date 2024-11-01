@@ -5,13 +5,15 @@ Here is a collection of methods to hook into the *Agent* execution pipeline.
 """
 
 from typing import List, Dict
+from cat.agents import AgentOutput
 
 from cat.mad_hatter.decorators import hook
 
 
 @hook(priority=0)
 def before_agent_starts(agent_input: Dict, cat) -> Dict:
-    """Hook to read and edit the agent input
+    """
+    Hook to read and edit the agent input
 
     Args:
         agent_input: Dict
@@ -27,34 +29,28 @@ def before_agent_starts(agent_input: Dict, cat) -> Dict:
 
 
 @hook(priority=0)
-def agent_fast_reply(fast_reply: Dict, cat) -> Dict | None:
-    """This hook is useful to shortcut the Cat response.
-    If you do not want the agent to run, return the final response from here and it will end up in the chat without the agent being executed.
+def agent_fast_reply(ag_fast_reply: Dict, cat) -> Dict | AgentOutput | None:
+    """
+    This hook allows for a custom response after memory recall, skipping default agent execution.
+    It's useful for custom agent logic or when you want to use recalled memories but avoid the main agent.
 
     Args:
-        fast_reply: Dict
-            Input is a dictionary (initially empty), which can be enriched with an "output" key with the shortcut response.
+        ag_fast_reply: Dict
+            Input is a dictionary (initially empty), which can be enriched with an "output" key with the shortcut
+            response.
         cat: StrayCat
             Stray Cat instance.
 
     Returns:
-        response: Dict | None
-            Cat response if you want to avoid using the agent, or None / {} if you want the agent to be executed.
+        response: AgentOutput | Dict | None
+            If you want to bypass the main agent, return an AgentOutput or a Dict with a valid `output` key.
+            Return None or an empty Dict or a Dict without a valid `output` key to continue with normal execution.
             See below for examples of Cat response
 
     Examples
     --------
 
-    Example 1: can't talk about this topic
-    ```python
-    # here you could use cat.llm to do topic evaluation
-    if "dog" in agent_input["input"]:
-        return {
-            "output": "You went out of topic. Can't talk about dog."
-        }
-    ```
-
-    Example 2: don't remember (no uploaded documents about topic)
+    Example 1: don't remember (no uploaded documents about topic)
     ```python
     num_declarative_memories = len( cat.working_memory.declarative_memories )
     if num_declarative_memories == 0:
@@ -64,12 +60,13 @@ def agent_fast_reply(fast_reply: Dict, cat) -> Dict | None:
     ```
     """
 
-    return fast_reply
+    return ag_fast_reply
 
 
 @hook(priority=0)
 def agent_allowed_tools(allowed_tools: List[str], cat) -> List[str]:
-    """Hook the allowed tools.
+    """
+    Hook the allowed tools.
 
     Allows to decide which tools end up in the *Agent* prompt.
 

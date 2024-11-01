@@ -62,7 +62,7 @@ class CatForm:  # base model of forms
     # Check user confirm the form data
     def confirm(self) -> bool:
         # Get user message
-        user_message = self.cat.working_memory.user_message_json.text
+        user_message = self.cat.working_memory.user_message.text
 
         # Confirm prompt
         confirm_prompt = f"""Your task is to produce a JSON representing whether a user is confirming or not.
@@ -87,7 +87,7 @@ JSON:
     # it is run at the beginning of every form.next()
     def check_exit_intent(self) -> bool:
         # Get user message
-        user_message = self.cat.working_memory.user_message_json.text
+        user_message = self.cat.working_memory.user_message.text
 
         # Stop examples
         stop_examples = """

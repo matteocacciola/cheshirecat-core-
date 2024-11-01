@@ -2,6 +2,7 @@ import pytest
 
 from cat.convo.messages import MessageWhy, CatMessage, UserMessage
 from cat.looking_glass.stray_cat import StrayCat
+from cat.mad_hatter.decorators import CatHook
 from cat.memory.working_memory import WorkingMemory
 
 
@@ -147,3 +148,31 @@ def test_stray_recall_by_metadata(secure_client, secure_client_headers, stray, e
     assert len(memories) == expected_chunks
     for mem in memories:
         assert mem[0].metadata["source"] == file_name
+
+
+def test_stray_fast_reply_hook(stray):
+    def fast_reply_hook(fast_reply: dict, cat):
+        if user_msg in cat.working_memory.user_message.text:
+            fast_reply["output"] = fast_reply_msg
+            return fast_reply
+
+    user_msg = "hello"
+    fast_reply_msg = "This is a fast reply"
+
+    fast_reply_hook = CatHook(name="fast_reply", func=fast_reply_hook, priority=0)
+    fast_reply_hook.plugin_id = "fast_reply_hook"
+    stray.plugin_manager.hooks["fast_reply"] = [fast_reply_hook]
+
+    msg = {"text": user_msg, "user_id": stray.user.id, "agent_id": stray.agent_id}
+
+    # send message
+    res = stray.loop.run_until_complete(stray.__call__(msg))
+
+    assert isinstance(res, CatMessage)
+    assert res.content == fast_reply_msg
+
+    # there should be NO side effects
+    assert stray.working_memory.user_message.text == user_msg
+    assert len(stray.working_memory.history) == 0
+    stray.recall_relevant_memories_to_working_memory(user_msg)
+    assert len(stray.working_memory.episodic_memories) == 0

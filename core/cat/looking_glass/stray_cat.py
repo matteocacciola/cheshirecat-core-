@@ -66,16 +66,16 @@ class StrayCat:
         """Check if two cats are equal."""
         if not isinstance(other, StrayCat):
             return False
-        return self.user.id == other.user.id
+        return self.__user.id == other.user.id
 
     def __hash__(self):
-        return hash(self.user.id)
+        return hash(self.__user.id)
 
     def __repr__(self):
-        return f"StrayCat(user_id={self.user.id},agent_id={self.__agent_id})"
+        return f"StrayCat(user_id={self.__user.id},agent_id={self.__agent_id})"
 
     def __send_ws_json(self, data: Any):
-        data = data | {"user_id": self.user.id, "agent_id": self.__agent_id}
+        data = data | {"user_id": self.__user.id, "agent_id": self.__agent_id}
 
         # Run the coroutine in the main event loop in the main thread
         # and wait for the result
@@ -88,7 +88,7 @@ class StrayCat:
 
         # why this response?
         why = MessageWhy(
-            input=self.working_memory.user_message_json.text,
+            input=self.working_memory.user_message.text,
             intermediate_steps=[],
             memory=memory,
             model_interactions=self.working_memory.model_interactions,
@@ -110,7 +110,7 @@ class StrayCat:
         """
 
         if self.__ws is None:
-            log.warning(f"No websocket connection is open for user {self.user.id}")
+            log.warning(f"No websocket connection is open for user {self.__user.id}")
             return
 
         options = get_args(MSG_TYPES)
@@ -138,12 +138,12 @@ class StrayCat:
         """
 
         if self.__ws is None:
-            log.warning(f"No websocket connection is open for user {self.user.id}")
+            log.warning(f"No websocket connection is open for user {self.__user.id}")
             return
 
         if isinstance(message, str):
             why = self.__build_why()
-            message = CatMessage(content=message, user_id=self.user.id, why=why, agent_id=self.agent_id)
+            message = CatMessage(content=message, user_id=self.__user.id, why=why, agent_id=self.__agent_id)
 
         if save:
             self.working_memory.update_conversation_history(
@@ -173,7 +173,7 @@ class StrayCat:
         """
 
         if self.__ws is None:
-            log.warning(f"No websocket connection is open for user {self.user.id}")
+            log.warning(f"No websocket connection is open for user {self.__user.id}")
             return
 
         if isinstance(error, str):
@@ -284,7 +284,7 @@ class StrayCat:
         cheshire_cat = self.cheshire_cat
 
         # If query is not provided, use the user's message as the query
-        recall_query = query if query is not None else self.working_memory.user_message_json.text
+        recall_query = query if query is not None else self.working_memory.user_message.text
 
         # We may want to search in memory
         plugin_manager = self.plugin_manager
@@ -314,7 +314,7 @@ class StrayCat:
         recall_configs = [
             plugin_manager.execute_hook(
                 "before_cat_recalls_episodic_memories",
-                RecallSettings(embedding=recall_query_embedding, metadata={"source": self.user.id}),
+                RecallSettings(embedding=recall_query_embedding, metadata={"source": self.__user.id}),
                 cat=self,
             ),
             plugin_manager.execute_hook(
@@ -415,22 +415,31 @@ class StrayCat:
         # Parse websocket message into UserMessage obj
         log.info(user_message)
 
-        # set a few easy access variables
-        self.working_memory.user_message_json = user_message
-
+        ### setup working memory
         # keeping track of model interactions
         self.working_memory.model_interactions = []
+        # latest user message
+        self.working_memory.user_message = user_message
+
+        plugin_manager = self.plugin_manager
+
+        # Run a totally custom reply (skips all the side effects of the framework)
+        fast_reply = plugin_manager.execute_hook("fast_reply", {}, cat=self)
+        fast_reply = CatMessage(
+            user_id=self.__user.id, content=str(fast_reply.get("output", "")), agent_id=self.__agent_id
+        ) if not isinstance(fast_reply, CatMessage) else fast_reply
+        if fast_reply.content:
+            return fast_reply
 
         # hook to modify/enrich user input
-        plugin_manager = self.plugin_manager
-        self.working_memory.user_message_json = plugin_manager.execute_hook(
-            "before_cat_reads_message", self.working_memory.user_message_json, cat=self
+        self.working_memory.user_message = plugin_manager.execute_hook(
+            "before_cat_reads_message", self.working_memory.user_message, cat=self
         )
 
         # text of latest Human message
-        user_message_text = self.working_memory.user_message_json.text
+        user_message_text = self.working_memory.user_message.text
         # image of latest Human message
-        user_message_image = self.working_memory.user_message_json.image
+        user_message_image = self.working_memory.user_message.image
 
         # update conversation history (Human turn)
         self.working_memory.update_conversation_history(
@@ -447,47 +456,11 @@ class StrayCat:
 
             raise VectorMemoryError("An error occurred while recalling relevant memories.")
 
-        # reply with agent
-        try:
-            agent_output: AgentOutput = await self.main_agent.execute(self)
-        except Exception as e:
-            # This error happens when the LLM
-            #   does not respect prompt instructions.
-            # We grab the LLM output here anyway, so small and
-            #   non instruction-fine-tuned models can still be used.
-            error_description = str(e)
-
-            log.error(error_description)
-            if "Could not parse LLM output: `" not in error_description:
-                raise e
-
-            unparsable_llm_output = error_description.replace(
-                "Could not parse LLM output: `", ""
-            ).replace("`", "")
-            agent_output = AgentOutput(
-                output=unparsable_llm_output,
-            )
-
+        agent_output = await self._build_agent_output()
         log.info("Agent output returned to stray:")
         log.info(agent_output)
 
-        doc = Document(
-            page_content=user_message_text,
-            metadata={"source": self.user.id, "when": time.time()},
-        )
-        doc = plugin_manager.execute_hook(
-            "before_cat_stores_episodic_memory", doc, cat=self
-        )
-        # store user message in episodic memory
-        # TODO: vectorize and store also conversation chunks
-        #   (not raw dialog, but summarization)
-        cheshire_cat = self.cheshire_cat
-        user_message_embedding = cheshire_cat.embedder.embed_documents([user_message_text])
-        _ = cheshire_cat.memory.vectors.episodic.add_point(
-            doc.page_content,
-            user_message_embedding[0],
-            doc.metadata,
-        )
+        self._store_user_message_in_episodic_memory(user_message_text)
 
         # why this response?
         why = self.__build_why()
@@ -497,7 +470,7 @@ class StrayCat:
 
         # prepare final cat message
         final_output = CatMessage(
-            user_id=self.user.id, content=str(agent_output.output), why=why, agent_id=self.agent_id
+            user_id=self.__user.id, content=str(agent_output.output), why=why, agent_id=self.__agent_id
         )
 
         # run message through plugins
@@ -659,6 +632,49 @@ Allowed classes are:
         """Reset the connection to the API service."""
         self.__ws = connection
 
+    async def _build_agent_output(self) -> AgentOutput:
+        # reply with agent
+        try:
+            agent_output: AgentOutput = await self.main_agent.execute(self)
+        except Exception as e:
+            # This error happens when the LLM
+            #   does not respect prompt instructions.
+            # We grab the LLM output here anyway, so small and
+            #   non instruction-fine-tuned models can still be used.
+            error_description = str(e)
+
+            log.error(error_description)
+            if "Could not parse LLM output: `" not in error_description:
+                raise e
+
+            unparsable_llm_output = error_description.replace(
+                "Could not parse LLM output: `", ""
+            ).replace("`", "")
+            agent_output = AgentOutput(
+                output=unparsable_llm_output,
+            )
+
+        return agent_output
+
+    def _store_user_message_in_episodic_memory(self, user_message_text: str):
+        doc = Document(
+            page_content=user_message_text,
+            metadata={"source": self.__user.id, "when": time.time()},
+        )
+        doc = self.plugin_manager.execute_hook(
+            "before_cat_stores_episodic_memory", doc, cat=self
+        )
+        # store user message in episodic memory
+        # TODO: vectorize and store also conversation chunks
+        #   (not raw dialog, but summarization)
+        cheshire_cat = self.cheshire_cat
+        user_message_embedding = cheshire_cat.embedder.embed_documents([user_message_text])
+        _ = cheshire_cat.memory.vectors.episodic.add_point(
+            doc.page_content,
+            user_message_embedding[0],
+            doc.metadata,
+        )
+
     async def shutdown(self):
         await self.close_connection()
         self.__loop.stop()
@@ -680,7 +696,7 @@ Allowed classes are:
     def cheshire_cat(self) -> "CheshireCat":
         ccat = self.lizard.get_cheshire_cat(self.__agent_id)
         if not ccat:
-            raise ValueError(f"Cheshire Cat not found for the StrayCat {self.user.id}.")
+            raise ValueError(f"Cheshire Cat not found for the StrayCat {self.__user.id}.")
 
         return ccat
 

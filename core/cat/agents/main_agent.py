@@ -28,22 +28,16 @@ class MainAgent(BaseAgent):
         plugin_manager = stray.cheshire_cat.plugin_manager
 
         agent_input = self.format_agent_input(stray)
-        agent_input = plugin_manager.execute_hook(
-            "before_agent_starts", agent_input, cat=stray
-        )
+        agent_input = plugin_manager.execute_hook("before_agent_starts", agent_input, cat=stray)
 
         # store the agent input inside the working memory
         stray.working_memory.agent_input = agent_input
 
         # should we run the default agents?
-        fast_reply = {}
-        fast_reply = plugin_manager.execute_hook(
-            "agent_fast_reply", fast_reply, cat=stray
-        )
-        if isinstance(fast_reply, AgentOutput):
-            return fast_reply
-        if isinstance(fast_reply, Dict) and "output" in fast_reply:
-            return AgentOutput(**fast_reply)
+        agent_fast_reply = plugin_manager.execute_hook("agent_fast_reply", {}, cat=stray)
+        agent_fast_reply = AgentOutput(**agent_fast_reply) if agent_fast_reply is not None else agent_fast_reply
+        if agent_fast_reply and agent_fast_reply.output:
+            return agent_fast_reply
 
         # obtain prompt parts from plugins
         prompt_prefix = plugin_manager.execute_hook(
@@ -113,7 +107,7 @@ class MainAgent(BaseAgent):
             episodic_memory=episodic_memory_formatted_content,
             declarative_memory=declarative_memory_formatted_content,
             tools_output="",
-            input=stray.working_memory.user_message_json.text,  # TODOV2: take away
+            input=stray.working_memory.user_message.text,  # TODOV2: take away
             chat_history=conversation_history_formatted_content, # TODOV2: take away
         )
 

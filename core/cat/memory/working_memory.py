@@ -25,7 +25,7 @@ class WorkingMemory(BaseModelDict):
     agent_id: str
     user_id: str
 
-    user_message_json: UserMessage | None = None
+    user_message: UserMessage | None = None
     active_form: CatForm | None = None
 
     # recalled memories attributes
@@ -119,3 +119,7 @@ class WorkingMemory(BaseModelDict):
         """
 
         return self.__history
+
+    @property
+    def user_message_json(self) -> UserMessage | None:
+        return self.user_message
