@@ -204,19 +204,12 @@ class Plugin:
     def _migrate_settings(self, agent_id: str, settings: Dict) -> bool:
         # the new setting coming from the model to be activated
         new_setting = self._get_settings_from_model()
-        setting_to_add = {k: v for k, v in new_setting.items() if k not in settings}
-        setting_to_keep = {k: v for k, v in settings.items() if k in new_setting}
 
-        finalized_setting = {**setting_to_keep, **setting_to_add}
-
-        setting_info = {
-            "added": setting_to_add,
-            "removed": {k: v for k, v in settings.items() if k not in new_setting},
-        }
+        finalized_setting = {k: settings.get(k, v) for k, v in new_setting.items()} if settings else new_setting
 
         # try to create the new incremental settings into the Redis database
         crud_plugins.set_setting(agent_id, self._id, finalized_setting)
-        log.info(f"Plugin {self._id} for agent {agent_id}, migrating settings: {setting_info}")
+        log.info(f"Plugin {self._id} for agent {agent_id}, migrating settings: {finalized_setting}")
 
         return True
 
