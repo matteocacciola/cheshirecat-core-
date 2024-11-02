@@ -20,11 +20,8 @@ class Tweedledee(MadHatter):
 
         super().__init__()
 
-    def install_plugin(self, package_plugin: str):
-        raise NotImplementedError
-
-    def uninstall_plugin(self, plugin_id):
-        raise NotImplementedError
+    def reload_plugins(self):
+        self.plugins = self.system_plugin_manager.plugins.copy()
 
     def find_plugins(self):
         # plugins are already loaded when BillTheLizard is created, since its plugin manager scans the plugins folder
@@ -49,6 +46,14 @@ class Tweedledee(MadHatter):
 
         self._sync_hooks_tools_and_forms()
 
+    def on_plugin_activation(self, plugin_id: str):
+        # Activate the plugin
+        self.plugins[plugin_id].activate_settings(self.agent_key)
+
+    def on_plugin_deactivation(self, plugin_id: str):
+        # Deactivate the plugin
+        self.plugins[plugin_id].deactivate_settings(self.agent_key)
+
     # activate / deactivate plugin
     def toggle_plugin(self, plugin_id: str):
         if not self.plugin_exists(plugin_id):
@@ -58,18 +63,9 @@ class Tweedledee(MadHatter):
 
         # update list of active plugins
         if plugin_is_active:
-            log.warning(f"Toggle plugin {plugin_id}: Deactivate")
-
             self.deactivate_plugin(plugin_id)
-            self.plugins[plugin_id].deactivate_settings(self.agent_key)
         else:
-            log.warning(f"Toggle plugin {plugin_id}: Activate")
-
-            # Activate the plugin
-            self.plugins[plugin_id].activate_settings(self.agent_key)
             self.activate_plugin(plugin_id)
-
-        self._on_finish_toggle_plugin()
 
     @property
     def system_plugin_manager(self) -> Tweedledum:

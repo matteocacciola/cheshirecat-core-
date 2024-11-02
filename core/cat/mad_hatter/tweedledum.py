@@ -59,7 +59,7 @@ class Tweedledum(MadHatter):
             self.__load_plugin(plugin_path)
 
             # activate it
-            self.toggle_plugin(plugin_id)
+            self.activate_plugin(plugin_id)
 
         # notify install has finished (the Lizard will ensure to notify the already loaded Cheshire Cats about the
         # plugin)
@@ -71,7 +71,7 @@ class Tweedledum(MadHatter):
         if self.plugin_exists(plugin_id) and plugin_id != "core_plugin":
             # deactivate plugin if it is active (will sync cache)
             if plugin_id in self.active_plugins:
-                self.toggle_plugin(plugin_id)
+                self.deactivate_plugin(plugin_id)
 
             # remove plugin from cache
             plugin_path = self.plugins[plugin_id].path
@@ -119,7 +119,7 @@ class Tweedledum(MadHatter):
                 self.plugins[plugin_id].activate(self.agent_key)
             except Exception as e:
                 # Couldn't activate the plugin -> Deactivate it
-                self.toggle_plugin(plugin_id)
+                self.deactivate_plugin(plugin_id)
                 raise e
 
         self._sync_hooks_tools_and_forms()
@@ -137,29 +137,13 @@ class Tweedledum(MadHatter):
             # Print the error and go on with the others.
             log.error(str(e))
 
-    # activate / deactivate plugin
-    def toggle_plugin(self, plugin_id: str):
-        if not self.plugin_exists(plugin_id):
-            raise Exception(f"Plugin {plugin_id} not present in plugins folder")
+    def on_plugin_activation(self, plugin_id: str):
+        # Activate the plugin
+        self.plugins[plugin_id].activate(self.agent_key)
 
-        plugin_is_active = plugin_id in self.active_plugins
-
-        # update list of active plugins
-        if plugin_is_active:
-            # Deactivate the plugin
-            if plugin_id != "core_plugin":
-                log.warning(f"Toggle plugin {plugin_id}: Deactivate")
-
-                self.deactivate_plugin(plugin_id)
-                self.plugins[plugin_id].deactivate(self.agent_key)
-        else:
-            log.warning(f"Toggle plugin {plugin_id}: Activate")
-
-            # Activate the plugin
-            self.plugins[plugin_id].activate(self.agent_key)
-            self.activate_plugin(plugin_id)
-
-        self._on_finish_toggle_plugin()
+    def on_plugin_deactivation(self, plugin_id: str):
+        # Deactivate the plugin
+        self.plugins[plugin_id].deactivate(self.agent_key)
 
     @property
     def agent_key(self):

@@ -106,11 +106,13 @@ class BillTheLizard:
             plugin_id: The id of the plugin to remove
         """
 
-        # remove all plugin settings, regardless for system or whatever agent
-        crud_plugins.destroy_plugin(plugin_id)
         for ccat in self.__cheshire_cats.values():
             # deactivate plugins in the Cheshire Cats
             ccat.plugin_manager.deactivate_plugin(plugin_id)
+            ccat.plugin_manager.reload_plugins()
+
+        # remove all plugin settings, regardless for system or whatever agent
+        crud_plugins.destroy_plugin(plugin_id)
 
     def __initialize_users(self):
         admin_id = str(uuid4())

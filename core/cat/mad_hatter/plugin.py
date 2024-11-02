@@ -40,7 +40,6 @@ class Plugin:
 
         # where the plugin is on disk
         self._path: str = plugin_path
-        self._settings_file_path = os.path.join(self._path, "settings.json")
 
         # search for .py files in folder
         py_files_path = os.path.join(self._path, "**/*.py")
@@ -77,20 +76,25 @@ class Plugin:
         except Exception as e:
             raise e
 
-        self.activate_settings(agent_id)
+        self.activate_settings(agent_id, False)
 
-    def activate_settings(self, agent_id: str):
+    def activate_settings(self, agent_id: str, incremental: bool = True):
         # load hooks and tools
         self._load_decorated_functions()
 
         # by default, plugin settings are saved inside the Redis database
         setting = crud_plugins.get_setting(agent_id, self._id)
 
-        # try to create the setting into the Redis database
-        if not setting:
-            self._create_settings_from_model(agent_id)
+        # store the new settings incrementally, without losing the values of the configurations still supported
+        if incremental:
+            self._migrate_settings(agent_id, setting)
+        else:
+            # try to create the setting into the Redis database
+            if not setting:
+                self._create_settings_from_model(agent_id)
 
         self._active = True
+
 
     def deactivate(self, agent_id: str):
         # Remove the imported modules
@@ -194,6 +198,25 @@ class Plugin:
         # If each field have a default value and the model is correct, create the settings with default values
         crud_plugins.set_setting(agent_id, self._id, settings)
         log.debug(f"{self.id} have no settings, created with settings model default values")
+
+        return True
+
+    def _migrate_settings(self, agent_id: str, settings: Dict) -> bool:
+        # the new setting coming from the model to be activated
+        new_setting = self._get_settings_from_model()
+        setting_to_add = {k: v for k, v in new_setting.items() if k not in settings}
+        setting_to_keep = {k: v for k, v in settings.items() if k in new_setting}
+
+        finalized_setting = {**setting_to_keep, **setting_to_add}
+
+        setting_info = {
+            "added": setting_to_add,
+            "removed": {k: v for k, v in settings.items() if k not in new_setting},
+        }
+
+        # try to create the new incremental settings into the Redis database
+        crud_plugins.set_setting(agent_id, self._id, finalized_setting)
+        log.info(f"Plugin {self._id} for agent {agent_id}, migrating settings: {setting_info}")
 
         return True
 

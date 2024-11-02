@@ -78,37 +78,55 @@ class MadHatter(ABC):
         return active_plugins
 
     def deactivate_plugin(self, plugin_id: str):
+        if not self.plugin_exists(plugin_id):
+            raise Exception(f"Plugin {plugin_id} not present in plugins folder")
+
+        plugin_is_active = plugin_id in self.active_plugins
+
+        # update list of active plugins, `core_plugin` cannot be deactivated
+        if not plugin_is_active or plugin_id == "core_plugin":
+            return
+
+        # Deactivate the plugin
+        log.warning(f"Toggle plugin {plugin_id}: Deactivate")
+
         # Execute hook on plugin deactivation
         # Deactivation hook must happen before actual deactivation,
         # otherwise the hook will not be available in _plugin_overrides anymore
-        if self.plugin_exists(plugin_id):
-            for hook in self.plugins[plugin_id].plugin_overrides:
-                if hook.name != "deactivated":
-                    continue
-                hook.function(self.plugins[plugin_id])
+        for hook in self.plugins[plugin_id].plugin_overrides:
+            if hook.name != "deactivated":
+                continue
+            hook.function(self.plugins[plugin_id])
 
         # Remove the plugin from the list of active plugins
         self.active_plugins.remove(plugin_id)
-        crud_settings.upsert_setting_by_name(
-            self.agent_key, models.Setting(name="active_plugins", value=self.active_plugins)
-        )
+
+        self.on_plugin_deactivation(plugin_id)
+        self._on_finish_toggle_plugin()
 
     def activate_plugin(self, plugin_id: str):
+        if not self.plugin_exists(plugin_id):
+            raise Exception(f"Plugin {plugin_id} not present in plugins folder")
+
+        plugin_is_active = plugin_id in self.active_plugins
+        if plugin_is_active:
+            return
+
+        log.warning(f"Toggle plugin {plugin_id}: Activate")
+
+        self.on_plugin_activation(plugin_id)
+
         # Execute hook on plugin activation
         # Activation hook must happen before actual activation,
         # otherwise the hook will still not be available in _plugin_overrides
-        if not self.plugin_exists(plugin_id):
-            return
-
         for hook in self.plugins[plugin_id].plugin_overrides:
             if hook.name == "activated":
                 hook.function(self.plugins[plugin_id])
 
         # Add the plugin in the list of active plugins
         self.active_plugins.append(plugin_id)
-        crud_settings.upsert_setting_by_name(
-            self.agent_key, models.Setting(name="active_plugins", value=self.active_plugins)
-        )
+
+        self._on_finish_toggle_plugin()
 
     def _on_finish_toggle_plugin(self):
         # update DB with list of active plugins, delete duplicate plugins
@@ -201,15 +219,11 @@ class MadHatter(ABC):
         pass
 
     @abstractmethod
-    def install_plugin(self, package_plugin: str) -> str:
+    def on_plugin_activation(self, plugin_id: str):
         pass
 
     @abstractmethod
-    def uninstall_plugin(self, plugin_id: str):
-        pass
-
-    @abstractmethod
-    def toggle_plugin(self, plugin_id: str):
+    def on_plugin_deactivation(self, plugin_id: str):
         pass
 
     @property

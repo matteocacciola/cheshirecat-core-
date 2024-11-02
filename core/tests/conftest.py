@@ -79,6 +79,7 @@ def clean_up():
         "tests/mocks/mock_plugin/settings.json",
         "tests/mocks/mock_plugin_folder/mock_plugin",
         "tests/mocks/mock_plugin_folder_new/mock_plugin",
+        "tests/mocks/mock_plugin/settings.py",
         "tests/mocks/empty_folder",
     ]
     for tbr in to_be_removed:

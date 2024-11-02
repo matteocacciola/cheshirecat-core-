@@ -4,7 +4,7 @@ from cat.db import crud
 from cat.db.cruds import plugins as crud_plugins
 from cat.db.database import DEFAULT_SYSTEM_KEY
 
-from tests.utils import api_key, create_mock_plugin_zip, agent_id
+from tests.utils import api_key, create_mock_plugin_zip, agent_id, mock_plugin_settings_file
 
 
 # NOTE: here we test zip upload and install
@@ -126,3 +126,81 @@ def test_plugin_uninstall(secure_client, secure_client_headers, just_installed_p
 
     assert agent_settings is None
     assert system_settings is None
+
+
+def test_plugin_recurrent_installs(lizard, secure_client, secure_client_headers):
+    # create a new agent
+    ccat = lizard.get_or_create_cheshire_cat("agent_test_test")
+    ccat_headers = {"agent_id": ccat.id, "Authorization": f"Bearer {api_key}"}
+
+    # manually install the plugin
+    zip_path = create_mock_plugin_zip(flat=True)
+    zip_file_name = zip_path.split("/")[-1]  # mock_plugin.zip in tests/mocks folder
+    with open(zip_path, "rb") as f:
+        secure_client.post(
+            "/admins/plugins/upload/",
+            files={"file": (zip_file_name, f, "application/zip")},
+            headers=secure_client_headers
+        )
+
+    # activate for the new agent
+    secure_client.put("/plugins/toggle/mock_plugin", headers=ccat_headers)
+
+    # re-install the plugin
+    with open(zip_path, "rb") as f:
+        secure_client.post(
+            "/admins/plugins/upload/",
+            files={"file": (zip_file_name, f, "application/zip")},
+            headers=secure_client_headers
+        )
+
+    # now, re-list the plugins as an agent: all the plugins should be still active
+    response = secure_client.get("/plugins", headers=ccat_headers)
+    installed_plugins = response.json()["installed"]
+    installed_plugins_names = list(map(lambda p: p["id"], installed_plugins))
+    assert "mock_plugin" in installed_plugins_names
+    for p in installed_plugins:
+        assert isinstance(p["active"], bool)
+        assert p["active"]
+
+
+def test_plugin_incremental_settings_on_recurrent_installs(lizard, secure_client, secure_client_headers):
+    # create a new agent
+    ccat = lizard.get_or_create_cheshire_cat("agent_test_test")
+    ccat_headers = {"agent_id": ccat.id, "Authorization": f"Bearer {api_key}"}
+
+    # manually install the plugin
+    zip_path = create_mock_plugin_zip(flat=True)
+    zip_file_name = zip_path.split("/")[-1]  # mock_plugin.zip in tests/mocks folder
+    with open(zip_path, "rb") as f:
+        secure_client.post(
+            "/admins/plugins/upload/",
+            files={"file": (zip_file_name, f, "application/zip")},
+            headers=secure_client_headers
+        )
+
+    # activate for the new agent
+    secure_client.put("/plugins/toggle/mock_plugin", headers=ccat_headers)
+
+    # manually change the configuration of `mock_plugin` for the agent in the Redis database (mock a first update with
+    # new keys in the settings)
+    agent_settings = crud_plugins.get_setting(ccat.id, "mock_plugin")
+    agent_settings["key_a"] = "value_a"
+    crud_plugins.update_setting(ccat.id, "mock_plugin", agent_settings)
+
+    # now, write a `settings.py` into the plugin folder and re-install the plugin, so emulating a second
+    # update, with a new key in the settings and the removal of the previous one
+    mock_plugin_settings_file()
+    zip_path = create_mock_plugin_zip(flat=True)
+    zip_file_name = zip_path.split("/")[-1]  # mock_plugin.zip in tests/mocks folder
+    with open(zip_path, "rb") as f:
+        secure_client.post(
+            "/admins/plugins/upload/",
+            files={"file": (zip_file_name, f, "application/zip")},
+            headers=secure_client_headers
+        )
+
+    # check that the configuration of `mock_plugin` for the agent has changed according to the new settings.py
+    agent_settings = crud_plugins.get_setting(ccat.id, "mock_plugin")
+    assert "key_a" not in agent_settings
+    assert agent_settings["existing_key"] == "existing_value"

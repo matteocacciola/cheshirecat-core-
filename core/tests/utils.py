@@ -181,3 +181,23 @@ def get_client_admin_headers(client):
     token = res.json()["access_token"]
 
     return {"Authorization": f"Bearer {token}"}
+
+
+def mock_plugin_settings_file(file_path: str | None = "tests/mocks/mock_plugin/settings.py"):
+    content = '''
+from pydantic import BaseModel
+
+from cat.mad_hatter.decorators import plugin
+
+
+class MockSettings(BaseModel):
+    existing_key: str = "existing_value"
+
+
+@plugin
+def settings_model():
+    return MockSettings
+    '''
+
+    with open(file_path, "w") as file:
+        file.write(content)
