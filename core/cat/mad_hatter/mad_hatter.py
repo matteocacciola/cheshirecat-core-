@@ -93,7 +93,7 @@ class MadHatter(ABC):
             self.agent_key, models.Setting(name="active_plugins", value=self.active_plugins)
         )
 
-    def _activate_plugin(self, plugin_id: str):
+    def activate_plugin(self, plugin_id: str):
         # Execute hook on plugin activation
         # Activation hook must happen before actual activation,
         # otherwise the hook will still not be available in _plugin_overrides

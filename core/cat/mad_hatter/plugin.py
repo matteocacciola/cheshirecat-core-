@@ -279,48 +279,6 @@ class Plugin:
 
                 raise Exception(f"Error during {self.id} requirements installation")
 
-    def _uninstall_requirements(self):
-        req_file = os.path.join(self.path, "requirements.txt")
-        if not os.path.exists(req_file):
-            return
-
-        installed_packages = {x.name for x in importlib.metadata.distributions()}
-        filtered_requirements = []
-        try:
-            with open(req_file, "r") as read_file:
-                requirements = read_file.readlines()
-
-            for req in requirements:
-                log.info(f"Uninstalling requirements for: {self.id}")
-
-                # get package name
-                package_name = Requirement(req).name
-
-                # check if package is installed
-                if package_name in installed_packages:
-                    filtered_requirements.append(req)
-                else:
-                    log.debug(f"{package_name} is not installed")
-        except Exception as e:
-            log.error(f"Error during requirements check: {e}, for {self.id}")
-
-        if len(filtered_requirements) == 0:
-            return
-
-        with tempfile.NamedTemporaryFile(mode="w") as tmp:
-            tmp.write("".join(filtered_requirements))
-            # If flush is not performed, when pip reads the file it is empty
-            tmp.flush()
-
-            try:
-                subprocess.run(
-                    ["pip", "uninstall", "-r", tmp.name], check=True
-                )
-            except subprocess.CalledProcessError as e:
-                log.error(f"Error during uninstalling {self.id} requirements: {e}")
-
-                raise Exception(f"Error during {self.id} requirements uninstallation")
-
     # lists of hooks and tools
     def _load_decorated_functions(self):
         hooks = []

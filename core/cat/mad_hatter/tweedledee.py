@@ -67,7 +67,7 @@ class Tweedledee(MadHatter):
 
             # Activate the plugin
             self.plugins[plugin_id].activate_settings(self.agent_key)
-            self._activate_plugin(plugin_id)
+            self.activate_plugin(plugin_id)
 
         self._on_finish_toggle_plugin()
 
