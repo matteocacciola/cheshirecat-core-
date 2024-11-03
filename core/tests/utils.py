@@ -191,7 +191,7 @@ from cat.mad_hatter.decorators import plugin
 
 
 class MockSettings(BaseModel):
-    existing_key: str = "existing_value"
+    existing_key: str = "new_value"
 
 
 @plugin

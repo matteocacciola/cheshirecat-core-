@@ -186,10 +186,11 @@ def test_plugin_incremental_settings_on_recurrent_installs(lizard, secure_client
     # new keys in the settings)
     agent_settings = crud_plugins.get_setting(ccat.id, "mock_plugin")
     agent_settings["key_a"] = "value_a"
+    agent_settings["existing_key"] = "value"
     crud_plugins.update_setting(ccat.id, "mock_plugin", agent_settings)
 
     # now, write a `settings.py` into the plugin folder and re-install the plugin, so emulating a second
-    # update, with a new key in the settings and the removal of the previous one
+    # update, with a new value in the `existing_key` and the removal of `key_a` in the settings
     mock_plugin_settings_file()
     zip_path = create_mock_plugin_zip(flat=True)
     zip_file_name = zip_path.split("/")[-1]  # mock_plugin.zip in tests/mocks folder
@@ -203,4 +204,4 @@ def test_plugin_incremental_settings_on_recurrent_installs(lizard, secure_client
     # check that the configuration of `mock_plugin` for the agent has changed according to the new settings.py
     agent_settings = crud_plugins.get_setting(ccat.id, "mock_plugin")
     assert "key_a" not in agent_settings
-    assert agent_settings["existing_key"] == "existing_value"
+    assert agent_settings["existing_key"] == "value"
