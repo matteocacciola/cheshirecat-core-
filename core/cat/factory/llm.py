@@ -16,12 +16,11 @@ from typing import Type, List, Dict
 import json
 from pydantic import ConfigDict
 
-from cat.factory.base_factory import BaseFactory, BaseConfigModel
+from cat.factory.base_factory import BaseFactory, BaseFactoryConfigModel
 from cat.factory.custom_llm import LLMDefault, LLMCustom, CustomOpenAI, CustomOllama
 
 
-# Base class to manage LLM configuration.
-class LLMSettings(BaseConfigModel, ABC):
+class LLMSettings(BaseFactoryConfigModel, ABC):
     # class instantiating the model
     _pyclass: Type[BaseLanguageModel] = None
 
@@ -395,7 +394,7 @@ class LLMFactory(BaseFactory):
         return "llm_factory"
 
     @property
-    def default_config_class(self) -> Type[BaseConfigModel]:
+    def default_config_class(self) -> Type[BaseFactoryConfigModel]:
         return LLMDefaultConfig
 
     @property

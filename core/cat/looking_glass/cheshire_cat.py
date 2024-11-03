@@ -29,6 +29,7 @@ from cat.log import log
 from cat.mad_hatter.mad_hatter import MadHatter
 from cat.mad_hatter.tweedledee import Tweedledee
 from cat.memory.long_term_memory import LongTermMemory
+from cat.memory.vector_memory_collection import VectorMemoryConfig
 from cat.utils import langchain_log_prompt, langchain_log_output, get_caller_info
 
 
@@ -195,24 +196,13 @@ class CheshireCat:
         self.custom_auth_handler = factory.get_from_config_name(self.id, selected_config["value"]["name"])
 
     def load_memory(self):
-        """Load LongTerMemory and WorkingMemory."""
-        # Memory
+        """Load LongTerMemory (which loads WorkingMemory)."""
 
-        # Get embedder size (langchain classes do not store it)
-        embedder_size = len(self.lizard.embedder.embed_query("hello world"))
-
-        # Get embedder name (useful for for vectorstore aliases)
-        embedder_name = "default_embedder"
-        if hasattr(self.lizard.embedder, "model"):
-            embedder_name = self.lizard.embedder.model
-        elif hasattr(self.lizard.embedder, "repo_id"):
-            embedder_name = self.lizard.embedder.repo_id
+        vector_memory_config = VectorMemoryConfig(
+            embedder_name=self.lizard.get_embedder_name(), embedder_size=self.lizard.get_embedder_size()
+        )
 
         # instantiate long term memory
-        vector_memory_config = {
-            "embedder_name": embedder_name,
-            "embedder_size": embedder_size,
-        }
         self.memory = LongTermMemory(vector_memory_config=vector_memory_config, agent_id=self.id)
 
     def embed_procedures(self):

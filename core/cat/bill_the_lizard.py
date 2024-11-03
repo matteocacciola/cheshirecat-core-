@@ -23,6 +23,7 @@ from cat.looking_glass.cheshire_cat import CheshireCat
 from cat.looking_glass.white_rabbit import WhiteRabbit
 from cat.mad_hatter.mad_hatter import MadHatter
 from cat.mad_hatter.tweedledum import Tweedledum
+from cat.memory.vector_memory_collection import VectorEmbedderSize
 from cat.rabbit_hole import RabbitHole
 from cat.utils import singleton
 
@@ -301,6 +302,20 @@ class BillTheLizard:
         self.main_agent = None
         self.embedder = None
         self.plugin_filemanager = None
+
+    def get_embedder_size(self) -> VectorEmbedderSize:
+        # Get embedder size (langchain classes do not store it)
+        embedder_size = len(self.embedder.embed_query("hello world"))
+
+        return VectorEmbedderSize(text=embedder_size)
+
+    def get_embedder_name(self) -> str:
+        # Get embedder name (useful for for vectorstore aliases)
+        if hasattr(self.embedder, "model"):
+            return self.embedder.model
+        if hasattr(self.embedder, "repo_id"):
+            return self.embedder.repo_id
+        return "default_embedder"
 
     @property
     def cheshire_cats(self):

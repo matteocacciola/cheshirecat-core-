@@ -2,7 +2,7 @@ from abc import ABC
 from typing import Type, Dict
 from pydantic import ConfigDict
 
-from cat.factory.base_factory import BaseFactory, BaseConfigModel
+from cat.factory.base_factory import BaseFactory, BaseFactoryConfigModel
 from cat.factory.custom_auth_handler import (
     # ApiKeyAuthHandler,
     BaseAuthHandler,
@@ -10,7 +10,7 @@ from cat.factory.custom_auth_handler import (
 )
 
 
-class AuthHandlerConfig(BaseConfigModel, ABC):
+class AuthHandlerConfig(BaseFactoryConfigModel, ABC):
     _pyclass: Type[BaseAuthHandler] = None
 
     @classmethod
@@ -73,7 +73,7 @@ class AuthHandlerFactory(BaseFactory):
         return "auth_handler_factory"
 
     @property
-    def default_config_class(self) -> Type[BaseConfigModel]:
+    def default_config_class(self) -> Type[BaseFactoryConfigModel]:
         return CoreOnlyAuthConfig
 
     @property

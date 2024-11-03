@@ -1,6 +1,6 @@
 import time
 from typing import List, Literal, Dict
-from langchain_core.messages import AIMessage, HumanMessage
+from langchain_core.messages import AIMessage, HumanMessage, BaseMessage
 from pydantic import BaseModel, Field, ConfigDict
 
 from cat.utils import BaseModelDict, Enum
@@ -35,7 +35,8 @@ class EmbedderModelInteraction(ModelInteraction):
 
 
 class MessageWhy(BaseModelDict):
-    """Class for wrapping message why
+    """
+    Class for wrapping message why
 
     Variables:
         input (str): input message
@@ -48,10 +49,12 @@ class MessageWhy(BaseModelDict):
     intermediate_steps: List
     memory: Dict
     model_interactions: List[LLMModelInteraction | EmbedderModelInteraction]
+    agent_output: Dict | None = None
 
 
 class CatMessage(BaseModelDict):
-    """Class for wrapping cat message
+    """
+    Class for wrapping cat message
 
     Variables:
         content (str): cat message
@@ -69,7 +72,8 @@ class CatMessage(BaseModelDict):
 
 
 class UserMessage(BaseModelDict):
-    """Class for wrapping user message
+    """
+    Class for wrapping user message
 
     Variables:
         text (str): user message
@@ -84,7 +88,8 @@ class UserMessage(BaseModelDict):
 
 
 class ConversationHistoryInfo(BaseModelDict):
-    """Class for wrapping conversation history info
+    """
+    Class for wrapping conversation history info
 
     Variables:
         who (Role): role
@@ -101,23 +106,44 @@ class ConversationHistoryInfo(BaseModelDict):
     why: MessageWhy | None = None
     when: float | None = time.time()
     role: Role
+    user_id: str
+    agent_id: str
 
 
-def convert_to_langchain_message(
-    messages: List[UserMessage | CatMessage],
-) -> List[HumanMessage | AIMessage]:
-    return [
-        HumanMessage(content=m.text, response_metadata={"userId": m.user_id, "agentId": m.agent_id})
-        if isinstance(m, UserMessage)
-        else AIMessage(content=m.content, response_metadata={"userId": m.user_id, "agentId": m.agent_id})
-        for m in messages
-    ]
+def convert_to_langchain_message(history_info: ConversationHistoryInfo) -> BaseMessage:
+    if history_info.role == Role.HUMAN:
+        content = [{"type": "text", "text": history_info.message}]
+        if history_info.image:
+            content.append({"type": "image_url", "image_url": {"url": history_info.image}})
+        return HumanMessage(
+            name=str(history_info.who),
+            content=content,
+            response_metadata={"userId": history_info.user_id, "agentId": history_info.agent_id}
+        )
+
+    return AIMessage(
+        name=str(history_info.who),
+        content=history_info.message,
+        response_metadata={"userId": history_info.user_id, "agentId": history_info.agent_id}
+    )
 
 
-def convert_to_cat_message(cat_message: AIMessage, why: MessageWhy) -> CatMessage:
+def convert_to_langchain_messages(history: List[ConversationHistoryInfo]) -> List[BaseMessage]:
+    return [convert_to_langchain_message(h) for h in history]
+
+
+def convert_to_cat_message(ai_message: AIMessage, why: MessageWhy) -> CatMessage:
     return CatMessage(
-        content=cat_message.content,
-        user_id=cat_message.response_metadata["userId"],
-        agent_id=cat_message.response_metadata["agentId"],
+        content=ai_message.content,
+        user_id=ai_message.response_metadata["userId"],
+        agent_id=ai_message.response_metadata["agentId"],
         why=why,
     )
+
+
+def convert_to_conversation_history_info(info: Dict, user_id: str, agent_id: str) -> ConversationHistoryInfo:
+    return ConversationHistoryInfo(**{**info, **{"user_id": user_id, "agent_id": agent_id}})
+
+
+def convert_to_conversation_history(infos: List[Dict], user_id: str, agent_id: str) -> List[ConversationHistoryInfo]:
+    return [convert_to_conversation_history_info(info, user_id, agent_id) for info in infos]

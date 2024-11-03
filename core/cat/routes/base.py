@@ -43,4 +43,4 @@ async def message_with_cat(
         user_id=stray.user.id, agent_id=stray.agent_id, text=payload["text"], image=payload.get("image")
     )
     answer = await run_in_threadpool(stray.run, user_message, True)
-    return CatMessage(**{**answer, **{"user_id": stray.user.id, "agent_id": stray.agent_id}})
+    return answer

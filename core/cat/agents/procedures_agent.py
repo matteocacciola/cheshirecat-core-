@@ -88,7 +88,7 @@ class ProceduresAgent(BaseAgent):
         # Execute chain and obtain a choice of procedure from the LLM
         llm_action = await self.execute_chain(stray, procedures_prompt_template, allowed_procedures)
 
-        # route execution to subagents
+        # route execution to sub-agents
         return await self.execute_subagents(stray, llm_action, allowed_procedures)
 
     async def execute_chain(
@@ -150,7 +150,7 @@ class ProceduresAgent(BaseAgent):
         self, stray, llm_action: LLMAction, allowed_procedures: Dict[str, CatTool | CatForm]
     ) -> AgentOutput:
         """
-        Execute subagents.
+        Execute sub-agents.
         Args:
             stray: StrayCat instance
             llm_action: LLMAction instance

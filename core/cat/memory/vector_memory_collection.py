@@ -4,6 +4,7 @@ import uuid
 from typing import Any, List, Iterable, Dict, Tuple
 import aiofiles
 import httpx
+from pydantic import BaseModel
 from qdrant_client.qdrant_remote import QdrantRemote
 from qdrant_client.http.models import (
     Batch,
@@ -31,7 +32,7 @@ from langchain.docstore.document import Document
 from cat.db.vector_database import get_vector_db
 from cat.log import log
 from cat.env import get_env
-from cat.utils import Enum as BaseEnum
+from cat.utils import Enum as BaseEnum, BaseModelDict
 
 
 class VectoryMemoryCollectionTypes(BaseEnum):
@@ -40,13 +41,23 @@ class VectoryMemoryCollectionTypes(BaseEnum):
     PROCEDURAL = "procedural"
 
 
+class VectorEmbedderSize(BaseModel):
+    text: int
+    image: int | None = None
+    audio: int | None = None
+
+
+class VectorMemoryConfig(BaseModelDict):
+    embedder_name: str
+    embedder_size: VectorEmbedderSize
+
+
 class VectorMemoryCollection:
     def __init__(
         self,
         agent_id: str,
         collection_name: str,
-        embedder_name: str,
-        embedder_size: int,
+        vector_memory_config: VectorMemoryConfig,
     ):
         self.snapshot_info = None
 
@@ -54,8 +65,8 @@ class VectorMemoryCollection:
 
         # Set attributes (metadata on the embedder are useful because it may change at runtime)
         self.collection_name = collection_name
-        self.embedder_name = embedder_name
-        self.embedder_size = embedder_size
+        self.embedder_name = vector_memory_config.embedder_name
+        self.embedder_size = vector_memory_config.embedder_size.text
 
         # connects to Qdrant and creates self.client attribute
         self.client = get_vector_db()

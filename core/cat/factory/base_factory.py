@@ -12,7 +12,7 @@ class ReplacedNLPConfig(BaseModel):
     value: Dict
 
 
-class BaseConfigModel(ABC, BaseModel):
+class BaseFactoryConfigModel(ABC, BaseModel):
     _pyclass: Type = None
 
     @classmethod
@@ -75,7 +75,7 @@ class BaseFactory(ABC):
         return object
 
     @abstractmethod
-    def get_allowed_classes(self) -> List[Type[BaseConfigModel]]:
+    def get_allowed_classes(self) -> List[Type[BaseFactoryConfigModel]]:
         pass
 
     @abstractmethod
@@ -99,7 +99,7 @@ class BaseFactory(ABC):
 
     @property
     @abstractmethod
-    def default_config_class(self) -> Type[BaseConfigModel]:
+    def default_config_class(self) -> Type[BaseFactoryConfigModel]:
         pass
 
     @property

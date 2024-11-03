@@ -1,7 +1,14 @@
-from typing import List, Any, Dict
+from typing import List, Any
 
 from cat.agents import AgentInput
-from cat.convo.messages import Role, UserMessage, ModelInteraction, MessageWhy, ConversationHistoryInfo
+from cat.convo.messages import (
+    Role,
+    UserMessage,
+    ModelInteraction,
+    MessageWhy,
+    ConversationHistoryInfo,
+    convert_to_conversation_history,
+)
 from cat.db.cruds import history as crud_history
 from cat.experimental.form.cat_form import CatForm
 from cat.memory.vector_memory_collection import VectoryMemoryCollectionTypes
@@ -9,7 +16,8 @@ from cat.utils import BaseModelDict
 
 
 class WorkingMemory(BaseModelDict):
-    """Cat's volatile memory.
+    """
+    Cat's volatile memory.
 
     Handy class that behaves like a `Dict` to store temporary custom data.
 
@@ -39,7 +47,9 @@ class WorkingMemory(BaseModelDict):
     def __init__(self, **data: Any):
         super().__init__(**data)
 
-        self.__history = [ConversationHistoryInfo(**m) for m in crud_history.get_history(self.agent_id, self.user_id)]
+        self.__history = convert_to_conversation_history(
+            crud_history.get_history(self.agent_id, self.user_id), self.user_id, self.agent_id
+        )
 
         # Have the memories as instance attributes (i.e. do things like stray.working_memory.declarative_memories
         # or stray.working_memory.declarative_memories[something])
@@ -102,13 +112,15 @@ class WorkingMemory(BaseModelDict):
         # TODO: Message should be of type CatMessage or UserMessage. For backward compatibility we put a new key
         # we are sure that who is not change in the current call
         conversation_history_info = ConversationHistoryInfo(
-            who=who, message=message, why=why, role=role, image=image
+            who=who, message=message, why=why, role=role, image=image, user_id=self.user_id, agent_id=self.agent_id
         )
 
         # append latest message in conversation
-        self.__history = [ConversationHistoryInfo(**m) for m in crud_history.update_history(
-            self.agent_id, self.user_id, conversation_history_info
-        )]
+        self.__history = convert_to_conversation_history(
+            crud_history.update_history(self.agent_id, self.user_id, conversation_history_info),
+            self.user_id,
+            self.agent_id
+        )
 
     @property
     def history(self) -> List[ConversationHistoryInfo]:

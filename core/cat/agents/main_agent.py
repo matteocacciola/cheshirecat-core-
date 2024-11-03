@@ -12,9 +12,7 @@ from cat.env import get_env
 
 
 class MainAgent(BaseAgent):
-    """Main Agent.
-    This class manages sub agents that in turn use the LLM.
-    """
+    """Main Agent. This class manages sub agents that in turn use the LLM."""
 
     def __init__(self):
         self.verbose = False

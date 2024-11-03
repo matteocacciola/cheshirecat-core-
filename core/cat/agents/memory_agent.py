@@ -45,4 +45,3 @@ class MemoryAgent(BaseAgent):
         )
 
         return AgentOutput(output=output)
-    

@@ -10,13 +10,12 @@ from langchain_openai import OpenAIEmbeddings, AzureOpenAIEmbeddings
 from langchain_google_genai import GoogleGenerativeAIEmbeddings
 from fastembed import TextEmbedding
 
-from cat.factory.base_factory import BaseFactory, BaseConfigModel
+from cat.factory.base_factory import BaseFactory, BaseFactoryConfigModel
 from cat.factory.custom_embedder import DumbEmbedder, CustomOpenAIEmbeddings
 from cat.utils import Enum
 
 
-# Base class to manage LLM configuration.
-class EmbedderSettings(BaseConfigModel, ABC):
+class EmbedderSettings(BaseFactoryConfigModel, ABC):
     _is_multimodal: bool = False
 
     # class instantiating the embedder
@@ -33,6 +32,10 @@ class EmbedderSettings(BaseConfigModel, ABC):
     @classmethod
     def is_multimodal(cls) -> bool:
         return cls._is_multimodal.default
+
+
+class EmbedderMultimodalSettings(EmbedderSettings, ABC):
+    _is_multimodal: bool = True
 
 
 class EmbedderFakeConfig(EmbedderSettings):
@@ -268,7 +271,7 @@ class EmbedderFactory(BaseFactory):
         return "embedder_factory"
 
     @property
-    def default_config_class(self) -> Type[BaseConfigModel]:
+    def default_config_class(self) -> Type[BaseFactoryConfigModel]:
         return EmbedderDumbConfig
 
     @property
