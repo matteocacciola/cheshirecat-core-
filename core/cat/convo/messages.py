@@ -77,12 +77,15 @@ class UserMessage(BaseModelDict):
 
     Variables:
         text (str): user message
+        image (str): image or None, the eventual image in the message
+        audio (str): audio or None, the eventual audio in the message
         user_id (str): user id
         agent_id (str): agent id
     """
 
     text: str
     image: str | None = None
+    audio: str | None = None
     user_id: str
     agent_id: str
 
@@ -94,7 +97,8 @@ class ConversationHistoryInfo(BaseModelDict):
     Variables:
         who (Role): role
         message (str): message
-        image (str): image or None
+        image (str): image or None, the eventual image in the message
+        audio (str): audio or None, the eventual audio in the message
         why (MessageWhy): message why
         when (float): when
         role (Role): role
@@ -103,6 +107,7 @@ class ConversationHistoryInfo(BaseModelDict):
     who: Role
     message: str
     image: str | None = None
+    audio: str | None = None
     why: MessageWhy | None = None
     when: float | None = time.time()
     role: Role
@@ -115,6 +120,8 @@ def convert_to_langchain_message(history_info: ConversationHistoryInfo) -> BaseM
         content = [{"type": "text", "text": history_info.message}]
         if history_info.image:
             content.append({"type": "image_url", "image_url": {"url": history_info.image}})
+        if history_info.audio:
+            content.append({"type": "audio_url", "audio_url": {"url": history_info.audio}})
         return HumanMessage(
             name=str(history_info.who),
             content=content,

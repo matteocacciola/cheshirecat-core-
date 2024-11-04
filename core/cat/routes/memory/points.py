@@ -8,7 +8,7 @@ from cat.auth.connection import HTTPAuth, ContextualCats
 from cat.auth.permissions import AuthPermission, AuthResource
 from cat.exceptions import CustomNotFoundException, CustomValidationException
 from cat.factory.embedder import EmbedderFactory
-from cat.memory.vector_memory_collection import VectoryMemoryCollectionTypes
+from cat.memory.vector_memory_collection import VectoryMemoryCollectionTypes, DocumentRecall
 
 router = APIRouter()
 
@@ -61,12 +61,12 @@ async def recall_memory_points_from_text(
 ) -> RecallResponse:
     """Search k memories similar to given text."""
 
-    def build_memory_dict(metadata, score, vector, id):
-        memory_dict = dict(metadata)
+    def build_memory_dict(document_recall: DocumentRecall) -> Dict[str, Any]:
+        memory_dict = dict(document_recall.document)
         memory_dict.pop("lc_kwargs", None)  # langchain stuff, not needed
-        memory_dict["id"] = id
-        memory_dict["score"] = float(score)
-        memory_dict["vector"] = vector
+        memory_dict["id"] = document_recall.id
+        memory_dict["score"] = float(document_recall.score) if document_recall.score else None
+        memory_dict["vector"] = document_recall.vector
         return memory_dict
 
     def get_memories(c: VectoryMemoryCollectionTypes) -> List:
@@ -83,9 +83,10 @@ async def recall_memory_points_from_text(
     query_embedding = ccat.embedder.embed_query(text)
 
     # Loop over collections and retrieve nearby memories
-    recalled = {str(c): [
-        build_memory_dict(metadata, score, vector, id) for metadata, score, vector, id in get_memories(c)
-    ] for c in VectoryMemoryCollectionTypes}
+    recalled = {
+        str(c): [build_memory_dict(document_recall) for document_recall in get_memories(c)]
+        for c in VectoryMemoryCollectionTypes
+    }
 
     config_class = EmbedderFactory(ccat.plugin_manager).get_config_class_from_adapter(ccat.embedder.__class__)
 

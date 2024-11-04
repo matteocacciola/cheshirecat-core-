@@ -199,7 +199,7 @@ class CheshireCat:
         """Load LongTerMemory (which loads WorkingMemory)."""
 
         vector_memory_config = VectorMemoryConfig(
-            embedder_name=self.lizard.get_embedder_name(), embedder_size=self.lizard.get_embedder_size()
+            embedder_name=self.lizard.embedder_name, embedder_size=self.lizard.embedder_size
         )
 
         # instantiate long term memory

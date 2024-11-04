@@ -3,7 +3,7 @@ import asyncio
 import traceback
 from asyncio import AbstractEventLoop
 import tiktoken
-from typing import Literal, get_args, List, Dict, Any, Tuple
+from typing import Literal, List, Dict, Any, get_args
 from langchain.docstore.document import Document
 from langchain_core.embeddings import Embeddings
 from langchain_core.language_models import BaseLanguageModel
@@ -34,7 +34,7 @@ from cat.looking_glass.callbacks import NewTokenHandler, ModelInteractionHandler
 from cat.looking_glass.white_rabbit import WhiteRabbit
 from cat.mad_hatter.tweedledee import Tweedledee
 from cat.memory.long_term_memory import LongTermMemory
-from cat.memory.vector_memory_collection import VectoryMemoryCollectionTypes
+from cat.memory.vector_memory_collection import VectoryMemoryCollectionTypes, DocumentRecall
 from cat.memory.working_memory import WorkingMemory
 from cat.rabbit_hole import RabbitHole
 from cat.utils import BaseModelDict
@@ -89,9 +89,10 @@ class StrayCat:
         asyncio.run_coroutine_threadsafe(self.__ws.send_json(data), loop=self.__main_loop).result()
 
     def __build_why(self, agent_output: AgentOutput | None = None) -> MessageWhy:
-        memory = {str(c): [
-            dict(d[0]) | {"score": float(d[1]), "id": d[3]} for d in getattr(self.working_memory, f"{c}_memories")
-        ] for c in VectoryMemoryCollectionTypes}
+        memory = {str(c): [dict(d.document) | {
+            "score": float(d.score) if d.score else None,
+            "id": d.id,
+        } for d in getattr(self.working_memory, f"{c}_memories")] for c in VectoryMemoryCollectionTypes}
 
         # why this response?
         return MessageWhy(
@@ -153,7 +154,7 @@ class StrayCat:
 
         if save:
             self.working_memory.update_conversation_history(
-                who=Role.AI, message=message["content"], why=message.why
+                who=Role.AI, message=message.content, why=message.why
             )
 
         self.__send_ws_json(message.model_dump())
@@ -205,7 +206,7 @@ class StrayCat:
         threshold: int | None = None,
         metadata: Dict | None = None,
         override_working_memory: bool = False
-    ) -> List[Tuple[Document, float | None, List[float], str]]:
+    ) -> List[DocumentRecall]:
         """
         This is a proxy method to perform search in a vector memory collection.
         The method allows retrieving information from one specific vector memory collection with custom parameters.
@@ -232,10 +233,8 @@ class StrayCat:
                 Store the retrieved memories in the Working Memory and override the previous ones, if any.
 
         Returns:
-            memories: List[Tuple[Document, float | None, List[float], str]]
+            memories: List[DocumentRecall]
                 List of retrieved memories.
-                Memories are tuples of LangChain `Document`, similarity score (when `k` is not None), embedding vector
-                and id of memory.
 
         See Also:
             VectorMemoryCollection.recall_memories_from_embedding
@@ -259,7 +258,6 @@ class StrayCat:
 
         if override_working_memory:
             setattr(self.working_memory, f"{collection_name}_memories", memories)
-            # self.working_memory.procedural_memories = ...
 
         return memories
 
@@ -440,14 +438,12 @@ class StrayCat:
             "before_cat_reads_message", self.working_memory.user_message, cat=self
         )
 
-        # text of latest Human message
-        user_message_text = self.working_memory.user_message.text
-        # image of latest Human message
-        user_message_image = self.working_memory.user_message.image
+        # latest Human message
+        user_message = self.working_memory.user_message
 
         # update conversation history (Human turn)
         self.working_memory.update_conversation_history(
-            who=Role.HUMAN, message=user_message_text, image=user_message_image
+            who=Role.HUMAN, message=user_message.text, image=user_message.image, audio=user_message.audio
         )
 
         # recall episodic and declarative memories from vector collections
@@ -464,7 +460,7 @@ class StrayCat:
         log.info("Agent output returned to stray:")
         log.info(agent_output)
 
-        self._store_user_message_in_episodic_memory(user_message_text)
+        self._store_user_message_in_episodic_memory(user_message)
 
         # prepare final cat message
         final_output = CatMessage(
@@ -478,7 +474,9 @@ class StrayCat:
         final_output = plugin_manager.execute_hook("before_cat_sends_message", final_output, cat=self)
 
         # update conversation history (AI turn)
-        self.working_memory.update_conversation_history(who=Role.AI, message=final_output.content, why=final_output.why)
+        self.working_memory.update_conversation_history(
+            who=Role.AI, message=final_output.content, why=final_output.why
+        )
 
         self.__last_message_time = time.time()
 
@@ -603,6 +601,7 @@ Allowed classes are:
         Returns:
             List[BaseMessage]: List of Langchain messages.
         """
+
         chat_history = self.working_memory.history[-latest_n:]
 
         return convert_to_langchain_messages(chat_history)
@@ -647,20 +646,19 @@ Allowed classes are:
 
         return agent_output
 
-    def _store_user_message_in_episodic_memory(self, user_message_text: str):
+    def _store_user_message_in_episodic_memory(self, user_message: UserMessage):
         doc = Document(
-            page_content=user_message_text,
+            page_content=user_message.text,
             metadata={"source": self.__user.id, "when": time.time()},
         )
         doc = self.plugin_manager.execute_hook(
             "before_cat_stores_episodic_memory", doc, cat=self
         )
         # store user message in episodic memory
-        # TODO: vectorize and store also conversation chunks
-        #   (not raw dialog, but summarization)
+        # TODO: vectorize and store also conversation chunks (not raw dialog, but summarization)
         cheshire_cat = self.cheshire_cat
-        user_message_embedding = cheshire_cat.embedder.embed_documents([user_message_text])
-        _ = cheshire_cat.memory.vectors.episodic.add_point(
+        user_message_embedding = cheshire_cat.embedder.embed_documents([user_message.text])
+        cheshire_cat.memory.vectors.episodic.add_point(
             doc.page_content,
             user_message_embedding[0],
             doc.metadata,

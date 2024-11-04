@@ -90,7 +90,7 @@ class WorkingMemory(BaseModelDict):
         return self
 
     def update_conversation_history(
-        self, who: Role, message: str, image: str | None = None, why: MessageWhy | None = None
+        self, who: Role, message: str, image: str | None = None, audio: str | None = None, why: MessageWhy | None = None
     ):
         """Update the conversation history.
 
@@ -103,6 +103,8 @@ class WorkingMemory(BaseModelDict):
                 The message said.
             image: str, optional
                 The image said. Default is None.
+            audio: str, optional
+                The audio said. Default is None.
             why: MessageWhy, optional
                 The reason why the message was said. Default is None.
         """
@@ -112,7 +114,14 @@ class WorkingMemory(BaseModelDict):
         # TODO: Message should be of type CatMessage or UserMessage. For backward compatibility we put a new key
         # we are sure that who is not change in the current call
         conversation_history_info = ConversationHistoryInfo(
-            who=who, message=message, why=why, role=role, image=image, user_id=self.user_id, agent_id=self.agent_id
+            who=who,
+            message=message,
+            why=why,
+            role=role,
+            image=image,
+            audio=audio,
+            user_id=self.user_id,
+            agent_id=self.agent_id,
         )
 
         # append latest message in conversation

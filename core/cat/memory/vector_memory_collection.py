@@ -52,13 +52,20 @@ class VectorMemoryConfig(BaseModelDict):
     embedder_size: VectorEmbedderSize
 
 
+class DocumentRecall(BaseModelDict):
+    """
+    Langchain `Document` retrieved from the episodic memory, with the similarity score, the list of embeddings and the
+    id of the memory.
+    """
+
+    document: Document
+    score: float | None = None
+    vector: List[float] = []
+    id: str | None = None
+
+
 class VectorMemoryCollection:
-    def __init__(
-        self,
-        agent_id: str,
-        collection_name: str,
-        vector_memory_config: VectorMemoryConfig,
-    ):
+    def __init__(self, agent_id: str, collection_name: str, vector_memory_config: VectorMemoryConfig):
         self.snapshot_info = None
 
         self.agent_id = agent_id
@@ -187,6 +194,7 @@ class VectorMemoryCollection:
     def retrieve_points(self, points: List) -> List[Record]:
         """
         Retrieve points from the collection by their ids
+
         Args:
             points: the ids of the points to retrieve
 
@@ -240,7 +248,7 @@ class VectorMemoryCollection:
 
         if update_status.status == "completed":
             # returning stored point
-            return point # TODOV2 return internal MemoryPoint
+            return point
 
         return None
 
@@ -286,7 +294,7 @@ class VectorMemoryCollection:
     # retrieve similar memories from embedding
     def recall_memories_from_embedding(
         self, embedding, metadata: Dict | None = None, k: int | None = 5, threshold: float | None =None
-    ) -> List[Tuple[Document, float, List[float], str]]:
+    ) -> List[DocumentRecall]:
         """
         Retrieve memories from the collection based on an embedding vector. The memories are sorted by similarity to the
         embedding vector. The metadata filter is applied to the memories before retrieving them. The number of memories
@@ -304,7 +312,7 @@ class VectorMemoryCollection:
             threshold: Similarity threshold.
 
         Returns:
-            List: List of tuples containing a Document, a similarity score, an embedding vector and the id of the memory.
+            List: List of DocumentRecall.
         """
         combined_filter = self._qdrant_combine_filter_with_tenant(self._qdrant_filter_from_dict(metadata))
 
@@ -327,14 +335,11 @@ class VectorMemoryCollection:
         )
 
         # convert Qdrant points to langchain.Document
-        langchain_documents_from_points = [(
-            Document(
-                page_content=m.payload.get("page_content"),
-                metadata=m.payload.get("metadata") or {},
-            ),
-            m.score,
-            m.vector,
-            m.id,
+        langchain_documents_from_points = [DocumentRecall(
+            document=Document(page_content=m.payload.get("page_content"), metadata=m.payload.get("metadata") or {}),
+            score=m.score,
+            vector=m.vector,
+            id=m.id,
         ) for m in memories]
 
         # we'll move out of langchain conventions soon and have our own cat Document
@@ -343,21 +348,22 @@ class VectorMemoryCollection:
 
         return langchain_documents_from_points
 
-    def recall_all_memories(self) -> List[Tuple[Document, None, List[float], str]]:
+    def recall_all_memories(self) -> List[DocumentRecall]:
         """
         Retrieve the entire memories. It is similar to `recall_memories_from_embedding`, but without the embedding
         vector. Like `get_all_points`, it retrieves all the memories in the collection. The memories are returned in the
         same format as `recall_memories_from_embedding`.
 
         Returns:
-            List: List of tuple, like `recall_memories_from_embedding`, but with the nulled 2nd element (the score).
+            List: List of DocumentRecall, like `recall_memories_from_embedding`, but with the nulled 2nd element
+            (the score).
 
         See Also:
             VectorMemoryCollection.recall_memories_from_embedding
             VectorMemoryCollection.get_all_points
         """
         all_points, _ = self.get_all_points()
-        memories = [(Document(**p.payload), None, p.vector, p.id) for p in all_points]
+        memories = [DocumentRecall(document=Document(**p.payload), vector=p.vector, id=p.id) for p in all_points]
 
         return memories
 

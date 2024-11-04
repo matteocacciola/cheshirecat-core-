@@ -23,6 +23,7 @@ async def receive_message(websocket: WebSocket, stray: StrayCat):
             agent_id=stray.agent_id,
             text=user_message_text["text"],
             image=user_message_text.get("image"),
+            audio=user_message_text.get("audio"),
         )
 
         # Run the `stray` object's method in a threadpool since it might be a CPU-bound operation.

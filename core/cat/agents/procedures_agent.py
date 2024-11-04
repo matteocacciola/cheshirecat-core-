@@ -73,8 +73,8 @@ class ProceduresAgent(BaseAgent):
 
         # Gather recalled procedures
         recalled_procedures_names = {
-            p[0].metadata["source"] for p in stray.working_memory.procedural_memories if
-            p[0].metadata["type"] in ["tool", "form"] and p[0].metadata["trigger_type"] in [
+            p.document.metadata["source"] for p in stray.working_memory.procedural_memories if
+            p.document.metadata["type"] in ["tool", "form"] and p.document.metadata["trigger_type"] in [
                 "description", "start_example"
             ]
         }
