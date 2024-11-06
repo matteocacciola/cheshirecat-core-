@@ -1,20 +1,18 @@
 import time
-from typing import List, Tuple, Dict
+from typing import List
 from datetime import timedelta
-from langchain.docstore.document import Document
 
 from cat.agents import AgentInput, AgentOutput, BaseAgent
 from cat.agents.memory_agent import MemoryAgent
 from cat.agents.procedures_agent import ProceduresAgent
 from cat.looking_glass import prompts
+from cat.memory.vector_memory_collection import DocumentRecall
 from cat.utils import verbal_timedelta
 from cat.env import get_env
 
 
 class MainAgent(BaseAgent):
-    """Main Agent.
-    This class manages sub agents that in turn use the LLM.
-    """
+    """Main Agent. This class manages sub agents that in turn use the LLM."""
 
     def __init__(self):
         self.verbose = False
@@ -107,19 +105,15 @@ class MainAgent(BaseAgent):
             episodic_memory=episodic_memory_formatted_content,
             declarative_memory=declarative_memory_formatted_content,
             tools_output="",
-            input=stray.working_memory.user_message.text,  # TODOV2: take away
-            chat_history=conversation_history_formatted_content, # TODOV2: take away
+            input=stray.working_memory.user_message.text,  # TODO V2: take away
+            chat_history=conversation_history_formatted_content, # TODO V2: take away
         )
 
-    def agent_prompt_episodic_memories(
-        self, memory_docs: List[Tuple[Document, float, List[float], str]]
-    ) -> str:
+    def agent_prompt_episodic_memories(self, memory_docs: List[DocumentRecall]) -> str:
         """Formats episodic memories to be inserted into the prompt.
 
         Args:
-            memory_docs: List[Tuple[Document, float, List[float], str]]
-                List of Langchain `Document` retrieved from the episodic memory, with the similarity score, the list of
-                embeddings and the id of the memory.
+            memory_docs: List[DocumentRecall]
 
         Returns:
             memory_content: str
@@ -127,14 +121,14 @@ class MainAgent(BaseAgent):
         """
 
         # convert docs to simple text
-        memory_texts = [m[0].page_content.replace("\n", ". ") for m in memory_docs]
+        memory_texts = [m.document.page_content.replace("\n", ". ") for m in memory_docs]
 
         # add time information (e.g. "2 days ago")
         # Get Time information in the Document metadata
         # Get Current Time - Time when memory was stored
         # Convert and Save timestamps to Verbal (e.g. "2 days ago")
         memory_timestamps = [
-            f" ({verbal_timedelta(timedelta(seconds=(time.time() - m[0].metadata['when'])))})" for m in memory_docs
+            f" ({verbal_timedelta(timedelta(seconds=(time.time() - m.document.metadata['when'])))})" for m in memory_docs
         ]
 
         # Join Document text content with related temporal information
@@ -154,16 +148,12 @@ class MainAgent(BaseAgent):
 
         return memory_content
 
-    def agent_prompt_declarative_memories(
-        self, memory_docs: List[Tuple[Document, float, List[float], str]]
-    ) -> str:
+    def agent_prompt_declarative_memories(self, memory_docs: List[DocumentRecall]) -> str:
         """Formats the declarative memories for the prompt context.
         Such context is placed in the `agent_prompt_prefix` in the place held by {declarative_memory}.
 
         Args:
-            memory_docs: List[Tuple[Document, float, List[float], str]]
-                List of Langchain `Document` retrieved from the episodic memory, with the similarity score, the list of
-                embeddings and the id of the memory.
+            memory_docs: List[DocumentRecall]
 
         Returns:
             memory_content: str
@@ -171,11 +161,11 @@ class MainAgent(BaseAgent):
         """
 
         # convert docs to simple text
-        memory_texts = [m[0].page_content.replace("\n", ". ") for m in memory_docs]
+        memory_texts = [m.document.page_content.replace("\n", ". ") for m in memory_docs]
 
         # add source information (e.g. "extracted from file.txt")
         # Get and save the source of the memory
-        memory_sources = [f" (extracted from {m[0].metadata['source']})" for m in memory_docs]
+        memory_sources = [f" (extracted from {m.document.metadata['source']})" for m in memory_docs]
         # Join Document text content with related source information
         memory_texts = [a + b for a, b in zip(memory_texts, memory_sources)]
 

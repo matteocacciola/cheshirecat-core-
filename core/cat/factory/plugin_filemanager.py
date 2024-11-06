@@ -2,7 +2,7 @@ from abc import ABC
 from typing import Type, List, Dict
 from pydantic import ConfigDict
 
-from cat.factory.base_factory import BaseFactory, BaseConfigModel
+from cat.factory.base_factory import BaseFactory, BaseFactoryConfigModel
 from cat.factory.custom_filemanager import (
     LocalFileManager,
     BaseFileManager,
@@ -14,7 +14,7 @@ from cat.factory.custom_filemanager import (
 import cat.utils as utils
 
 
-class PluginFileManagerConfig(BaseConfigModel, ABC):
+class PluginFileManagerConfig(BaseFactoryConfigModel, ABC):
     storage_dir: str = "plugins"
 
     # class instantiating the plugin file manager
@@ -139,7 +139,7 @@ class PluginFileManagerFactory(BaseFactory):
         return "plugin_filemanager_factory"
 
     @property
-    def default_config_class(self) -> Type[BaseConfigModel]:
+    def default_config_class(self) -> Type[BaseFactoryConfigModel]:
         return LocalPluginFileManagerConfig
 
     @property

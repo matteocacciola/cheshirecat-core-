@@ -3,11 +3,11 @@ import asyncio
 import traceback
 from asyncio import AbstractEventLoop
 import tiktoken
-from typing import Literal, get_args, List, Dict, Any, Tuple
+from typing import Literal, List, Dict, Any, get_args
 from langchain.docstore.document import Document
 from langchain_core.embeddings import Embeddings
 from langchain_core.language_models import BaseLanguageModel
-from langchain_core.messages import AIMessage, HumanMessage, SystemMessage, BaseMessage
+from langchain_core.messages import SystemMessage, BaseMessage
 from langchain_core.runnables import RunnableConfig, RunnableLambda
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.output_parsers.string import StrOutputParser
@@ -19,7 +19,14 @@ from cat.bill_the_lizard import BillTheLizard
 from cat.agents.base_agent import AgentOutput
 from cat.agents.main_agent import MainAgent
 from cat.auth.permissions import AuthUserInfo
-from cat.convo.messages import CatMessage, UserMessage, MessageWhy, Role, EmbedderModelInteraction
+from cat.convo.messages import (
+    EmbedderModelInteraction,
+    CatMessage,
+    Role,
+    MessageWhy,
+    UserMessage,
+    convert_to_langchain_messages,
+)
 from cat.env import get_env
 from cat.exceptions import VectorMemoryError
 from cat.log import log
@@ -27,7 +34,7 @@ from cat.looking_glass.callbacks import NewTokenHandler, ModelInteractionHandler
 from cat.looking_glass.white_rabbit import WhiteRabbit
 from cat.mad_hatter.tweedledee import Tweedledee
 from cat.memory.long_term_memory import LongTermMemory
-from cat.memory.vector_memory_collection import VectoryMemoryCollectionTypes
+from cat.memory.vector_memory_collection import VectoryMemoryCollectionTypes, DocumentRecall
 from cat.memory.working_memory import WorkingMemory
 from cat.rabbit_hole import RabbitHole
 from cat.utils import BaseModelDict
@@ -81,24 +88,24 @@ class StrayCat:
         # and wait for the result
         asyncio.run_coroutine_threadsafe(self.__ws.send_json(data), loop=self.__main_loop).result()
 
-    def __build_why(self) -> MessageWhy:
-        memory = {str(c): [
-            dict(d[0]) | {"score": float(d[1]), "id": d[3]} for d in getattr(self.working_memory, f"{c}_memories")
-        ] for c in VectoryMemoryCollectionTypes}
+    def __build_why(self, agent_output: AgentOutput | None = None) -> MessageWhy:
+        memory = {str(c): [dict(d.document) | {
+            "score": float(d.score) if d.score else None,
+            "id": d.id,
+        } for d in getattr(self.working_memory, f"{c}_memories")] for c in VectoryMemoryCollectionTypes}
 
         # why this response?
-        why = MessageWhy(
+        return MessageWhy(
             input=self.working_memory.user_message.text,
-            intermediate_steps=[],
+            intermediate_steps=agent_output.intermediate_steps if agent_output else [],
             memory=memory,
             model_interactions=self.working_memory.model_interactions,
+            agent_output=agent_output.model_dump() if agent_output else None
         )
 
-        return why
-
     def send_ws_message(self, content: str, msg_type: MSG_TYPES = "notification"):
-        """Send a message via websocket.
-
+        """
+        Send a message via websocket.
         This method is useful for sending a message via websocket directly without passing through the LLM
         In case there is no connection the message is skipped and a warning is logged
 
@@ -128,9 +135,9 @@ class StrayCat:
             self.__send_ws_json({"type": msg_type, "content": content})
 
     def send_chat_message(self, message: str | CatMessage, save=False):
-        """Sends a chat message to the user using the active WebSocket connection.
-
-        In case there is no connection the message is skipped and a warning is logged
+        """
+        Sends a chat message to the user using the active WebSocket connection.
+        In case there is no connection the message is skipped and a warning is logged.
 
         Args:
             message (Union[str, CatMessage]): message to send
@@ -147,15 +154,15 @@ class StrayCat:
 
         if save:
             self.working_memory.update_conversation_history(
-                who=Role.AI, message=message["content"], why=message.why
+                who=Role.AI, message=message.content, why=message.why
             )
 
         self.__send_ws_json(message.model_dump())
 
     def send_notification(self, content: str):
-        """Sends a notification message to the user using the active WebSocket connection.
-
-        In case there is no connection the message is skipped and a warning is logged
+        """
+        Sends a notification message to the user using the active WebSocket connection.
+        In case there is no connection the message is skipped and a warning is logged.
 
         Args:
             content (str): message to send
@@ -164,9 +171,9 @@ class StrayCat:
         self.send_ws_message(content=content, msg_type="notification")
 
     def send_error(self, error: str | Exception):
-        """Sends an error message to the user using the active WebSocket connection.
-
-        In case there is no connection the message is skipped and a warning is logged
+        """
+        Sends an error message to the user using the active WebSocket connection.
+        In case there is no connection the message is skipped and a warning is logged.
 
         Args:
             error (Union[str, Exception]): message to send
@@ -199,11 +206,11 @@ class StrayCat:
         threshold: int | None = None,
         metadata: Dict | None = None,
         override_working_memory: bool = False
-    ) -> List[Tuple[Document, float | None, List[float], str]]:
-        """This is a proxy method to perform search in a vector memory collection.
-
+    ) -> List[DocumentRecall]:
+        """
+        This is a proxy method to perform search in a vector memory collection.
         The method allows retrieving information from one specific vector memory collection with custom parameters.
-        The Cat uses this method internally
+        The Cat uses this method internally.
         to recall the relevant memories to Working Memory every user's chat interaction.
         This method is useful also to perform a manual search in hook and tools.
 
@@ -226,10 +233,8 @@ class StrayCat:
                 Store the retrieved memories in the Working Memory and override the previous ones, if any.
 
         Returns:
-            memories: List[Tuple[Document, float | None, List[float], str]]
+            memories: List[DocumentRecall]
                 List of retrieved memories.
-                Memories are tuples of LangChain `Document`, similarity score (when `k` is not None), embedding vector
-                and id of memory.
 
         See Also:
             VectorMemoryCollection.recall_memories_from_embedding
@@ -253,13 +258,12 @@ class StrayCat:
 
         if override_working_memory:
             setattr(self.working_memory, f"{collection_name}_memories", memories)
-            # self.working_memory.procedural_memories = ...
 
         return memories
 
     def recall_relevant_memories_to_working_memory(self, query: str | None = None):
-        """Retrieve context from memory.
-
+        """
+        Retrieve context from memory.
         The method retrieves the relevant memories from the vector collections that are given as context to the LLM.
         Recalled memories are stored in the working memory.
 
@@ -331,7 +335,7 @@ class StrayCat:
 
         memory_types = cheshire_cat.memory.vectors.collections.keys()
         for config, memory_type in zip(recall_configs, memory_types):
-            _ = self.recall(
+            self.recall(
                 query=config.embedding,
                 collection_name=memory_type,
                 k=config.k,
@@ -344,9 +348,9 @@ class StrayCat:
         plugin_manager.execute_hook("after_cat_recalls_memories", cat=self)
 
     def llm_response(self, prompt: str, stream: bool = False) -> str:
-        """Generate a response using the LLM model.
-
-        This method is useful for generating a response with both a chat and a completion model using the same syntax
+        """
+        Generate a response using the LLM model.
+        This method is useful for generating a response with both a chat and a completion model using the same syntax.
 
         Args:
             prompt: str
@@ -354,9 +358,7 @@ class StrayCat:
             stream: bool, optional
                 Whether to stream the tokens or not.
 
-        Returns:
-            str
-                The generated response.
+        Returns: The generated response.
         """
 
         # should we stream the tokens?
@@ -393,8 +395,8 @@ class StrayCat:
         return output
 
     async def __call__(self, user_message: UserMessage) -> CatMessage:
-        """Call the Cat instance.
-
+        """
+        Call the Cat instance.
         This method is called on the user's message received from the client.
 
         Args:
@@ -436,14 +438,12 @@ class StrayCat:
             "before_cat_reads_message", self.working_memory.user_message, cat=self
         )
 
-        # text of latest Human message
-        user_message_text = self.working_memory.user_message.text
-        # image of latest Human message
-        user_message_image = self.working_memory.user_message.image
+        # latest Human message
+        user_message = self.working_memory.user_message
 
         # update conversation history (Human turn)
         self.working_memory.update_conversation_history(
-            who=Role.HUMAN, message=user_message_text, image=user_message_image
+            who=Role.HUMAN, message=user_message.text, image=user_message.image, audio=user_message.audio
         )
 
         # recall episodic and declarative memories from vector collections
@@ -460,23 +460,18 @@ class StrayCat:
         log.info("Agent output returned to stray:")
         log.info(agent_output)
 
-        self._store_user_message_in_episodic_memory(user_message_text)
-
-        # why this response?
-        why = self.__build_why()
-        # TODO: should these assignations be included in self.__build_why ?
-        why.intermediate_steps = agent_output.intermediate_steps
-        why.agent_output = agent_output.model_dump()
+        self._store_user_message_in_episodic_memory(user_message)
 
         # prepare final cat message
         final_output = CatMessage(
-            user_id=self.__user.id, content=str(agent_output.output), why=why, agent_id=self.__agent_id
+            user_id=self.__user.id,
+            content=str(agent_output.output),
+            why=self.__build_why(agent_output),
+            agent_id=self.__agent_id
         )
 
         # run message through plugins
-        final_output = plugin_manager.execute_hook(
-            "before_cat_sends_message", final_output, cat=self
-        )
+        final_output = plugin_manager.execute_hook("before_cat_sends_message", final_output, cat=self)
 
         # update conversation history (AI turn)
         self.working_memory.update_conversation_history(
@@ -510,7 +505,8 @@ class StrayCat:
                 # self.nullify_connection()
 
     def classify(self, sentence: str, labels: List[str] | Dict[str, List[str]]) -> str | None:
-        """Classify a sentence.
+        """
+        Classify a sentence.
 
         Args:
             sentence: str
@@ -570,7 +566,8 @@ Allowed classes are:
         return best_label if score < 0.5 else None
 
     def stringify_chat_history(self, latest_n: int = 5) -> str:
-        """Serialize chat history.
+        """
+        Serialize chat history.
         Converts to text the recent conversation turns.
 
         Args:
@@ -595,7 +592,8 @@ Allowed classes are:
         return "".join(history_strings)
 
     def langchainfy_chat_history(self, latest_n: int = 5) -> List[BaseMessage]:
-        """Get the chat history in Langchain format.
+        """
+        Get the chat history in Langchain format.
 
         Args:
             latest_n (int, optional): Number of latest messages to get. Defaults to 5.
@@ -603,18 +601,10 @@ Allowed classes are:
         Returns:
             List[BaseMessage]: List of Langchain messages.
         """
-        def build_message(message: Dict) -> BaseMessage:
-            if message["role"] != Role.HUMAN:
-                return AIMessage(name=str(message["who"]), content=message["message"])
-            content = [{"type": "text", "text": message["message"]}]
-            if message["image"]:
-                content.append({"type": "image_url", "image_url": {"url": message["image"]}})
-            return HumanMessage(name=str(message["who"]), content=content)
 
         chat_history = self.working_memory.history[-latest_n:]
-        chat_history = [ch.model_dump() for ch in chat_history]
 
-        return [build_message(message) for message in chat_history]
+        return convert_to_langchain_messages(chat_history)
 
     async def close_connection(self):
         if not self.__ws:
@@ -656,20 +646,19 @@ Allowed classes are:
 
         return agent_output
 
-    def _store_user_message_in_episodic_memory(self, user_message_text: str):
+    def _store_user_message_in_episodic_memory(self, user_message: UserMessage):
         doc = Document(
-            page_content=user_message_text,
+            page_content=user_message.text,
             metadata={"source": self.__user.id, "when": time.time()},
         )
         doc = self.plugin_manager.execute_hook(
             "before_cat_stores_episodic_memory", doc, cat=self
         )
         # store user message in episodic memory
-        # TODO: vectorize and store also conversation chunks
-        #   (not raw dialog, but summarization)
+        # TODO: vectorize and store also conversation chunks (not raw dialog, but summarization)
         cheshire_cat = self.cheshire_cat
-        user_message_embedding = cheshire_cat.embedder.embed_documents([user_message_text])
-        _ = cheshire_cat.memory.vectors.episodic.add_point(
+        user_message_embedding = cheshire_cat.embedder.embed_documents([user_message.text])
+        cheshire_cat.memory.vectors.episodic.add_point(
             doc.page_content,
             user_message_embedding[0],
             doc.metadata,

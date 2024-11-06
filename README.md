@@ -5,19 +5,19 @@
 <div align="center">
   <h2>Cheshire-Cat (Stregatto)</h2>
 <br/>
-  <a href="https://github.com/cheshire-cat-ai/core">
-  <img alt="GitHub Repo stars" src="https://img.shields.io/github/stars/cheshire-cat-ai/core?style=social">
+  <a href="https://github.com/ai-blackbird/cheshirecat-core">
+  <img alt="GitHub Repo stars" src="https://img.shields.io/github/stars/ai-blackbird/cheshirecat-core?style=social">
 </a>
   <a href="https://discord.gg/bHX5sNFCYU">
         <img src="https://img.shields.io/discord/1092359754917089350?logo=discord"
             alt="chat on Discord"></a>
-  <a href="https://github.com/cheshire-cat-ai/core/issues">
-  <img alt="GitHub issues" src="https://img.shields.io/github/issues/cheshire-cat-ai/core">
+  <a href="https://github.com/ai-blackbird/cheshirecat-core/issues">
+  <img alt="GitHub issues" src="https://img.shields.io/github/issues/ai-blackbird/cheshirecat-core">
   </a>
-  <a href="https://github.com/cheshire-cat-ai/core/tags">
-  <img alt="GitHub tag (with filter)" src="https://img.shields.io/github/v/tag/cheshire-cat-ai/core">
+  <a href="https://github.com/ai-blackbird/cheshirecat-core/tags">
+  <img alt="GitHub tag (with filter)" src="https://img.shields.io/github/v/tag/ai-blackbird/cheshirecat-core">
   </a>
-  <img alt="GitHub top language" src="https://img.shields.io/github/languages/top/cheshire-cat-ai/core">
+  <img alt="GitHub top language" src="https://img.shields.io/github/languages/top/ai-blackbird/cheshirecat-core">
 
   <br/>
   <video src="https://github.com/cheshire-cat-ai/core/assets/6328377/7bc4acff-34bf-4b8a-be61-4d8967fbd60f"></video>
@@ -28,12 +28,29 @@
 The Cheshire Cat is a framework to build custom AIs on top of any language model. 
 If you have ever used systems like WordPress or Django to build web apps, imagine the Cat as a similar tool, but specific for AI.
 
+The current version is a multi-tenant fork of the original [Cheshire Cat](https://github.com/cheshire-cat-ai/core).
+While the original project has some security holes and is not ready for scalable production, the AI Blackbird community
+is releasing a new version that will be more secure and scalable.
+
+Moreover, this version produced by the AI Blackbird community has a lot of new features and improvements, such as:
+- A new admin panel that allows you to chat with the AI, visualize the memory and plugins, and adjust the settings.
+- A new plugin system that allows you to extend the AI with new features.
+- A new event system that allows you to get fine-grained control over the AI.
+- **The ability to manage multiple RAGs and other language models at the same time**.
+
+Whilst the original version stored the settings into JSON files, our version requires a Redis database to store the
+settings, the conversation histories, the plugins and so forth. You can configure the Redis database by environment variables.
+
+This new version is completely compatible with the original version, so you can easily migrate your existing plugins
+and settings to the new version. It is still in development, but you can already try it out by running the Docker image.
+New features will be added in the future. Please contact us if you want to contribute.
+
 ## Quickstart
 
 To make Cheshire Cat run on your machine, you just need [`docker`](https://docs.docker.com/get-docker/) installed:
 
 ```bash
-docker run --rm -it -p 1865:80 ghcr.io/cheshire-cat-ai/core:latest
+docker run --rm -it -p 1865:80 ghcr.io/ai-blackbird/cheshirecat-core:latest
 ```
 - Chat with the Cheshire Cat on [localhost:1865/admin](http://localhost:1865/admin).
 - You can also interact via REST API and try out the endpoints on [localhost:1865/docs](http://localhost:1865/docs)

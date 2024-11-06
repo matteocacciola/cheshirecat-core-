@@ -12,12 +12,6 @@ from cat.exceptions import CustomValidationException
 from cat.log import log
 from cat.utils import format_upload_file
 
-# TODOV2:
-# - add proper request and response pydantic models
-# - stray.rabbit_hole without passing cat inside the function
-# - rabbit_hole methods should receive UploadConfig directly
-
-
 router = APIRouter()
 
 

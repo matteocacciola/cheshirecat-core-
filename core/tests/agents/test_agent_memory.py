@@ -1,6 +1,8 @@
 import time
 from langchain.docstore.document import Document
 
+from cat.memory.vector_memory_collection import DocumentRecall
+
 
 def test_format_agent_input_on_empty_memory(stray):
     # empty memory
@@ -71,57 +73,57 @@ def test_agent_prompt_declarative_memories(stray):
 # utility to add content to the working memory
 def fill_working_memory(stray_cat):
     stray_cat.working_memory.episodic_memories = [
-        [
-            Document(
+        DocumentRecall(
+            document=Document(
                 page_content="A",
                 metadata={
                     "when": time.time(),
                 },
             ),
-            0.99,
-        ],
-        [
-            Document(
+            score=0.99,
+        ),
+        DocumentRecall(
+            document=Document(
                 page_content="B",
                 metadata={
                     "when": time.time() - (60 * 60 * 24),
                 },
             ),
-            0.88,
-        ],
+            score=0.88
+        ),
     ]
 
     stray_cat.working_memory.declarative_memories = [
-        [
-            Document(
+        DocumentRecall(
+            document=Document(
                 page_content="A",
                 metadata={
                     "source": "a.pdf",
                 },
             ),
-            0.99,
-        ],
-        [
-            Document(
+            score=0.99
+        ),
+        DocumentRecall(
+            document=Document(
                 page_content="B",
                 metadata={
                     "source": "http://b",
                 },
             ),
-            0.88,
-        ],
+            score=0.88
+        ),
     ]
 
     stray_cat.working_memory.procedural_memories = [
-        [
-            Document(
+        DocumentRecall(
+            document=Document(
                 page_content="what time is it",
                 metadata={
                     "source": "TODO",
                 },
             ),
-            0.99,
-        ]
+            score=0.99,
+        )
     ]
 
     return stray_cat

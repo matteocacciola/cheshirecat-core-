@@ -79,7 +79,7 @@ async def install_plugin_from_registry(
         tmp_plugin_path = await registry_download_plugin(payload["url"])
         lizard.plugin_manager.install_plugin(tmp_plugin_path)
     except Exception as e:
-        raise CustomValidationException(f"Could not download plugin form registry: {e}")
+        raise CustomValidationException(f"Could not download plugin from registry: {e}")
 
     return InstallPluginFromRegistryResponse(url=payload["url"], info="Plugin is being installed asynchronously")
 
@@ -129,7 +129,7 @@ async def get_plugin_details(
 
 
 @router.delete("/{plugin_id}", response_model=DeletePluginResponse)
-async def delete_plugin(
+async def uninstall_plugin(
     plugin_id: str,
     lizard: BillTheLizard = Depends(AdminConnectionAuth(AdminAuthResource.PLUGINS, AuthPermission.DELETE)),
 ) -> DeletePluginResponse:

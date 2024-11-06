@@ -59,7 +59,7 @@ def test_recall_to_working_memory(stray_no_memory):
 
     assert stray_no_memory.working_memory.recall_query == msg_text
     assert len(stray_no_memory.working_memory.episodic_memories) == 1
-    assert stray_no_memory.working_memory.episodic_memories[0][0].page_content == msg_text
+    assert stray_no_memory.working_memory.episodic_memories[0].document.page_content == msg_text
 
 
 def test_stray_recall_invalid_collection_name(stray, embedder):
@@ -79,9 +79,9 @@ def test_stray_recall_query(stray, embedder):
     memories = stray.recall(query, "episodic")
 
     assert len(memories) == 1
-    assert memories[0][0].page_content == msg_text
-    assert isinstance(memories[0][1], float)
-    assert isinstance(memories[0][2], list)
+    assert memories[0].document.page_content == msg_text
+    assert isinstance(memories[0].score, float)
+    assert isinstance(memories[0].vector, list)
 
 
 def test_stray_recall_with_threshold(stray, embedder):
@@ -126,7 +126,7 @@ def test_stray_recall_override_working_memory(stray, embedder):
 
     assert stray.working_memory.episodic_memories == memories
     assert len(stray.working_memory.episodic_memories) == 1
-    assert stray.working_memory.episodic_memories[0][0].page_content == msg_text
+    assert stray.working_memory.episodic_memories[0].document.page_content == msg_text
 
 
 def test_stray_recall_by_metadata(secure_client, secure_client_headers, stray, embedder):
@@ -147,7 +147,7 @@ def test_stray_recall_by_metadata(secure_client, secure_client_headers, stray, e
     memories = stray.recall(query, "declarative", metadata={"source": file_name})
     assert len(memories) == expected_chunks
     for mem in memories:
-        assert mem[0].metadata["source"] == file_name
+        assert mem.document.metadata["source"] == file_name
 
 
 def test_stray_fast_reply_hook(stray):

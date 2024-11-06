@@ -253,7 +253,6 @@ class singleton:
         return getinstance
 
 
-# Class mixing pydantic BaseModel with dictionaries (added for backward compatibility, to be deprecated in v2)
 class BaseModelDict(BaseModel):
     model_config = ConfigDict(
         extra="allow",
