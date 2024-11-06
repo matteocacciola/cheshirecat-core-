@@ -129,7 +129,7 @@ async def get_plugin_details(
 
 
 @router.delete("/{plugin_id}", response_model=DeletePluginResponse)
-async def delete_plugin(
+async def uninstall_plugin(
     plugin_id: str,
     lizard: BillTheLizard = Depends(AdminConnectionAuth(AdminAuthResource.PLUGINS, AuthPermission.DELETE)),
 ) -> DeletePluginResponse:

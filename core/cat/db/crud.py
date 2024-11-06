@@ -1,6 +1,24 @@
+from enum import Enum
 from typing import List, Dict
 
 from cat.db.database import get_db
+
+
+def _serialize_to_redis_json(data_dict: List | Dict) -> List | Dict:
+    """
+    Save a dictionary in a Redis JSON, correctly handling the enums.
+
+    Args:
+        data_dict (dict): dictionary to save
+
+    Returns:
+        dict: dictionary saved
+    """
+
+    if isinstance(data_dict, list):
+        return [_serialize_to_redis_json(d) for d in data_dict]
+
+    return {k: v.value if isinstance(v, Enum) else v for k, v in data_dict.items()}
 
 
 def read(key: str, path: str | None = "$") -> List[Dict] | Dict | None:
@@ -17,7 +35,8 @@ def read(key: str, path: str | None = "$") -> List[Dict] | Dict | None:
 def store(
     key: str, value: List | Dict, path: str | None = "$", nx: bool = False, xx: bool = False
 ) -> List[Dict] | Dict | None:
-    new = get_db().json().set(key, path, value, nx=nx, xx=xx)
+    formatted = _serialize_to_redis_json(value)
+    new = get_db().json().set(key, path, formatted, nx=nx, xx=xx)
     if not new:
         return None
 
