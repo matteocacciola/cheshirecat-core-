@@ -15,6 +15,7 @@ from langchain_core.output_parsers.string import StrOutputParser
 from cat.adapters.factory_adapter import FactoryAdapter
 from cat.auth.auth_utils import hash_password, DEFAULT_USER_USERNAME
 from cat.auth.permissions import get_base_permissions
+from cat.convo.llm import LargeLanguageModelModality
 from cat.db.cruds import (
     settings as crud_settings,
     history as crud_history,
@@ -35,7 +36,8 @@ from cat.utils import langchain_log_prompt, langchain_log_output, get_caller_inf
 
 # main class
 class CheshireCat:
-    """The Cheshire Cat.
+    """
+    The Cheshire Cat.
 
     This is the main class that manages everything for a single agent.
     """
@@ -53,6 +55,7 @@ class CheshireCat:
         self.id = agent_id
 
         self.large_language_model: BaseLanguageModel | None = None
+        self.large_language_model_modality: LargeLanguageModelModality | None = None
         self.memory: LongTermMemory | None = None
         self.custom_auth_handler: BaseAuthHandler | None = None
 
@@ -186,6 +189,7 @@ class CheshireCat:
         selected_config = FactoryAdapter(factory).get_factory_config_by_settings(self.id)
 
         self.large_language_model = factory.get_from_config_name(self.id, selected_config["value"]["name"])
+        self.large_language_model_modality = LargeLanguageModelModality(self.large_language_model)
 
     def load_auth(self):
         factory = AuthHandlerFactory(self.plugin_manager)

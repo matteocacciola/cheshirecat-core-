@@ -31,12 +31,6 @@ async def message_with_cat(
     """Get a response from the Cat"""
     stray = cats.stray_cat
 
-    user_message = UserMessage(
-        user_id=stray.user.id,
-        agent_id=stray.agent_id,
-        text=payload["text"],
-        image=payload.get("image"),
-        audio=payload.get("audio"),
-    )
+    user_message = UserMessage(text=payload["text"], images=payload.get("images"), audio=payload.get("audio"))
     answer = await run_in_threadpool(stray.run, user_message, True)
     return answer

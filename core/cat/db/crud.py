@@ -4,7 +4,7 @@ from typing import List, Dict
 from cat.db.database import get_db
 
 
-def _serialize_to_redis_json(data_dict: List | Dict) -> List | Dict:
+def serialize_to_redis_json(data_dict: List | Dict) -> List | Dict:
     """
     Save a dictionary in a Redis JSON, correctly handling the enums.
 
@@ -16,7 +16,7 @@ def _serialize_to_redis_json(data_dict: List | Dict) -> List | Dict:
     """
 
     if isinstance(data_dict, list):
-        return [_serialize_to_redis_json(d) for d in data_dict]
+        return [serialize_to_redis_json(d) for d in data_dict]
 
     return {k: v.value if isinstance(v, Enum) else v for k, v in data_dict.items()}
 
@@ -35,7 +35,7 @@ def read(key: str, path: str | None = "$") -> List[Dict] | Dict | None:
 def store(
     key: str, value: List | Dict, path: str | None = "$", nx: bool = False, xx: bool = False
 ) -> List[Dict] | Dict | None:
-    formatted = _serialize_to_redis_json(value)
+    formatted = serialize_to_redis_json(value)
     new = get_db().json().set(key, path, formatted, nx=nx, xx=xx)
     if not new:
         return None

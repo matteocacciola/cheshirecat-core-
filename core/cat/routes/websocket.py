@@ -19,8 +19,6 @@ async def receive_message(websocket: WebSocket, stray: StrayCat):
         # Receive the next message from the WebSocket.
         user_message_text = await websocket.receive_json()
         user_message = UserMessage(
-            user_id=stray.user.id,
-            agent_id=stray.agent_id,
             text=user_message_text["text"],
             image=user_message_text.get("image"),
             audio=user_message_text.get("audio"),

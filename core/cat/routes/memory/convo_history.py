@@ -1,10 +1,9 @@
-from typing import Dict, List
 from fastapi import APIRouter, Depends
 from pydantic import BaseModel
 
 from cat.auth.connection import HTTPAuth, ContextualCats
 from cat.auth.permissions import AuthPermission, AuthResource
-from cat.convo.messages import ConversationHistoryInfo
+from cat.convo.messages import ConversationHistory
 
 router = APIRouter()
 
@@ -14,7 +13,7 @@ class DeleteConversationHistoryResponse(BaseModel):
 
 
 class GetConversationHistoryResponse(BaseModel):
-    history: List[ConversationHistoryInfo]
+    history: ConversationHistory
 
 
 # DELETE conversation history from working memory
@@ -24,7 +23,7 @@ async def destroy_conversation_history(
 ) -> DeleteConversationHistoryResponse:
     """Delete the specified user's conversation history from working memory"""
 
-    cats.stray_cat.working_memory.reset_conversation_history()
+    cats.stray_cat.working_memory.reset_history()
 
     return DeleteConversationHistoryResponse(deleted=True)
 

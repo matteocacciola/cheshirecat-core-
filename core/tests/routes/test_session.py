@@ -35,7 +35,7 @@ def test_session_creation_from_websocket(secure_client, secure_client_headers, c
     convo = stray_cat.working_memory.history
     assert len(convo) == 2
     assert convo[0].who == Role.HUMAN
-    assert convo[0].message == mex["text"]
+    assert convo[0].content.text == mex["text"]
 
 
 def test_session_creation_from_http(secure_client, secure_client_headers, cheshire_cat):

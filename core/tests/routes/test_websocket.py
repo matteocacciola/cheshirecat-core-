@@ -4,7 +4,7 @@ from tests.utils import send_websocket_message, send_n_websocket_messages, api_k
 
 
 def check_correct_websocket_reply(reply):
-    for k in ["type", "content", "why", "user_id"]:
+    for k in ["type", "content", "why"]:
         assert k in reply.keys()
 
     assert reply["type"] != "error"

@@ -22,13 +22,12 @@ def test_stray_nlp(stray_no_memory):
 
 
 def test_stray_call(stray_no_memory):
-    msg = {"text": "Where do I go?", "user_id": stray_no_memory.user.id, "agent_id": stray_no_memory.agent_id}
+    msg = {"text": "Where do I go?"}
 
     reply = stray_no_memory.loop.run_until_complete(stray_no_memory.__call__(UserMessage(**msg)))
 
     assert isinstance(reply, CatMessage)
     assert "You did not configure" in reply.content
-    assert reply.user_id == "user_alice"
     assert reply.type == "chat"
     assert isinstance(reply.why, MessageWhy)
 
@@ -46,7 +45,7 @@ def test_recall_to_working_memory(stray_no_memory):
     assert stray_no_memory.working_memory.episodic_memories == []
 
     msg_text = "Where do I go?"
-    msg = {"text": msg_text, "user_id": stray_no_memory.user.id, "agent_id": stray_no_memory.agent_id}
+    msg = {"text": msg_text}
 
     # send message
     stray_no_memory.loop.run_until_complete(stray_no_memory.__call__(UserMessage(**msg)))
@@ -67,7 +66,7 @@ def test_stray_recall_invalid_collection_name(stray, embedder):
 
 def test_stray_recall_query(stray, embedder):
     msg_text = "Hello! I'm Alice"
-    msg = {"text": msg_text, "user_id": stray.user.id, "agent_id": stray.agent_id}
+    msg = {"text": msg_text}
 
     # send message
     stray.loop.run_until_complete(stray.__call__(UserMessage(**msg)))
@@ -83,7 +82,7 @@ def test_stray_recall_query(stray, embedder):
 
 def test_stray_recall_with_threshold(stray, embedder):
     msg_text = "Hello! I'm Alice"
-    msg = {"text": msg_text, "user_id": stray.user.id, "agent_id": stray.agent_id}
+    msg = {"text": msg_text}
 
     # send message
     stray.loop.run_until_complete(stray.__call__(UserMessage(**msg)))
@@ -113,7 +112,7 @@ def test_stray_recall_override_working_memory(stray, embedder):
     assert stray.working_memory.episodic_memories == []
 
     msg_text = "Hello! I'm Alice"
-    msg = {"text": msg_text, "user_id": stray.user.id, "agent_id": stray.agent_id}
+    msg = {"text": msg_text}
 
     # send message
     stray.loop.run_until_complete(stray.__call__(UserMessage(**msg)))

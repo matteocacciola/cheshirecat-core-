@@ -159,9 +159,7 @@ def test_jwt_imposes_user_id(client, cheshire_cat):
     headers = {"Authorization": f"Bearer {token}"}
     params = {"agent_id": agent_id}
     response = client.post("/message", headers=headers, json=message, params=params)
-    json = response.json()
     assert response.status_code == 200
-    assert json["agent_id"] == agent_id
 
     # send user specific request via ws
     send_websocket_message(message, client, query_params={"token": token})

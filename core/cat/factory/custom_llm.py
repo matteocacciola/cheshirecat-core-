@@ -4,7 +4,7 @@ from langchain_core.callbacks import CallbackManagerForLLMRun, AsyncCallbackMana
 
 from langchain_core.language_models.llms import LLM
 from langchain_openai.chat_models import ChatOpenAI
-from langchain_community.chat_models.ollama import ChatOllama
+from langchain_ollama import ChatOllama
 
 
 class LLMDefault(LLM):

@@ -19,13 +19,14 @@ from cat.bill_the_lizard import BillTheLizard
 from cat.agents.base_agent import AgentOutput
 from cat.agents.main_agent import MainAgent
 from cat.auth.permissions import AuthUserInfo
+from cat.convo.llm import LargeLanguageModelModality
 from cat.convo.messages import (
     EmbedderModelInteraction,
     CatMessage,
     Role,
     MessageWhy,
     UserMessage,
-    convert_to_langchain_messages,
+    convert_to_langchain_message,
 )
 from cat.env import get_env
 from cat.exceptions import VectorMemoryError
@@ -82,8 +83,6 @@ class StrayCat:
         return f"StrayCat(user_id={self.__user.id},agent_id={self.__agent_id})"
 
     def __send_ws_json(self, data: Any):
-        data = data | {"user_id": self.__user.id, "agent_id": self.__agent_id}
-
         # Run the coroutine in the main event loop in the main thread
         # and wait for the result
         asyncio.run_coroutine_threadsafe(self.__ws.send_json(data), loop=self.__main_loop).result()
@@ -140,7 +139,7 @@ class StrayCat:
         In case there is no connection the message is skipped and a warning is logged.
 
         Args:
-            message (Union[str, CatMessage]): message to send
+            message (str | CatMessage): message to send
             save (bool, optional): Save the message in the conversation history. Defaults to False.
         """
 
@@ -149,13 +148,10 @@ class StrayCat:
             return
 
         if isinstance(message, str):
-            why = self.__build_why()
-            message = CatMessage(content=message, user_id=self.__user.id, why=why, agent_id=self.__agent_id)
+            message = CatMessage(text=message, why=self.__build_why())
 
         if save:
-            self.working_memory.update_conversation_history(
-                who=Role.AI, message=message.content, why=message.why
-            )
+            self.working_memory.update_history(who=Role.AI, content=message)
 
         self.__send_ws_json(message.model_dump())
 
@@ -427,9 +423,9 @@ class StrayCat:
         # Run a totally custom reply (skips all the side effects of the framework)
         fast_reply = plugin_manager.execute_hook("fast_reply", {}, cat=self)
         fast_reply = CatMessage(
-            user_id=self.__user.id, content=str(fast_reply.get("output", "")), agent_id=self.__agent_id
+            text=str(fast_reply.get("output", ""))
         ) if not isinstance(fast_reply, CatMessage) else fast_reply
-        if fast_reply.content:
+        if fast_reply.text:
             return fast_reply
 
         # hook to modify/enrich user input
@@ -441,9 +437,7 @@ class StrayCat:
         user_message = self.working_memory.user_message
 
         # update conversation history (Human turn)
-        self.working_memory.update_conversation_history(
-            who=Role.HUMAN, message=user_message.text, image=user_message.image, audio=user_message.audio
-        )
+        self.working_memory.update_history(who=Role.HUMAN, content=user_message)
 
         # recall episodic and declarative memories from vector collections
         #   and store them in working_memory
@@ -462,20 +456,13 @@ class StrayCat:
         self._store_user_message_in_episodic_memory(user_message)
 
         # prepare final cat message
-        final_output = CatMessage(
-            user_id=self.__user.id,
-            content=str(agent_output.output),
-            why=self.__build_why(agent_output),
-            agent_id=self.__agent_id
-        )
+        final_output = CatMessage(text=str(agent_output.output), why=self.__build_why(agent_output))
 
         # run message through plugins
         final_output = plugin_manager.execute_hook("before_cat_sends_message", final_output, cat=self)
 
         # update conversation history (AI turn)
-        self.working_memory.update_conversation_history(
-            who=Role.AI, message=final_output.content, why=final_output.why
-        )
+        self.working_memory.update_history(who=Role.AI, content=final_output)
 
         self.__last_message_time = time.time()
 
@@ -603,7 +590,7 @@ Allowed classes are:
 
         chat_history = self.working_memory.history[-latest_n:]
 
-        return convert_to_langchain_messages(chat_history)
+        return [convert_to_langchain_message(h, self.large_language_model_modality) for h in chat_history]
 
     async def close_connection(self):
         if not self.__ws:
@@ -691,6 +678,10 @@ Allowed classes are:
     @property
     def large_language_model(self) -> BaseLanguageModel:
         return self.cheshire_cat.large_language_model
+
+    @property
+    def large_language_model_modality(self) -> LargeLanguageModelModality:
+        return self.cheshire_cat.large_language_model_modality
 
     @property
     def _llm(self) -> BaseLanguageModel:

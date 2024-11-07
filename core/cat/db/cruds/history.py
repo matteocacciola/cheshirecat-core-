@@ -1,6 +1,6 @@
 from typing import Dict, List, Any
 
-from cat.convo.messages import ConversationHistoryInfo
+from cat.convo.messages import ConversationHistoryItem
 from cat.db import crud
 
 
@@ -18,12 +18,8 @@ def set_history(agent_id: str, user_id: str, history: List[Dict[str, Any]]) -> L
     return history
 
 
-def update_history(agent_id: str, user_id: str, updated_info: ConversationHistoryInfo) -> List[Dict[str, Any]]:
-    updated_info = updated_info.model_dump()
-
-    updated_info["who"] = str(updated_info["who"])
-    updated_info["role"] = str(updated_info["role"])
-
+def update_history(agent_id: str, user_id: str, updated_info: ConversationHistoryItem) -> List[Dict[str, Any]]:
+    updated_info = crud.serialize_to_redis_json(updated_info.model_dump())
     history_db = get_history(agent_id, user_id)
     history_db.append(updated_info)
 
