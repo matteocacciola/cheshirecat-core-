@@ -100,12 +100,14 @@ async def test_issue_jwt_for_new_user(client, secure_client, secure_client_heade
 # test token expiration after successful login
 # NOTE: here we are using the secure_client fixture (see conftest.py)
 def test_jwt_expiration(client, cheshire_cat):
+    message = {"text": "hey"}
+
     # set ultrashort JWT expiration time
     current_jwt_expire_minutes = os.getenv("CCAT_JWT_EXPIRE_MINUTES")
     os.environ["CCAT_JWT_EXPIRE_MINUTES"] = "0.05"  # 3 seconds
 
     # not allowed
-    response = client.get("/", headers={"agent_id": agent_id})
+    response = client.post("/message", headers={"agent_id": agent_id}, json=message)
     assert response.status_code == 403
     assert response.json()["detail"]["error"] == "Invalid Credentials"
 
@@ -117,7 +119,7 @@ def test_jwt_expiration(client, cheshire_cat):
 
     # allowed via JWT
     headers = {"Authorization": f"Bearer {token}", "agent_id": agent_id}
-    response = client.get("/", headers=headers)
+    response = client.post("/message", headers=headers, json=message)
     assert response.status_code == 200
 
     # wait for expiration time
@@ -125,7 +127,7 @@ def test_jwt_expiration(client, cheshire_cat):
 
     # not allowed because JWT expired
     headers = {"Authorization": f"Bearer {token}", "agent_id": agent_id}
-    response = client.get("/", headers=headers)
+    response = client.post("/message", headers=headers, json=message)
     assert response.status_code == 403
     assert response.json()["detail"]["error"] == "Invalid Credentials"
 
@@ -139,8 +141,10 @@ def test_jwt_expiration(client, cheshire_cat):
 # test ws and http endpoints can get user_id from JWT
 # NOTE: here we are using the secure_client fixture (see conftest.py)
 def test_jwt_imposes_user_id(client, cheshire_cat):
+    message = {"text": "hey"}
+
     # not allowed
-    response = client.get("/", headers={"agent_id": agent_id})
+    response = client.post("/message", headers={"agent_id": agent_id}, json=message)
     assert response.status_code == 403
     assert response.json()["detail"]["error"] == "Invalid Credentials"
 
@@ -150,8 +154,6 @@ def test_jwt_imposes_user_id(client, cheshire_cat):
     assert res.status_code == 200
     token = res.json()["access_token"]
 
-    # we will send this message both via http and ws, having the user_id carried by the JWT
-    message = {"text": "hey", "image": "tests/mocks/sample.png"}
 
     # send user specific message via http
     headers = {"Authorization": f"Bearer {token}"}

@@ -9,7 +9,7 @@ from tests.utils import send_websocket_message
 
 # utility to make http requests with some headers
 def http_request(client, headers=None):
-    response = client.get("/", headers=headers)
+    response = client.post("/message", headers=headers, json={"text": "hey"})
     return response.status_code, response.json()
 
 
@@ -54,7 +54,6 @@ def test_api_key_http(secure_client, header_name):
     headers = {header_name: f"{key_prefix}{api_key}"}
     status_code, json = http_request(secure_client, headers)
     assert status_code == 200
-    assert json["status"] == "We're all mad here, dear!"
 
     # allow websocket access without any key
     mex = {"text": "Where do I go?"}
@@ -85,10 +84,5 @@ def test_api_key_ws(secure_client, secure_client_headers):
     query_params = {"apikey": api_key_ws}
     res = send_websocket_message(mex, secure_client, query_params=query_params)
     assert "You did not configure" in res["content"]
-
-    # allow http access without any key
-    status_code, json = http_request(secure_client, secure_client_headers)
-    assert status_code == 200
-    assert json["status"] == "We're all mad here, dear!"
 
     reset_api_key("CCAT_API_KEY_WS", old_api_key)

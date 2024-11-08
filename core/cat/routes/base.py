@@ -17,12 +17,7 @@ class HomeResponse(BaseModel):
 
 
 # server status
-@router.get(
-    "/",
-    dependencies=[Depends(HTTPAuth(AuthResource.STATUS, AuthPermission.READ))],
-    response_model=HomeResponse,
-    tags=["Home"]
-)
+@router.get("/", response_model=HomeResponse, tags=["Home"])
 async def home() -> HomeResponse:
     """Server status"""
     with open("pyproject.toml", "rb") as f:
