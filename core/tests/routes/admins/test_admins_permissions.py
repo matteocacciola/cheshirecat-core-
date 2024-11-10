@@ -75,5 +75,3 @@ def test_admins_permissions(secure_client, endpoint):
     )
 
     assert res.status_code == 200
-
-# TODOAUTH: more tests here on critical endpoints

@@ -1,5 +1,4 @@
-import aiofiles
-import mimetypes
+
 from copy import deepcopy
 from typing import Dict
 from fastapi import Body, APIRouter, UploadFile, Depends
@@ -8,7 +7,6 @@ from cat.auth.connection import AdminConnectionAuth
 from cat.auth.permissions import AuthPermission, AdminAuthResource
 from cat.bill_the_lizard import BillTheLizard
 from cat.exceptions import CustomValidationException, CustomNotFoundException
-from cat.log import log
 from cat.mad_hatter.registry import registry_download_plugin
 from cat.routes.routes_utils import (
     DeletePluginResponse,
@@ -22,6 +20,7 @@ from cat.routes.routes_utils import (
     get_plugins_settings,
     get_plugin_settings,
 )
+from cat.utils import get_allowed_plugins_mime_types, load_uploaded_file
 
 router = APIRouter()
 
@@ -46,18 +45,7 @@ async def install_plugin(
 ) -> InstallPluginResponse:
     """Install a new plugin from a zip file"""
 
-    admitted_mime_types = ["application/zip", "application/x-tar"]
-    content_type = mimetypes.guess_type(file.filename)[0]
-    if content_type not in admitted_mime_types:
-        raise CustomValidationException(
-            f'MIME type `{file.content_type}` not supported. Admitted types: {", ".join(admitted_mime_types)}'
-        )
-
-    log.info(f"Uploading {content_type} plugin {file.filename}")
-    plugin_archive_path = f"/tmp/{file.filename}"
-    async with aiofiles.open(plugin_archive_path, "wb+") as f:
-        content = await file.read()
-        await f.write(content)
+    plugin_archive_path = await load_uploaded_file(file, get_allowed_plugins_mime_types())
     lizard.plugin_manager.install_plugin(plugin_archive_path)
 
     return InstallPluginResponse(

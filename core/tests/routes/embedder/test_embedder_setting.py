@@ -45,7 +45,7 @@ def test_get_embedder_settings(secure_client, secure_client_headers):
 
 
 def test_upsert_embedder_settings(secure_client, secure_client_headers):
-    # set a different embedder from default one (same class different size # TODO: have another fake/test embedder class)
+    # set a different embedder from default one (same class different size)
     new_embedder = "EmbedderFakeConfig"
     embedder_config = {"size": 64}
     response = secure_client.put(

@@ -51,6 +51,6 @@ def test_rabbithole_upload_url_with_metadata(secure_client, secure_client_header
     assert len(declarative_memories) == 1
     assert "when" in declarative_memories[0]["metadata"]
     assert "source" in declarative_memories[0]["metadata"]
-    assert "title" in declarative_memories[0]["metadata"] # TODO: should we take this away?
+    assert "title" in declarative_memories[0]["metadata"]
     for key, value in metadata.items():
         assert declarative_memories[0]["metadata"][key] == value

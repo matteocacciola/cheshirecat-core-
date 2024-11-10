@@ -1,13 +1,17 @@
 import asyncio
+import time
 from copy import deepcopy
 from typing import Dict, List, Any
 from pydantic import BaseModel
 from fastapi import Request
 
+from cat.auth.connection import ContextualCats
 from cat.exceptions import CustomForbiddenException, CustomValidationException, CustomNotFoundException
 from cat.factory.base_factory import ReplacedNLPConfig
 from cat.mad_hatter.mad_hatter import MadHatter
 from cat.mad_hatter.registry import registry_search_plugins
+from cat.memory.vector_memory import VectorMemory
+from cat.memory.vector_memory_collection import VectoryMemoryCollectionTypes
 
 
 class Plugins(BaseModel):
@@ -69,6 +73,17 @@ class GetPluginDetailsResponse(BaseModel):
 
 class DeletePluginResponse(BaseModel):
     deleted: str
+
+
+class MemoryPointBase(BaseModel):
+    content: str
+    metadata: Dict = {}
+
+
+# TODO V2: annotate all endpoints and align internal usage (no qdrant PointStruct, no langchain Document)
+class MemoryPoint(MemoryPointBase):
+    id: str
+    vector: List[float]
 
 
 async def auth_token(request: Request, credentials: UserCredentials, agent_id: str):
@@ -188,3 +203,55 @@ def get_plugin_settings(plugin_manager: MadHatter, plugin_id: str, agent_id: str
         scheme = {}
 
     return GetSettingResponse(name=plugin_id, value=settings, scheme=scheme)
+
+
+def memory_collection_is_accessible(collection_id: str) -> None:
+    # check if collection exists
+    if collection_id not in VectoryMemoryCollectionTypes:
+        raise CustomNotFoundException("Collection does not exist.")
+
+    # do not touch procedural memory
+    if collection_id == str(VectoryMemoryCollectionTypes.PROCEDURAL):
+        raise CustomValidationException("Procedural memory is read-only.")
+
+
+def verify_memory_point_existence(collection_id: str, point_id: str, vector_memory: VectorMemory) -> None:
+    memory_collection_is_accessible(collection_id)
+
+    # check if point exists
+    points = vector_memory.collections[collection_id].retrieve_points([point_id])
+    if not points:
+        raise CustomNotFoundException("Point does not exist.")
+
+
+def upsert_memory_point(
+    collection_id: str, point: MemoryPointBase, cats: ContextualCats, point_id: str = None
+) -> MemoryPoint:
+    ccat = cats.cheshire_cat
+    vector_memory = ccat.memory.vectors
+
+    # embed content
+    embedding = ccat.embedder.embed_query(point.content)
+
+    # ensure source is set
+    if not point.metadata.get("source"):
+        point.metadata["source"] = cats.stray_cat.user.id  # this will do also for declarative memory
+
+    # ensure when is set
+    if not point.metadata.get("when"):
+        point.metadata["when"] = time.time()  # if when is not in the metadata set the current time
+
+    # create point
+    qdrant_point = vector_memory.collections[collection_id].add_point(
+        content=point.content,
+        vector=embedding,
+        metadata=point.metadata,
+        id=point_id,
+    )
+
+    return MemoryPoint(
+        metadata=qdrant_point.payload["metadata"],
+        content=qdrant_point.payload["page_content"],
+        vector=qdrant_point.vector,
+        id=qdrant_point.id
+    )

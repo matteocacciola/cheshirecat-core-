@@ -98,7 +98,7 @@ class MainAgent(BaseAgent):
         )
 
         # format conversation history to be inserted in the prompt
-        # TODOV2: take away
+        # TODO V2: take away
         conversation_history_formatted_content = stray.stringify_chat_history()
 
         return AgentInput(

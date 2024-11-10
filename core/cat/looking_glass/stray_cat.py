@@ -374,8 +374,7 @@ class StrayCat:
         prompt = ChatPromptTemplate(
             messages=[
                 SystemMessage(content=prompt)
-                # TODO: add here optional convo history passed to the method,
-                #  or taken from working memory
+                # TODO: add here optional convo history passed to the method or taken from working memory
             ]
         )
 

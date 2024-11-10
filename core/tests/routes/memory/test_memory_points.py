@@ -7,32 +7,56 @@ from tests.utils import (
     get_declarative_memory_contents,
     agent_id,
     fake_timestamp,
-    api_key,
     api_key_ws,
 )
 
 
-def create_point_wrong_collection(secure_client, secure_client_headers, cheshire_cat):
+def test_create_point_wrong_collection(secure_client, secure_client_headers, cheshire_cat):
     user = crud_users.get_user_by_username(agent_id, "user")
-    headers = {"agent_id": agent_id, "Authorization": f"Bearer {api_key}", "user_id": user["id"]}
+    headers = secure_client_headers | {"user_id": user["id"]}
 
-    req_json = {
-        "content": "Hello dear"
-    }
+    req_json = {"content": "Hello dear"}
 
     # wrong collection
-    res = secure_client.post(
-        "/memory/collections/wrongcollection/points", json=req_json, headers=headers
-    )
+    res = secure_client.post("/memory/collections/wrongcollection/points", json=req_json, headers=headers)
     assert res.status_code == 404
     assert "Collection does not exist" in res.json()["detail"]["error"]
 
     # cannot write procedural point
-    res = secure_client.post(
-        "/memory/collections/procedural/points", json=req_json, headers=headers
-    )
-    assert res.status_code == 404
+    res = secure_client.post("/memory/collections/procedural/points", json=req_json, headers=headers)
+    assert res.status_code == 400
     assert "Procedural memory is read-only" in res.json()["detail"]["error"]
+
+
+@pytest.mark.parametrize("collection", ["episodic", "declarative"])
+def test_create_memory_point(secure_client, secure_client_headers, cheshire_cat, patch_time_now, collection):
+    user = crud_users.get_user_by_username(agent_id, "user")
+    headers = secure_client_headers | {"user_id": user["id"]}
+
+    # create a point
+    content = "Hello dear"
+    metadata = {"custom_key": "custom_value"}
+    req_json = {"content": content, "metadata": metadata}
+    res = secure_client.post(f"/memory/collections/{collection}/points", json=req_json, headers=headers)
+    assert res.status_code == 200
+    json = res.json()
+    assert json["content"] == content
+    expected_metadata = {"when": fake_timestamp, "source": headers["user_id"], **metadata}
+    assert json["metadata"] == expected_metadata
+    assert "id" in json
+    assert "vector" in json
+    assert isinstance(json["vector"], list)
+    assert isinstance(json["vector"][0], float)
+
+    # check memory contents
+    params = {"text": "dear, hello"}
+    response = secure_client.get("/memory/recall/", params=params, headers=headers)
+    json = response.json()
+    assert response.status_code == 200
+    assert len(json["vectors"]["collections"][collection]) == 1
+    memory = json["vectors"]["collections"][collection][0]
+    assert memory["page_content"] == content
+    assert memory["metadata"] == expected_metadata
 
 
 def test_point_deleted(secure_client, secure_client_headers):
@@ -49,11 +73,14 @@ def test_point_deleted(secure_client, secure_client_headers):
     assert mem["page_content"] == "Hello Mad Hatter"
 
     # delete point (wrong collection)
-    res = secure_client.delete(
-        f"/memory/collections/wrongcollection/points/{mem['id']}", headers=secure_client_headers
-    )
+    res = secure_client.delete(f"/memory/collections/wrongcollection/points/{mem['id']}", headers=secure_client_headers)
     assert res.status_code == 404
     assert res.json()["detail"]["error"] == "Collection does not exist."
+
+    # cannot write procedural point
+    res = secure_client.delete("/memory/collections/procedural/points/{mem['id']}", headers=secure_client_headers)
+    assert res.status_code == 400
+    assert "Procedural memory is read-only" in res.json()["detail"]["error"]
 
     # delete point (wrong id)
     res = secure_client.delete("/memory/collections/episodic/points/wrong_id", headers=secure_client_headers)
@@ -79,7 +106,6 @@ def test_point_deleted(secure_client, secure_client_headers):
 
 
 # test delete points by filter
-# TODO: have a fixture uploading docs and separate test cases
 def test_points_deleted_by_metadata(secure_client, secure_client_headers):
     expected_chunks = 4
 
@@ -142,42 +168,6 @@ def test_points_deleted_by_metadata(secure_client, secure_client_headers):
     assert len(declarative_memories) == 0
 
 
-@pytest.mark.parametrize("collection", ["episodic", "declarative"])
-def test_create_memory_point(secure_client, secure_client_headers, cheshire_cat, patch_time_now, collection):
-    user = crud_users.get_user_by_username(agent_id, "user")
-    headers = {"agent_id": agent_id, "Authorization": f"Bearer {api_key}", "user_id": user["id"]}
-
-    # create a point
-    content = "Hello dear"
-    metadata = {"custom_key": "custom_value"}
-    req_json = {
-        "content": content,
-        "metadata": metadata,
-    }
-    res = secure_client.post(
-        f"/memory/collections/{collection}/points", json=req_json, headers=headers
-    )
-    assert res.status_code == 200
-    json = res.json()
-    assert json["content"] == content
-    expected_metadata = {"when": fake_timestamp, "source": headers["user_id"], **metadata}
-    assert json["metadata"] == expected_metadata
-    assert "id" in json
-    assert "vector" in json
-    assert isinstance(json["vector"], list)
-    assert isinstance(json["vector"][0], float)
-
-    # check memory contents
-    params = {"text": "dear, hello"}
-    response = secure_client.get("/memory/recall/", params=params, headers=headers)
-    json = response.json()
-    assert response.status_code == 200
-    assert len(json["vectors"]["collections"][collection]) == 1
-    memory = json["vectors"]["collections"][collection][0]
-    assert memory["page_content"] == content
-    assert memory["metadata"] == expected_metadata
-
-
 def test_get_collection_points_wrong_collection(secure_client, secure_client_headers):
     # unexisting collection
     res = secure_client.get("/memory/collections/unexistent/points", headers=secure_client_headers)
@@ -187,13 +177,13 @@ def test_get_collection_points_wrong_collection(secure_client, secure_client_hea
     # reserved procedural collection
     res = secure_client.get("/memory/collections/procedural/points", headers=secure_client_headers)
     assert res.status_code == 400
-    assert "Procedural memory is not readable via API" in res.json()["detail"]["error"]
+    assert "Procedural memory is read-only." in res.json()["detail"]["error"]
 
 
 @pytest.mark.parametrize("collection", ["episodic", "declarative"])
 def test_get_collection_points(secure_client, secure_client_headers, cheshire_cat, patch_time_now, collection):
     user = crud_users.get_user_by_username(agent_id, "user")
-    headers = {"agent_id": agent_id, "Authorization": f"Bearer {api_key}", "user_id": user["id"]}
+    headers = secure_client_headers | {"user_id": user["id"]}
 
     # create 100 points
     n_points = 100
@@ -201,9 +191,7 @@ def test_get_collection_points(secure_client, secure_client_headers, cheshire_ca
 
     # Add points
     for req_json in new_points:
-        res = secure_client.post(
-            f"/memory/collections/{collection}/points", json=req_json, headers=headers
-        )
+        res = secure_client.post(f"/memory/collections/{collection}/points", json=req_json, headers=headers)
         assert res.status_code == 200
 
     # get all the points no limit, by default is 100
@@ -245,17 +233,15 @@ def test_get_collection_points(secure_client, secure_client_headers, cheshire_ca
 @pytest.mark.parametrize("collection", ["episodic", "declarative"])
 def test_get_collection_points_offset(secure_client, secure_client_headers, cheshire_cat, patch_time_now, collection):
     user = crud_users.get_user_by_username(agent_id, "user")
-    headers = {"agent_id": agent_id, "Authorization": f"Bearer {api_key}", "user_id": user["id"]}
+    headers = secure_client_headers | {"user_id": user["id"]}
 
     # create 200 points
     n_points = 200
-    new_points = [{"content": f"MIAO {i}!", "metadata": {"custom_key": f"custom_key_{i}"}} for i in range(n_points)]
+    new_points = [{"content": f"MEOW {i}!", "metadata": {"custom_key": f"custom_key_{i}"}} for i in range(n_points)]
 
     # Add points
     for req_json in new_points:
-        res = secure_client.post(
-            f"/memory/collections/{collection}/points", json=req_json, headers=headers
-        )
+        res = secure_client.post(f"/memory/collections/{collection}/points", json=req_json, headers=headers)
         assert res.status_code == 200
 
     # get all the points with limit 10
@@ -305,3 +291,71 @@ def test_get_collection_points_offset(secure_client, secure_client_headers, ches
     points_payloads.sort(key=lambda p: p["page_content"])
     expected_payloads.sort(key=lambda p: p["page_content"])
     assert points_payloads == expected_payloads
+
+
+def test_edit_point_wrong_collection_and_not_exist(secure_client, secure_client_headers, cheshire_cat):
+    user = crud_users.get_user_by_username(agent_id, "user")
+    headers = secure_client_headers | {"user_id": user["id"]}
+
+    req_json = {"content": "Hello dear"}
+
+    point_id = 100
+
+    # wrong collection
+    res = secure_client.put(f"/memory/collections/wrongcollection/points/{point_id}", json=req_json, headers=headers)
+    assert res.status_code == 404
+    assert "Collection does not exist" in res.json()["detail"]["error"]
+
+    # cannot write procedural point
+    res = secure_client.put("/memory/collections/procedural/points/{point_id}", json=req_json, headers=headers)
+    assert res.status_code == 400
+    assert "Procedural memory is read-only" in res.json()["detail"]["error"]
+
+    # point do not exist
+    res = secure_client.put("/memory/collections/declarative/points/{point_id}", json=req_json, headers=headers)
+    assert res.status_code == 404
+    assert res.json()["detail"]["error"] == "Point does not exist."
+
+
+@pytest.mark.parametrize("collection", ["episodic", "declarative"])
+def test_edit_memory_point(secure_client, secure_client_headers, cheshire_cat, patch_time_now, collection):
+    user = crud_users.get_user_by_username(agent_id, "user")
+    headers = secure_client_headers | {"user_id": user["id"]}
+
+    # create a point
+    content = "Hello dear"
+    metadata = {"custom_key": "custom_value"}
+    req_json = {"content": content, "metadata": metadata}
+    # create a point
+    res = secure_client.post(f"/memory/collections/{collection}/points", json=req_json, headers=headers)
+    assert res.status_code == 200
+    json = res.json()
+    assert json["id"]
+
+    point_id = json["id"]
+    # new point values
+    content = "MEOW MEOW!"
+    metadata = {"custom_key": "new_custom_value"}
+    req_json = {"content": content, "metadata": metadata}
+
+    res = secure_client.put(f"/memory/collections/{collection}/points/{point_id}", json=req_json, headers=headers)
+    # check response
+    assert res.status_code == 200
+    json = res.json()
+    assert json["content"] == content
+    expected_metadata = {"when":fake_timestamp, "source": headers["user_id"], **metadata}
+    assert json["metadata"] == expected_metadata
+    assert "id" in json
+    assert "vector" in json
+    assert isinstance(json["vector"], list)
+    assert isinstance(json["vector"][0], float)
+
+    # check memory contents
+    params = {"text": "dear, hello"}
+    response = secure_client.get("/memory/recall/", params=params, headers=headers)
+    json = response.json()
+    assert response.status_code == 200
+    assert len(json["vectors"]["collections"][collection]) == 1
+    memory = json["vectors"]["collections"][collection][0]
+    assert memory["page_content"] == content
+    assert memory["metadata"] == expected_metadata

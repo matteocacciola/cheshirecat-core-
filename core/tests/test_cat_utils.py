@@ -92,11 +92,6 @@ def test_base_dict_model():
     # .keys()
     assert set(cat.keys()) == {"color", "origin", "something"}
     assert set(cat.origin.keys()) == {"location", "something"}
-
-    # .values() # TODO: does not work recursively
-    # print(cat.values())
-    # for val in ["pink", "meow"]:
-    #    assert val in set(cat.values())
     assert set(cat.origin.values()) == {"Cheshire", "meow"}
 
     # in

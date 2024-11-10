@@ -47,12 +47,7 @@ class Tweedledum(MadHatter):
         # extract zip/tar file into plugin folder
         extractor = PluginExtractor(package_plugin)
         plugin_path = extractor.extract(self.__plugins_folder)
-
-        # remove zip after extraction
-        os.remove(package_plugin)
-
-        # get plugin id (will be its folder name)
-        plugin_id = os.path.basename(plugin_path)
+        plugin_id = extractor.id
 
         if plugin_id != "core_plugin":
             # create plugin obj

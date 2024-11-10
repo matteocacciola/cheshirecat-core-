@@ -33,15 +33,12 @@ def test_stray_call(stray_no_memory):
     assert isinstance(reply.why, MessageWhy)
 
 
-# TODO: update these tests once we have a real LLM in tests
 def test_stray_classify(stray_no_memory):
     label = stray_no_memory.classify("I feel good", labels=["positive", "negative"])
-    assert label is None  # TODO: should be "positive"
+    assert label is None
 
-    label = stray_no_memory.classify(
-        "I feel bad", labels={"positive": ["I'm happy"], "negative": ["I'm sad"]}
-    )
-    assert label is None  # TODO: should be "negative"
+    label = stray_no_memory.classify("I feel bad", labels={"positive": ["I'm happy"], "negative": ["I'm sad"]})
+    assert label is None
 
 
 def test_recall_to_working_memory(stray_no_memory):

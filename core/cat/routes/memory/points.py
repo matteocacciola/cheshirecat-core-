@@ -1,27 +1,21 @@
 from typing import Dict, List, Any
 from pydantic import BaseModel
 from fastapi import Query, APIRouter, Depends
-import time
 from qdrant_client.http.models import UpdateResult, Record
 
 from cat.auth.connection import HTTPAuth, ContextualCats
 from cat.auth.permissions import AuthPermission, AuthResource
-from cat.exceptions import CustomNotFoundException, CustomValidationException
 from cat.factory.embedder import EmbedderFactory
 from cat.memory.vector_memory_collection import VectoryMemoryCollectionTypes, DocumentRecall
+from cat.routes.routes_utils import (
+    MemoryPointBase,
+    MemoryPoint,
+    upsert_memory_point,
+    verify_memory_point_existence,
+    memory_collection_is_accessible,
+)
 
 router = APIRouter()
-
-
-class MemoryPointBase(BaseModel):
-    content: str
-    metadata: Dict = {}
-
-
-# TODOV2: annotate all endpoints and align internal usage (no qdrant PointStruct, no langchain Document)
-class MemoryPoint(MemoryPointBase):
-    id: str
-    vector: List[float]
 
 
 class RecallResponseQuery(BaseModel):
@@ -52,7 +46,6 @@ class DeleteMemoryPointsByMetadataResponse(BaseModel):
     deleted: UpdateResult
 
 
-# GET memories from recall
 @router.get("/recall", response_model=RecallResponse)
 async def recall_memory_points_from_text(
     text: str = Query(description="Find memories similar to this text."),
@@ -99,7 +92,6 @@ async def recall_memory_points_from_text(
     )
 
 
-# CREATE a point in memory
 @router.post("/collections/{collection_id}/points", response_model=MemoryPoint)
 async def create_memory_point(
     collection_id: str,
@@ -108,43 +100,60 @@ async def create_memory_point(
 ) -> MemoryPoint:
     """Create a point in memory"""
 
-    # check if collection exists
-    if collection_id not in VectoryMemoryCollectionTypes:
-        raise CustomNotFoundException("Collection does not exist.")
+    memory_collection_is_accessible(collection_id)
 
-    # do not touch procedural memory
-    if collection_id == str(VectoryMemoryCollectionTypes.PROCEDURAL):
-        raise CustomValidationException("Procedural memory is read-only.")
+    return upsert_memory_point(collection_id, point, cats)
 
-    ccat = cats.cheshire_cat
 
-    # embed content
-    embedding = ccat.embedder.embed_query(point.content)
+@router.put("/collections/{collection_id}/points/{point_id}", response_model=MemoryPoint)
+async def edit_memory_point(
+    collection_id: str,
+    point_id: str,
+    point: MemoryPointBase,
+    cats: ContextualCats = Depends(HTTPAuth(AuthResource.MEMORY, AuthPermission.EDIT)),
+) -> MemoryPoint:
+    """Edit a point in memory
 
-    # ensure source is set
-    if not point.metadata.get("source"):
-        point.metadata["source"] = cats.stray_cat.user.id  # this will do also for declarative memory
+    Example
+    ----------
+    ```
 
-    # ensure when is set
-    if not point.metadata.get("when"):
-        point.metadata["when"] = time.time() #if when is not in the metadata set the current time
-
-    # create point
-    qdrant_point = ccat.memory.vectors.collections[collection_id].add_point(
-        content=point.content,
-        vector=embedding,
-        metadata=point.metadata
+    collection = "declarative"
+    content = "MIAO!"
+    metadata = {"custom_key": "custom_value"}
+    req_json = {
+        "content": content,
+        "metadata": metadata,
+    }
+    # create a point
+    res = requests.post(
+        f"http://localhost:1865/memory/collections/{collection}/points", json=req_json
     )
-
-    return MemoryPoint(
-        metadata=qdrant_point.payload["metadata"],
-        content=qdrant_point.payload["page_content"],
-        vector=qdrant_point.vector,
-        id=qdrant_point.id
+    json = res.json()
+    #get the id
+    point_id = json["id"]
+    # new point values
+    content = "NEW MIAO!"
+    metadata = {"custom_key": "new_custom_value"}
+    req_json = {
+        "content": content,
+        "metadata": metadata,
+    }
+    # edit the point
+    res = requests.put(
+        f"http://localhost:1865/memory/collections/{collection}/points/{point_id}", json=req_json
     )
+    json = res.json()
+    print(json)
+    ```
+    """
+
+    memory_collection_is_accessible(collection_id)
+    verify_memory_point_existence(collection_id, point_id, cats.cheshire_cat.memory.vectors)
+
+    return upsert_memory_point(collection_id, point, cats, point_id)
 
 
-# DELETE memories
 @router.delete("/collections/{collection_id}/points/{point_id}", response_model=DeleteMemoryPointResponse)
 async def delete_memory_point(
     collection_id: str,
@@ -153,16 +162,10 @@ async def delete_memory_point(
 ) -> DeleteMemoryPointResponse:
     """Delete a specific point in memory"""
 
-    # check if collection exists
-    if collection_id not in VectoryMemoryCollectionTypes:
-        raise CustomNotFoundException("Collection does not exist.")
+    memory_collection_is_accessible(collection_id)
 
     vector_memory = cats.cheshire_cat.memory.vectors
-
-    # check if point exists
-    points = vector_memory.collections[collection_id].retrieve_points([point_id])
-    if not points:
-        raise CustomNotFoundException("Point does not exist.")
+    verify_memory_point_existence(collection_id, point_id, vector_memory)
 
     # delete point
     vector_memory.collections[collection_id].delete_points([point_id])
@@ -177,6 +180,9 @@ async def delete_memory_points_by_metadata(
     cats: ContextualCats = Depends(HTTPAuth(AuthResource.MEMORY, AuthPermission.DELETE)),
 ) -> DeleteMemoryPointsByMetadataResponse:
     """Delete points in memory by filter"""
+
+    memory_collection_is_accessible(collection_id)
+
     metadata = metadata or {}
 
     # delete points
@@ -245,13 +251,7 @@ async def get_points_in_collection(
     ```
     """
 
-    # do not allow procedural memory reads via network
-    if collection_id == "procedural":
-        raise CustomValidationException("Procedural memory is not readable via API.")
-
-    # check if collection exists
-    if collection_id not in VectoryMemoryCollectionTypes:
-        raise CustomNotFoundException("Collection does not exist.")
+    memory_collection_is_accessible(collection_id)
 
     # if offset is empty string set to null
     if offset == "":

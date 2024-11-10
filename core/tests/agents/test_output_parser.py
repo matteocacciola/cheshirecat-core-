@@ -78,5 +78,3 @@ def test_procedure_output_parser():
     assert isinstance(out, LLMAction)
     assert out.action == "some_action"
     assert out.action_input == '["a", 2, true]'
-
-    # TODOV2: tools shoul receive in input  properly parsed types

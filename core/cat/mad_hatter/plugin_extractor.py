@@ -4,11 +4,13 @@ import shutil
 import mimetypes
 from slugify import slugify
 
+from cat.utils import get_allowed_plugins_mime_types
+
 
 class PluginExtractor:
-    admitted_mime_types = ["application/zip", "application/x-tar"]
-
     def __init__(self, path: str):
+        allowed_mime_types = get_allowed_plugins_mime_types()
+
         content_type = mimetypes.guess_type(path)[0]
         if content_type == "application/x-tar":
             self._extension = "tar"
@@ -16,7 +18,7 @@ class PluginExtractor:
             self._extension = "zip"
         else:
             raise Exception(
-                f"Invalid package extension. Valid extensions are: {self.admitted_mime_types}"
+                f"Invalid package extension. Valid extensions are: {allowed_mime_types}"
             )
 
         self._path = path
@@ -69,6 +71,9 @@ class PluginExtractor:
         # cleanup
         if os.path.exists(tmp_folder_name):
             shutil.rmtree(tmp_folder_name)
+
+        # remove zip after extraction
+        os.remove(self._path)
 
         # return extracted dir path
         return folder_to

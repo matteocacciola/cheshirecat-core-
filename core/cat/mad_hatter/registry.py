@@ -46,8 +46,7 @@ async def registry_search_plugins(
 
         # check the connection's status
         if response.status_code == 200:
-            # TODO: registry should sort plugins by score,
-            #  until then we sort here at random
+            # TODO: registry should sort plugins by score, until then we sort here at random
             registry_plugins = response.json()["plugins"]
             random.shuffle(registry_plugins)
             return registry_plugins

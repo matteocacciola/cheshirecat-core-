@@ -52,7 +52,7 @@ def test_get_auth_handler_settings(secure_client, secure_client_headers):
 
 @pytest.mark.skip("Have at least another auth_handler class to test")
 def test_upsert_auth_handler_settings(secure_client, secure_client_headers):
-    # set a different auth_handler from default one (same class different size # TODO: have another fake/test auth_handler class)
+    # set a different auth_handler from default one (same class different size)
     new_auth_handler = "AuthApiKeyConfig"
     auth_handler_config = {
         "api_key_http": api_key,

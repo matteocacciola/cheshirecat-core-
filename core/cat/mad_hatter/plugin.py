@@ -247,6 +247,12 @@ class Plugin:
         meta["thumb"] = json_file_data.get("thumb", "")
         meta["version"] = json_file_data.get("version", "0.0.1")
 
+        # Core compatibility
+        meta["compatibility"] = json_file_data.get("compatibility", {
+            "min_version": "not specified",
+            "max_version": "not specified",
+        })
+
         return meta
 
     def _install_requirements(self):

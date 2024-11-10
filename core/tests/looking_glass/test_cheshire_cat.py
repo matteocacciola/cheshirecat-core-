@@ -56,7 +56,6 @@ def test_procedures_embedded(embedder, memory):
         assert isinstance(p.vector, list)
         expected_embed = embedder.embed_query(content)
         assert len(p.vector) == len(expected_embed)  # same embed
-        # assert p.vector == expected_embed TODO: Qdrant does unwanted normalization
 
 
 def test_cheshire_cat_created_with_system_key(lizard):

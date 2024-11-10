@@ -21,8 +21,7 @@ class ChooseProcedureOutputParser(BaseCumulativeTransformOutputParser):
             llm_action = LLMAction()
 
         # Extract action input
-        # TODOV2: return proper types (not only strings)
         if llm_action.action_input and type(llm_action.action_input) not in [str, None]:
-            llm_action.action_input = json.dumps(llm_action.action_input) # TODOV2: remove this dumps and return proper type
+            llm_action.action_input = json.dumps(llm_action.action_input) # TODO V2: remove this dumps and return proper type
 
         return llm_action

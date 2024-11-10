@@ -1,11 +1,9 @@
-"""Various utiles used from the projects."""
-
 import os
 import traceback
 import inspect
 from datetime import timedelta
 from urllib.parse import urlparse
-from typing import Dict, Tuple
+from typing import Dict, Tuple, List
 from pydantic import BaseModel, ConfigDict
 import io
 from fastapi import UploadFile
@@ -14,8 +12,12 @@ from langchain_core.output_parsers import JsonOutputParser
 from langchain_core.prompts import PromptTemplate
 from langchain_core.utils import get_colored_text
 from enum import Enum as BaseEnum, EnumMeta
+import tomli
+import aiofiles
+import mimetypes
 
 from cat.env import get_env
+from cat.exceptions import CustomValidationException
 from cat.log import log
 
 
@@ -240,7 +242,32 @@ def format_upload_file(upload_file: UploadFile) -> UploadFile:
     return UploadFile(filename=upload_file.filename, file=io.BytesIO(file_content))
 
 
-# This is our masterwork during tea time
+async def load_uploaded_file(file: UploadFile, allowed_mime_types: List[str]) -> str:
+    content_type = mimetypes.guess_type(file.filename)[0]
+    if content_type not in allowed_mime_types:
+        raise CustomValidationException(
+            f'MIME type `{file.content_type}` not supported. Admitted types: {", ".join(allowed_mime_types)}'
+        )
+
+    log.info(f"Uploading {content_type} plugin {file.filename}")
+    local_file_path = f"/tmp/{file.filename}"
+    async with aiofiles.open(local_file_path, "wb+") as f:
+        content = await file.read()
+        await f.write(content)
+
+    return local_file_path
+
+
+def get_cat_version() -> str:
+    with open("pyproject.toml", "rb") as f:
+        project_toml = tomli.load(f)["project"]
+        return project_toml["version"]
+
+
+def get_allowed_plugins_mime_types() -> List:
+    return ["application/zip", "application/x-tar"]
+
+
 class singleton:
     instances = {}
 

@@ -51,7 +51,6 @@ def test_convo_history_reset(secure_client, secure_client_headers):
     assert len(json["history"]) == 0
 
 
-# TODO: should be tested also with concurrency!
 def test_convo_history_by_user(secure_client, secure_client_headers, client):
     convos = {
         # user_id: n_messages

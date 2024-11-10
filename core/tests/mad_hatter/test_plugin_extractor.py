@@ -20,9 +20,6 @@ def test_unpackage_zip(client, plugin_is_flat):
     assert os.path.exists(f"{plugins_folder}/mock_plugin")
     assert os.path.exists(f"{plugins_folder}/mock_plugin/mock_tool.py")
 
-    os.remove(zip_path)
-    shutil.rmtree(f"{plugins_folder}/mock_plugin")
-
 
 @pytest.mark.parametrize("plugin_is_flat", [True, False])
 def test_get_id_and_extension(client, plugin_is_flat):
@@ -30,7 +27,6 @@ def test_get_id_and_extension(client, plugin_is_flat):
     extractor = PluginExtractor(zip_path)
     assert extractor.id == "mock_plugin"
     assert extractor.extension == "zip"
-    os.remove(zip_path)
 
 
 def test_raise_exception_if_a_wrong_extension_is_provided(client):
