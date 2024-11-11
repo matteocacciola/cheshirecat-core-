@@ -1,10 +1,7 @@
 import time
 import uuid
-import pytest
-from starlette.websockets import WebSocketDisconnect
 
 from cat.db.cruds import users as crud_users
-
 
 from tests.utils import send_websocket_message, send_n_websocket_messages, api_key_ws, agent_id
 
@@ -51,7 +48,19 @@ def check_correct_websocket_reply(reply):
 
 
 def test_websocket(secure_client):
-    msg = {"text": "It's late! It's late", "image": "tests/mocks/sample.png"}
+    msg = {"text": "It's late! It's late", "images": ["tests/mocks/sample.png"]}
+    # send websocket message
+    res = send_websocket_message(msg, secure_client, {"apikey": api_key_ws})
+
+    check_correct_websocket_reply(res)
+
+
+def test_websocket_with_additional_items_in_message(secure_client):
+    msg = {
+        "text": "It's late! It's late",
+        "images": ["tests/mocks/sample.png"],
+        "prompt_settings": {"temperature": 0.5}
+    }
     # send websocket message
     res = send_websocket_message(msg, secure_client, {"apikey": api_key_ws})
 
@@ -64,7 +73,7 @@ def test_websocket_with_new_user(secure_client):
     user = crud_users.get_user(agent_id, str(mocked_user_id))
     assert user is None
 
-    msg = {"text": "It's late! It's late", "image": "tests/mocks/sample.png"}
+    msg = {"text": "It's late! It's late", "images": ["tests/mocks/sample.png"]}
     res = send_websocket_message(msg, secure_client, {"apikey": api_key_ws, "user_id": mocked_user_id})
 
     check_correct_websocket_reply(res)

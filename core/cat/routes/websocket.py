@@ -18,11 +18,7 @@ async def receive_message(websocket: WebSocket, stray: StrayCat):
     while True:
         # Receive the next message from the WebSocket.
         user_message_text = await websocket.receive_json()
-        user_message = UserMessage(
-            text=user_message_text["text"],
-            image=user_message_text.get("image"),
-            audio=user_message_text.get("audio"),
-        )
+        user_message = UserMessage(**user_message_text)
 
         # Run the `stray` object's method in a threadpool since it might be a CPU-bound operation.
         await run_in_threadpool(stray.run, user_message, return_message=False)
