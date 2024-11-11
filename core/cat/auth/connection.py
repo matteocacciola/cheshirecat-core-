@@ -15,6 +15,7 @@ from cat.auth.permissions import (
     AuthResource,
     AuthUserInfo,
     get_full_admin_permissions,
+    get_base_permissions,
 )
 from cat.db.cruds import users as crud_users
 from cat.factory.custom_auth_handler import BaseAuthHandler
@@ -142,8 +143,11 @@ class WebSocketAuth(ConnectionAuth):
         self, connection: HTTPConnection, auth_handler: BaseAuthHandler, agent_id: str
     ) -> AuthUserInfo | None:
         user_id = auth_handler.extract_user_id_websocket(connection)
-        if user_id and not crud_users.get_user(agent_id, user_id):
-            crud_users.create_user(agent_id, {"id": user_id, "username": user_id, "password": user_id})
+        if user_id:
+            crud_users.create_user(
+                agent_id,
+                {"id": user_id, "username": user_id, "password": user_id, "permissions": get_base_permissions()},
+            )
 
         user = await auth_handler.authorize(
             connection,

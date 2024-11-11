@@ -1,3 +1,4 @@
+from typing import Dict, List
 import bcrypt
 import jwt
 from jwt.exceptions import InvalidTokenError
@@ -14,6 +15,7 @@ DEFAULT_USER_USERNAME = "user"
 class UserInfo(BaseModel):
     user_id: str
     username: str
+    permissions: Dict[str, List[str]]
 
 
 def is_jwt(token: str) -> bool:
@@ -71,7 +73,7 @@ def extract_user_info(agent_key: str, user_id: str | None = None) -> UserInfo | 
     if not user:
         return None
 
-    return UserInfo(user_id=user["id"], username=user["username"])
+    return UserInfo(user_id=user["id"], username=user["username"], permissions=user["permissions"])
 
 
 def extract_token(request: HTTPConnection) -> str | None:

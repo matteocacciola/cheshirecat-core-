@@ -270,7 +270,7 @@ class CoreAuthHandler(BaseAuthHandler):
             return None
 
         if protocol == "websocket" and api_key == ws_key:
-            permissions: Dict[str, List[str]] = kwargs.get("websocket_permissions", get_base_permissions())
+            permissions: Dict[str, List[str]] = kwargs.get("websocket_permissions", user_info.permissions)
             return AuthUserInfo(
                 id=user_info.user_id,
                 name=user_info.username,
@@ -278,7 +278,7 @@ class CoreAuthHandler(BaseAuthHandler):
             )
 
         if protocol == "http" and api_key == http_key:
-            permissions: Dict[str, List[str]] = kwargs.get("http_permissions", get_full_permissions())
+            permissions: Dict[str, List[str]] = kwargs.get("http_permissions", user_info.permissions)
             return AuthUserInfo(
                 id=user_info.user_id,
                 name=user_info.username,
