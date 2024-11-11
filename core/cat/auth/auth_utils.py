@@ -48,6 +48,16 @@ def check_password(password: str, hashed: str) -> bool:
         return False
 
 
+def extract_user_id_from_request(request: HTTPConnection) -> str:
+    return request.headers.get(
+        "user_id",
+        request.path_params.get(
+            "user_id",
+            DEFAULT_USER_USERNAME
+        )
+    )
+
+
 def extract_agent_id_from_request(request: HTTPConnection) -> str:
     return request.headers.get(
         "agent_id",

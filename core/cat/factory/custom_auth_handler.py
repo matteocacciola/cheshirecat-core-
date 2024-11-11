@@ -3,9 +3,10 @@ from datetime import datetime, timedelta
 from typing import Literal, Dict, List
 from pytz import utc
 import jwt
-from fastapi import Request
+from fastapi.requests import HTTPConnection
 
-from cat.auth.auth_utils import is_jwt, extract_token, extract_user_info
+
+from cat.auth.auth_utils import is_jwt, extract_token, extract_user_info, extract_user_id_from_request
 from cat.auth.permissions import (
     AdminAuthResource,
     AuthPermission,
@@ -30,7 +31,7 @@ class BaseAuthHandler(ABC):
     # with JWT, the user id is in the token ad has priority
     async def authorize(
         self,
-        request: Request,
+        request: HTTPConnection,
         auth_resource: AuthResource | AdminAuthResource,
         auth_permission: AuthPermission,
         **kwargs,
@@ -70,12 +71,12 @@ class BaseAuthHandler(ABC):
             # JSON Web Token auth
             return await self.authorize_user_from_jwt(token, auth_resource, auth_permission, **kwargs)
 
-        user_id = request.headers.get("user_id")
+        user_id = extract_user_id_from_request(request)
         # API_KEY auth
         return await self.authorize_user_from_key(protocol, token, auth_resource, auth_permission, user_id, **kwargs)
 
     @abstractmethod
-    def extract_token_http(self, request: Request) -> str | None:
+    def extract_token_http(self, request: HTTPConnection) -> str | None:
         """
         Extract the token from an HTTP request. This method is used to extract the token from the request when the user
         is using an HTTP protocol. It should return the token if it is found, otherwise it should return None.
@@ -91,7 +92,7 @@ class BaseAuthHandler(ABC):
         pass
 
     @abstractmethod
-    def extract_token_websocket(self, request: Request) -> str | None:
+    def extract_token_websocket(self, request: HTTPConnection) -> str | None:
         """
         Extract the token from a WebSocket request. This method is used to extract the token from the request when the
         user is using a WebSocket protocol. It should return the token if it is found, otherwise it should return None.
@@ -160,12 +161,12 @@ class BaseAuthHandler(ABC):
 
 # Core auth handler, verify token on local idp
 class CoreAuthHandler(BaseAuthHandler):
-    def extract_token_http(self, request: Request) -> str | None:
+    def extract_token_http(self, request: HTTPConnection) -> str | None:
         # Proper Authorization header
         token = extract_token(request)
         return token
 
-    def extract_token_websocket(self, request: Request) -> str | None:
+    def extract_token_websocket(self, request: HTTPConnection) -> str | None:
         # Token passed as query parameter
         token = request.query_params.get("token", request.query_params.get("apikey"))
         return token
@@ -284,10 +285,10 @@ class CoreAuthHandler(BaseAuthHandler):
 
 # Default Auth, always deny auth by default (only core auth decides).
 class CoreOnlyAuthHandler(BaseAuthHandler):
-    def extract_token_http(self, request: Request) -> str | None:
+    def extract_token_http(self, request: HTTPConnection) -> str | None:
         return None
 
-    def extract_token_websocket(self, request: Request) -> str | None:
+    def extract_token_websocket(self, request: HTTPConnection) -> str | None:
         return None
 
     async def authorize_user_from_jwt(*args, **kwargs) -> AuthUserInfo | None:
