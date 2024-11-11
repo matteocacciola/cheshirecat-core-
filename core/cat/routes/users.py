@@ -30,6 +30,7 @@ class UserBase(BaseModel):
 
 
 class UserCreate(UserBase):
+    id: str | None = None
     password: str = Field(min_length=5)
     # no additional fields allowed
     model_config = ConfigDict(extra="forbid")

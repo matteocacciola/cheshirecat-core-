@@ -16,15 +16,14 @@ def test_session_creation_from_websocket(secure_client, secure_client_headers, c
         headers={"agent_id": agent_id}
     )
     received_token = res.json()["access_token"]
+    user_id = data["id"]
 
     # send websocket message
     mex = {"text": "Where do I go?"}
-    res = send_websocket_message(mex, client, query_params={"token": received_token})
+    res = send_websocket_message(mex, client, query_params={"token": received_token, "user_id": user_id})
 
     # check response
     assert "You did not configure" in res["content"]
-
-    user_id = data["id"]
 
     # verify session
     strays_user_ids = [s.user.id for s in cheshire_cat.strays]

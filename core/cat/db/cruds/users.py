@@ -33,11 +33,14 @@ def get_users(key_id: str, with_password: bool = False, with_timestamps: bool = 
 
 def create_user(key_id: str, new_user: Dict) -> Dict | None:
     # check for user duplication
-    user = get_user_by_username(key_id, new_user["username"], with_password=True)
-    if user:
+    if get_user_by_username(key_id, new_user["username"], with_password=True):
         return None
 
-    new_id = str(uuid4())
+    existing_id = new_user.get("id")
+    if existing_id and get_user(key_id, existing_id):
+        return None
+
+    new_id = existing_id or str(uuid4())
     new_user_copy = new_user.copy()
     new_user_copy["id"] = new_id
     new_user_copy["created_at"] = time.time()

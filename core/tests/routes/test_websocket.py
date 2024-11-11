@@ -1,4 +1,8 @@
 import time
+import uuid
+
+import pytest
+from starlette.websockets import WebSocketDisconnect
 
 from tests.utils import send_websocket_message, send_n_websocket_messages, api_key_ws
 
@@ -50,6 +54,14 @@ def test_websocket(secure_client):
     res = send_websocket_message(msg, secure_client, {"apikey": api_key_ws})
 
     check_correct_websocket_reply(res)
+
+
+def test_websocket_raising_exception(secure_client):
+    with pytest.raises(WebSocketDisconnect):
+        msg = {"text": "It's late! It's late", "image": "tests/mocks/sample.png"}
+        mocked_user_id = uuid.uuid4()
+        # send websocket message
+        send_websocket_message(msg, secure_client, {"apikey": api_key_ws, "user_id": mocked_user_id})
 
 
 def test_websocket_multiple_messages(secure_client):

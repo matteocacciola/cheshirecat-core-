@@ -6,7 +6,7 @@ import jwt
 from fastapi.requests import HTTPConnection
 
 
-from cat.auth.auth_utils import is_jwt, extract_token, extract_user_info, extract_user_id_from_request
+from cat.auth.auth_utils import is_jwt, extract_token, extract_user_info
 from cat.auth.permissions import (
     AdminAuthResource,
     AuthPermission,
@@ -58,8 +58,10 @@ class BaseAuthHandler(ABC):
         # extract token from request
         if protocol == "http":
             token = self.extract_token_http(request)
+            user_id = self.extract_user_id_http(request)
         elif protocol == "websocket":
             token = self.extract_token_websocket(request)
+            user_id = self.extract_user_id_websocket(request)
         else:
             log.error(f"Unknown protocol: {protocol}")
             return None
@@ -71,7 +73,6 @@ class BaseAuthHandler(ABC):
             # JSON Web Token auth
             return await self.authorize_user_from_jwt(token, auth_resource, auth_permission, **kwargs)
 
-        user_id = extract_user_id_from_request(request)
         # API_KEY auth
         return await self.authorize_user_from_key(protocol, token, auth_resource, auth_permission, user_id, **kwargs)
 
@@ -102,6 +103,40 @@ class BaseAuthHandler(ABC):
 
         Returns:
             The token if it is found, None otherwise.
+        """
+
+        # will raise: NotImplementedError
+        pass
+
+    @abstractmethod
+    def extract_user_id_http(self, request: HTTPConnection) -> str | None:
+        """
+        Extract the requesting user_id from an HTTP request. This method is used to extract the user_id from the request
+        when the user is using an HTTP protocol. It should return the token if it is found, otherwise it should return
+        None.
+
+        Args:
+            request: the Starlette request to extract the token from (HTTP)
+
+        Returns:
+            The user_id if it is found, None otherwise.
+        """
+
+        # will raise: NotImplementedError
+        pass
+
+    @abstractmethod
+    def extract_user_id_websocket(self, request: HTTPConnection) -> str | None:
+        """
+        Extract the requesting user_id from a WebSocket request. This method is used to extract the user_id from the
+        request when the user is using a WebSocket protocol. It should return the user_id if it is found, otherwise it
+        should return None.
+
+        Args:
+            request: the Starlette request to extract the token from (WebSocket)
+
+        Returns:
+            The user_id if it is found, None otherwise.
         """
 
         # will raise: NotImplementedError
@@ -170,6 +205,12 @@ class CoreAuthHandler(BaseAuthHandler):
         # Token passed as query parameter
         token = request.query_params.get("token", request.query_params.get("apikey"))
         return token
+
+    def extract_user_id_http(self, request: HTTPConnection) -> str | None:
+        return request.headers.get("user_id")
+
+    def extract_user_id_websocket(self, request: HTTPConnection) -> str | None:
+        return request.query_params.get("user_id")
 
     async def authorize_user_from_jwt(
         self,
@@ -289,6 +330,12 @@ class CoreOnlyAuthHandler(BaseAuthHandler):
         return None
 
     def extract_token_websocket(self, request: HTTPConnection) -> str | None:
+        return None
+
+    def extract_user_id_http(self, request: HTTPConnection) -> str | None:
+        return None
+
+    def extract_user_id_websocket(self, request: HTTPConnection) -> str | None:
         return None
 
     async def authorize_user_from_jwt(*args, **kwargs) -> AuthUserInfo | None:
