@@ -16,6 +16,8 @@ from cat.auth.permissions import (
     AuthUserInfo,
     get_full_admin_permissions,
 )
+from cat.db.cruds import users as crud_users
+from cat.factory.custom_auth_handler import BaseAuthHandler
 from cat.looking_glass.cheshire_cat import CheshireCat
 from cat.looking_glass.stray_cat import StrayCat
 from cat.log import log
@@ -72,7 +74,7 @@ class ConnectionAuth(ABC):
         ]
 
         # is that an admin able to manage agents?
-        user: AuthUserInfo = await lizard.core_auth_handler.authorize(
+        user = await lizard.core_auth_handler.authorize(
             connection,
             AdminAuthResource.CHESHIRE_CATS,
             self.permission,
@@ -83,12 +85,7 @@ class ConnectionAuth(ABC):
         # no admin was found? try to look for agent's users
         counter = 0
         while not user and counter < len(auth_handlers):
-            user = await auth_handlers[counter].authorize(
-                connection,
-                self.resource,
-                self.permission,
-                key_id=agent_id,
-            )
+            user = await self.get_agent_user_info(connection, auth_handlers[counter], agent_id)
             counter += 1
 
         if not user:
@@ -97,6 +94,12 @@ class ConnectionAuth(ABC):
 
         stray = await self.get_user_stray(ccat, user, connection)
         return ContextualCats(cheshire_cat=ccat, stray_cat=stray)
+
+    @abstractmethod
+    async def get_agent_user_info(
+        self, connection: HTTPConnection, auth_handler: BaseAuthHandler, agent_id: str
+    ) -> AuthUserInfo | None:
+        pass
 
     @abstractmethod
     async def get_user_stray(self, ccat: CheshireCat, user: AuthUserInfo, connection: HTTPConnection) -> StrayCat:
@@ -108,6 +111,17 @@ class ConnectionAuth(ABC):
         
 
 class HTTPAuth(ConnectionAuth):
+    async def get_agent_user_info(
+        self, connection: HTTPConnection, auth_handler: BaseAuthHandler, agent_id: str
+    ) -> AuthUserInfo | None:
+        user = await auth_handler.authorize(
+            connection,
+            self.resource,
+            self.permission,
+            key_id=agent_id,
+        )
+        return user
+
     async def get_user_stray(self, ccat: CheshireCat, user: AuthUserInfo, connection: Request) -> StrayCat:
         current_stray = ccat.get_stray(user.id)
         if current_stray:
@@ -124,6 +138,21 @@ class HTTPAuth(ConnectionAuth):
     
 
 class WebSocketAuth(ConnectionAuth):
+    async def get_agent_user_info(
+        self, connection: HTTPConnection, auth_handler: BaseAuthHandler, agent_id: str
+    ) -> AuthUserInfo | None:
+        user_id = auth_handler.extract_user_id_websocket(connection)
+        if user_id and not crud_users.get_user(agent_id, user_id):
+            crud_users.create_user(agent_id, {"id": user_id, "username": user_id, "password": user_id})
+
+        user = await auth_handler.authorize(
+            connection,
+            self.resource,
+            self.permission,
+            key_id=agent_id,
+        )
+        return user
+
     async def get_user_stray(self, ccat: CheshireCat, user: AuthUserInfo, connection: WebSocket) -> StrayCat:
         stray: StrayCat = ccat.get_stray(user.id)
         if stray:
