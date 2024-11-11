@@ -29,8 +29,7 @@ async def receive_message(websocket: WebSocket, stray: StrayCat):
 
 
 @router.websocket("/ws")
-@router.websocket("/ws/{user_id}")
-@router.websocket("/ws/{user_id}/{agent_id}")
+@router.websocket("/ws/{agent_id}")
 async def websocket_endpoint(
     websocket: WebSocket,
     cats: ContextualCats = Depends(WebSocketAuth(AuthResource.CONVERSATION, AuthPermission.WRITE)),
