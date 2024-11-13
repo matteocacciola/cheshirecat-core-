@@ -95,7 +95,6 @@ class Plugin:
 
         self._active = True
 
-
     def deactivate(self, agent_id: str):
         # Remove the imported modules
         for py_file in self._py_files:

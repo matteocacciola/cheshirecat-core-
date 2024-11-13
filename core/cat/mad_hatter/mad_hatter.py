@@ -5,7 +5,6 @@ import traceback
 from copy import deepcopy
 from typing import List, Dict
 
-from cat.db import models
 from cat.db.cruds import settings as crud_settings
 from cat.db.models import Setting
 from cat.log import log

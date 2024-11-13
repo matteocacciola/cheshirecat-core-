@@ -2,6 +2,7 @@
 from copy import deepcopy
 from typing import Dict
 from fastapi import Body, APIRouter, UploadFile, Depends
+from slugify import slugify
 
 from cat.auth.connection import AdminConnectionAuth
 from cat.auth.permissions import AuthPermission, AdminAuthResource
@@ -34,6 +35,9 @@ async def get_lizard_available_plugins(
     # tag: str = None, to be activated in case of more granular search
 ) -> GetAvailablePluginsResponse:
     """List available plugins"""
+    
+    if query is not None:
+        query = slugify(query, separator="_")
 
     return await get_available_plugins(lizard.plugin_manager, query)
 
@@ -98,6 +102,8 @@ async def get_plugin_details(
 ) -> GetPluginDetailsResponse:
     """Returns information on a single plugin, at a system level"""
 
+    plugin_id = slugify(plugin_id, separator="_")
+
     if not lizard.plugin_manager.plugin_exists(plugin_id):
         raise CustomNotFoundException("Plugin not found")
 
@@ -122,6 +128,8 @@ async def uninstall_plugin(
     lizard: BillTheLizard = Depends(AdminConnectionAuth(AdminAuthResource.PLUGINS, AuthPermission.DELETE)),
 ) -> DeletePluginResponse:
     """Physically remove plugin at a system level."""
+
+    plugin_id = slugify(plugin_id, separator="_")
 
     if not lizard.plugin_manager.plugin_exists(plugin_id):
         raise CustomNotFoundException("Plugin not found")

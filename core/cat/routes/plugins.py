@@ -1,6 +1,7 @@
 from typing import Dict
 from fastapi import Body, APIRouter, Depends
 from pydantic import ValidationError
+from slugify import slugify
 
 from cat.auth.connection import HTTPAuth, ContextualCats
 from cat.auth.permissions import AuthPermission, AuthResource
@@ -28,6 +29,9 @@ async def get_cheshirecat_available_plugins(
 ) -> GetAvailablePluginsResponse:
     """List available plugins"""
 
+    if query is not None:
+        query = slugify(query, separator="_")
+
     return await get_available_plugins(cats.cheshire_cat.plugin_manager, query)
 
 
@@ -37,6 +41,8 @@ async def toggle_plugin(
     cats: ContextualCats = Depends(HTTPAuth(AuthResource.PLUGINS, AuthPermission.WRITE)),
 ) -> TogglePluginResponse:
     """Enable or disable a single plugin"""
+
+    plugin_id = slugify(plugin_id, separator="_")
 
     # access cat instance
     ccat = cats.cheshire_cat
@@ -66,6 +72,8 @@ async def get_cheshirecat_plugin_settings(
 ) -> GetSettingResponse:
     """Returns the settings of a specific plugin"""
 
+    plugin_id = slugify(plugin_id, separator="_")
+
     return get_plugin_settings(cats.cheshire_cat.plugin_manager, plugin_id, cats.cheshire_cat.id)
 
 
@@ -76,6 +84,8 @@ async def upsert_cheshirecat_plugin_settings(
     cats: ContextualCats = Depends(HTTPAuth(AuthResource.PLUGINS, AuthPermission.EDIT)),
 ) -> GetSettingResponse:
     """Updates the settings of a specific plugin"""
+
+    plugin_id = slugify(plugin_id, separator="_")
 
     # access cat instance
     ccat = cats.cheshire_cat

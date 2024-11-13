@@ -105,7 +105,7 @@ async def auth_token(request: Request, credentials: UserCredentials, agent_id: s
     raise CustomForbiddenException("Invalid Credentials")
 
 
-async def get_plugins(plugin_manager: MadHatter, query: str = None) -> Plugins:
+async def get_plugins(plugin_manager: MadHatter, query: str | None = None) -> Plugins:
     """
     Get the plugins related to the passed plugin manager instance and the query.
     Args:
@@ -115,6 +115,7 @@ async def get_plugins(plugin_manager: MadHatter, query: str = None) -> Plugins:
     Returns:
         The list of plugins
     """
+
     # retrieve plugins from official repo
     registry_plugins = await registry_search_plugins(query)
     # index registry plugins by url
