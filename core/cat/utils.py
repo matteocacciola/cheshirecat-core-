@@ -270,7 +270,7 @@ def get_allowed_plugins_mime_types() -> List:
 
 def inspect_calling_folder() -> str:
     # who's calling?
-    calling_frame = inspect.currentframe().f_back
+    calling_frame = inspect.currentframe().f_back.f_back
     # Get the module associated with the frame
     module = inspect.getmodule(calling_frame)
     # Get the absolute and then relative path of the calling module's file
