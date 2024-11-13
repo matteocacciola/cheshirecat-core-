@@ -268,6 +268,51 @@ def get_allowed_plugins_mime_types() -> List:
     return ["application/zip", "application/x-tar"]
 
 
+def inspect_calling_folder() -> str:
+    # who's calling?
+    calling_frame = inspect.currentframe().f_back
+    # Get the module associated with the frame
+    module = inspect.getmodule(calling_frame)
+    # Get the absolute and then relative path of the calling module's file
+    abs_path = inspect.getabsfile(module)
+    rel_path = os.path.relpath(abs_path)
+
+    # throw exception if this method is called from outside the plugins folder
+    if not rel_path.startswith(get_plugins_path()):
+        raise Exception("get_plugin() can only be called from within a plugin")
+
+    # Replace the root and get only the current plugin folder
+    plugin_suffix = rel_path.replace(get_plugins_path(), "")
+    # Plugin's folder
+    return plugin_suffix.split("/")[0]
+
+
+def inspect_calling_agent() -> "CheshireCat":
+    cheshire_cat_instance = None
+
+    # get the stack of calls
+    call_stack = inspect.stack()
+
+    # surf the stack up to the calling to load_settings()
+    for frame_info in call_stack:
+        frame = frame_info.frame
+        if 'load_settings' not in frame.f_code.co_names:
+            continue
+
+        # obtain the name of the calling Cheshire Cat class
+        for k, v, in frame.f_locals.items():
+            if hasattr(v, 'large_language_model'):
+                cheshire_cat_instance = v.cheshire_cat if hasattr(v, 'cheshire_cat') else v
+                break
+
+        if cheshire_cat_instance is not None:
+            break
+    if cheshire_cat_instance:
+        return cheshire_cat_instance
+
+    raise Exception("Unable to find the calling Cheshire Cat instance")
+
+
 class singleton:
     instances = {}
 

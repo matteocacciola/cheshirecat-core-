@@ -3,6 +3,8 @@ import pytest
 
 from cat import utils
 
+from tests.utils import agent_id
+
 
 def test_get_base_url():
     assert utils.get_base_url() == "http://localhost:1865/"
@@ -97,3 +99,55 @@ def test_base_dict_model():
     # in
     assert "color" in cat
     assert "location" in cat.origin
+
+
+def test_load_settings_raise_exception(stray_no_memory):
+    with pytest.raises(Exception) as e:
+        stray_no_memory.mad_hatter.get_plugin()
+        assert e == "get_plugin() can only be called from within a plugin"
+
+
+def test_load_settings_no_agent_key_from_stray_cat(stray_no_memory):
+    original_fnc = utils.inspect_calling_folder
+    utils.inspect_calling_folder = lambda: "core_plugin"
+
+    plugin_manager = stray_no_memory.mad_hatter
+    plugin = plugin_manager.get_plugin()
+    plugin.load_settings()
+    assert utils.inspect_calling_agent().id == agent_id
+
+    utils.inspect_calling_folder = original_fnc
+
+
+def test_load_settings_no_agent_key_from_stray_cat_long(stray_no_memory):
+    original_fnc = utils.inspect_calling_folder
+    utils.inspect_calling_folder = lambda: "core_plugin"
+
+    stray_no_memory.mad_hatter.get_plugin().load_settings()
+    assert utils.inspect_calling_agent().id == agent_id
+
+    utils.inspect_calling_folder = original_fnc
+
+
+def test_load_settings_no_agent_key_from_cheshire_cat(cheshire_cat):
+    original_fnc = utils.inspect_calling_folder
+    utils.inspect_calling_folder = lambda: "core_plugin"
+
+    plugin_manager = cheshire_cat.mad_hatter
+    plugin = plugin_manager.get_plugin()
+    plugin.load_settings()
+
+    assert utils.inspect_calling_agent().id == agent_id
+
+    utils.inspect_calling_folder = original_fnc
+
+
+def test_load_settings_no_agent_key_from_cheshire_cat_long(cheshire_cat):
+    original_fnc = utils.inspect_calling_folder
+    utils.inspect_calling_folder = lambda: "core_plugin"
+
+    cheshire_cat.mad_hatter.get_plugin().load_settings()
+
+    assert utils.inspect_calling_agent().id == agent_id
+
+    utils.inspect_calling_folder = original_fnc

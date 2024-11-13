@@ -26,7 +26,7 @@ class RabbitHole:
 
         Args:
             ccat: CheshireCat
-                CheshireCat instance.
+                Cheshire Cat instance.
             file: UploadFile
                 File object sent via `rabbithole/memory` hook.
 
@@ -57,12 +57,12 @@ class RabbitHole:
         declarative_memories = memories["collections"][str(VectoryMemoryCollectionTypes.DECLARATIVE)]
 
         # Store data to upload the memories in batch
-        ids = [i["id"] for i in declarative_memories]
+        ids = [m["id"] for m in declarative_memories]
         payloads = [
-            {"page_content": p["page_content"], "metadata": p["metadata"]}
-            for p in declarative_memories
+            {"page_content": m["page_content"], "metadata": m["metadata"]}
+            for m in declarative_memories
         ]
-        vectors = [v["vector"] for v in declarative_memories]
+        vectors = [m["vector"] for m in declarative_memories]
 
         log.info(f"Preparing to load {len(vectors)} vector memories")
 

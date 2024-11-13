@@ -10,7 +10,7 @@ from cat.mad_hatter.decorators.tool import CatTool
 from cat.mad_hatter.plugin import Plugin
 
 from tests.conftest import clean_up
-from tests.utils import mock_plugin_path, agent_id
+from tests.utils import mock_plugin_path
 
 
 def test_create_plugin_wrong_folder():

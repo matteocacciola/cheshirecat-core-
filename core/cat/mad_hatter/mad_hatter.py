@@ -1,6 +1,4 @@
 from abc import ABC, abstractmethod
-import os
-import inspect
 import traceback
 from copy import deepcopy
 from typing import List, Dict
@@ -191,22 +189,7 @@ class MadHatter(ABC):
     # get plugin object (used from within a plugin)
     # TODO: should we allow to take directly another plugins' obj?
     def get_plugin(self):
-        # who's calling?
-        calling_frame = inspect.currentframe().f_back
-        # Get the module associated with the frame
-        module = inspect.getmodule(calling_frame)
-        # Get the absolute and then relative path of the calling module's file
-        abs_path = inspect.getabsfile(module)
-        rel_path = os.path.relpath(abs_path)
-
-        # throw exception if this method is called from outside the plugins folder
-        if not rel_path.startswith(utils.get_plugins_path()):
-            raise Exception("get_plugin() can only be called from within a plugin")
-
-        # Replace the root and get only the current plugin folder
-        plugin_suffix = rel_path.replace(utils.get_plugins_path(), "")
-        # Plugin's folder
-        name = plugin_suffix.split("/")[0]
+        name = utils.inspect_calling_folder()
         return self.plugins[name]
 
     @property

@@ -73,6 +73,7 @@ def test_plugin_install(lizard, plugin_is_flat):
     # plugin is activated by default
     assert len(plugin_manager.plugins["mock_plugin"].hooks) == 3
     assert len(plugin_manager.plugins["mock_plugin"].tools) == 1
+    assert len(plugin_manager.plugins["mock_plugin"].forms) == 1
 
     # tool found
     new_tool = plugin_manager.plugins["mock_plugin"].tools[0]
@@ -141,10 +142,12 @@ def test_plugin_uninstall(lizard, plugin_is_flat):
     # plugins list updated
     assert "mock_plugin" not in plugin_manager.plugins.keys()
     # plugin cache updated (only core_plugin stuff)
-    assert len(plugin_manager.tools) == 1  # default tool
+    assert len(plugin_manager.hooks) > 0
     for h_name, h_list in plugin_manager.hooks.items():
         assert len(h_list) == 1
         assert h_list[0].plugin_id == "core_plugin"
+    assert len(plugin_manager.tools) == 1
+    assert len(plugin_manager.forms) == 0
 
     # list of active plugins in DB is correct
     active_plugins = plugin_manager.load_active_plugins_from_db()

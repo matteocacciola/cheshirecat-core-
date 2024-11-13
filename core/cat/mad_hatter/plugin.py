@@ -12,11 +12,12 @@ from pydantic import BaseModel, ValidationError
 from packaging.requirements import Requirement
 
 from cat.db.cruds import plugins as crud_plugins
+from cat.db.database import DEFAULT_SYSTEM_KEY
 from cat.experimental.form.cat_form import CatForm
 from cat.mad_hatter.decorators.hook import CatHook
 from cat.mad_hatter.decorators.plugin_decorator import CatPluginDecorator
 from cat.mad_hatter.decorators.tool import CatTool
-from cat.utils import to_camel_case
+from cat.utils import to_camel_case, inspect_calling_agent
 from cat.log import log
 
 
@@ -111,6 +112,7 @@ class Plugin:
     def deactivate_settings(self, agent_id: str):
         self._hooks = []
         self._tools = []
+        self._forms = []
         self._plugin_overrides = []
         self._active = False
 
@@ -139,7 +141,16 @@ class Plugin:
         return PluginSettingsModel
 
     # load plugin settings
-    def load_settings(self, agent_id: str):
+    def load_settings(self, agent_id: str | None = None):
+        if agent_id is None:
+            try:
+                calling_agent = inspect_calling_agent()
+                agent_id = calling_agent.id
+            except Exception as e:
+                log.error(f"Error loading plugin {self._id} settings. Getting default settings: {e}")
+                log.warning(self.plugin_specific_error_message())
+                agent_id = DEFAULT_SYSTEM_KEY
+
         # is "settings_load" hook defined in the plugin?
         ph = next((h for h in self._plugin_overrides if h.name == "load_settings"), None)
         if ph is not None:
@@ -245,12 +256,8 @@ class Plugin:
         meta["tags"] = json_file_data.get("tags", "unknown")
         meta["thumb"] = json_file_data.get("thumb", "")
         meta["version"] = json_file_data.get("version", "0.0.1")
-
-        # Core compatibility
-        meta["compatibility"] = json_file_data.get("compatibility", {
-            "min_version": "not specified",
-            "max_version": "not specified",
-        })
+        meta["min_cat_version"] = json_file_data.get("min_cat_version", "")
+        meta["max_cat_version"] = json_file_data.get("max_cat_version", "")
 
         return meta
 

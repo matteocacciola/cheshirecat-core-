@@ -118,6 +118,7 @@ async def get_plugin_details(
         {"name": hook.name, "priority": hook.priority} for hook in plugin.hooks
     ]
     plugin_info["tools"] = [{"name": tool.name} for tool in plugin.tools]
+    plugin_info["forms"] = [{"name": form.name} for form in plugin.forms]
 
     return GetPluginDetailsResponse(data=plugin_info)
 

@@ -1,6 +1,20 @@
 from tests.utils import get_procedural_memory_contents
 
 
+def check_active_plugin_properties(plugin):
+    assert plugin["id"] == "mock_plugin"
+    assert len(plugin["hooks"]) == 3
+    assert len(plugin["tools"]) == 1
+    assert len(plugin["forms"]) == 1
+
+
+def check_inactive_plugin_properties(plugin):
+    assert plugin["id"] == "mock_plugin"
+    assert len(plugin["hooks"]) == 0
+    assert len(plugin["tools"]) == 0
+    assert len(plugin["forms"]) == 0
+
+
 def test_toggle_non_existent_plugin(secure_client, secure_client_headers, just_installed_plugin):
     response = secure_client.put("/plugins/toggle/no_plugin", headers=secure_client_headers)
     response_json = response.json()
@@ -16,10 +30,10 @@ def test_activate_plugin(secure_client, secure_client_headers, just_installed_pl
     # GET plugins endpoint lists the plugin
     response = secure_client.get("/plugins", headers=secure_client_headers)
     installed_plugins = response.json()["installed"]
-    mock_plugin = [p for p in installed_plugins if p["id"] == "mock_plugin"]
-    assert len(mock_plugin) == 1  # plugin installed
-    assert isinstance(mock_plugin[0]["active"], bool)
-    assert mock_plugin[0]["active"]  # plugin active
+    mock_plugin = [p for p in installed_plugins if p["id"] == "mock_plugin"][0]
+    assert isinstance(mock_plugin["active"], bool)
+    assert mock_plugin["active"]  # plugin active
+    check_active_plugin_properties(mock_plugin)
 
     # check whether procedures have been embedded
     procedures = get_procedural_memory_contents(secure_client, headers=secure_client_headers)
@@ -48,10 +62,12 @@ def test_deactivate_plugin(secure_client, secure_client_headers, just_installed_
     # GET plugins endpoint lists the plugin
     response = secure_client.get("/plugins", headers=secure_client_headers)
     installed_plugins = response.json()["installed"]
-    mock_plugin = [p for p in installed_plugins if p["id"] == "mock_plugin"]
-    assert len(mock_plugin) == 1  # plugin installed
-    assert isinstance(mock_plugin[0]["active"], bool)
-    assert not mock_plugin[0]["active"]  # plugin NOT active
+    assert len(installed_plugins) == 2  # core_plugin and mock_plugin
+
+    mock_plugin = [p for p in installed_plugins if p["id"] == "mock_plugin"][0]
+    assert isinstance(mock_plugin["active"], bool)
+    assert not mock_plugin["active"]  # plugin NOT active
+    check_inactive_plugin_properties(mock_plugin)
 
     # tool has been taken away
     procedures = get_procedural_memory_contents(secure_client, headers=secure_client_headers)

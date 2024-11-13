@@ -54,10 +54,6 @@ class WorkingMemory(BaseModelDict):
 
         self.__history = convert_to_conversation_history(crud_history.get_history(self.agent_id, self.user_id))
 
-        # Have the memories as instance attributes (i.e. do things like stray.working_memory.declarative_memories
-        # or stray.working_memory.declarative_memories[something])
-        # Each element is a List[Tuple[Document, float]] where the first element is the document and the second is the
-        # similarity score
         for collection_name in VectoryMemoryCollectionTypes:
             setattr(self, f"{collection_name}_memories".lower(), [])
 
