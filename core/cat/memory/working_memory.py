@@ -1,5 +1,6 @@
 from typing import List, Any
 
+from pydantic import computed_field
 from typing_extensions import deprecated
 
 from cat.agents import AgentInput
@@ -11,7 +12,6 @@ from cat.convo.messages import (
     ModelInteraction,
     MessageWhy,
     ConversationHistoryItem,
-    ConversationHistory,
     convert_to_conversation_history,
 )
 from cat.db.cruds import history as crud_history
@@ -52,7 +52,7 @@ class WorkingMemory(BaseModelDict):
     def __init__(self, **data: Any):
         super().__init__(**data)
 
-        self.__history = convert_to_conversation_history(crud_history.get_history(self.agent_id, self.user_id))
+        self.history = convert_to_conversation_history(crud_history.get_history(self.agent_id, self.user_id))
 
         for collection_name in VectoryMemoryCollectionTypes:
             setattr(self, f"{collection_name}_memories".lower(), [])
@@ -71,7 +71,7 @@ class WorkingMemory(BaseModelDict):
         conversation_history = [message.model_dump() for message in conversation_history]
 
         crud_history.set_history(self.agent_id, self.user_id, conversation_history)
-        self.__history = conversation_history
+        self.history = conversation_history
 
         return self
 
@@ -84,7 +84,7 @@ class WorkingMemory(BaseModelDict):
         """
 
         crud_history.set_history(self.agent_id, self.user_id, [])
-        self.__history = []
+        self.history = []
 
         return self
 
@@ -138,21 +138,11 @@ class WorkingMemory(BaseModelDict):
         conversation_history_info = ConversationHistoryItem(who=who, content=content)
 
         # append latest message in conversation
-        self.__history = convert_to_conversation_history(
+        self.history = convert_to_conversation_history(
             crud_history.update_history(self.agent_id, self.user_id, conversation_history_info)
         )
 
-    @property
-    def history(self) -> ConversationHistory:
-        """
-        Get the conversation history.
-
-        Returns:
-            ConversationHistory: The conversation history.
-        """
-
-        return self.__history
-
+    @computed_field
     @property
     def user_message_json(self) -> UserMessage | None:
         return self.user_message

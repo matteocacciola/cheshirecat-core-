@@ -189,7 +189,7 @@ class ProceduresAgent(BaseAgent):
             log.error(e)
             traceback.print_exc()
 
-            return AgentOutput(output="")
+        return AgentOutput(output="")
 
     def generate_examples(self, allowed_procedures: Dict[str, CatTool | CatForm]) -> str:
         def get_example(proc):

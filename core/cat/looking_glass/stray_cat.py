@@ -652,8 +652,8 @@ Allowed classes are:
 
     async def shutdown(self):
         await self.close_connection()
-        self.__loop.stop()
-        self.__loop.close()
+        # self.__loop.stop()
+        # self.__loop.close()
 
     @property
     def user(self) -> AuthUserInfo:
