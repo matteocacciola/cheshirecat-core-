@@ -1,6 +1,4 @@
 from typing import List, Any
-
-from pydantic import computed_field
 from typing_extensions import deprecated
 
 from cat.agents import AgentInput
@@ -12,6 +10,7 @@ from cat.convo.messages import (
     ModelInteraction,
     MessageWhy,
     ConversationHistoryItem,
+    ConversationHistory,
     convert_to_conversation_history,
 )
 from cat.db.cruds import history as crud_history
@@ -38,6 +37,8 @@ class WorkingMemory(BaseModelDict):
     agent_id: str
     user_id: str
 
+    # stores conversation history
+    history: ConversationHistory | None = []
     user_message: UserMessage | None = None
     active_form: CatForm | None = None
 
@@ -57,7 +58,7 @@ class WorkingMemory(BaseModelDict):
         for collection_name in VectoryMemoryCollectionTypes:
             setattr(self, f"{collection_name}_memories".lower(), [])
 
-    def set_history(self, conversation_history: List[ConversationHistoryItem]) -> "WorkingMemory":
+    def set_history(self, conversation_history: ConversationHistory) -> "WorkingMemory":
         """
         Set the conversation history.
 
@@ -68,9 +69,9 @@ class WorkingMemory(BaseModelDict):
             The current instance of the WorkingMemory class.
         """
 
-        conversation_history = [message.model_dump() for message in conversation_history]
-
-        crud_history.set_history(self.agent_id, self.user_id, conversation_history)
+        crud_history.set_history(
+            self.agent_id, self.user_id, [message.model_dump() for message in conversation_history]
+        )
         self.history = conversation_history
 
         return self
@@ -142,7 +143,6 @@ class WorkingMemory(BaseModelDict):
             crud_history.update_history(self.agent_id, self.user_id, conversation_history_info)
         )
 
-    @computed_field
     @property
     def user_message_json(self) -> UserMessage | None:
         return self.user_message

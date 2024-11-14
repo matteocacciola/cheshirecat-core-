@@ -26,7 +26,7 @@ def test_agent_destroy_success(client, lizard, cheshire_cat):
     )
 
     assert response.status_code == 200
-    assert response.json() == {"deleted_settings": True, "deleted_memories": True}
+    assert response.json() == {"deleted_settings": True, "deleted_memories": True, "deleted_plugin_folders": False}
 
     settings = crud_settings.get_settings(cheshire_cat.id)
     assert len(settings) == 0
@@ -58,7 +58,7 @@ def test_agent_reset_success(client, lizard, cheshire_cat):
     )
 
     assert response.status_code == 200
-    assert response.json() == {"deleted_settings": True, "deleted_memories": True}
+    assert response.json() == {"deleted_settings": True, "deleted_memories": True, "deleted_plugin_folders": False}
 
     settings = crud_settings.get_settings(cheshire_cat.id)
     assert len(settings) > 0
@@ -109,7 +109,7 @@ def test_agent_destroy_error_because_of_lack_not_existing_agent(client, lizard, 
     )
 
     assert response.status_code == 200
-    assert response.json() == {"deleted_settings": False, "deleted_memories": False}
+    assert response.json() == {"deleted_settings": False, "deleted_memories": False, "deleted_plugin_folders": False}
 
     settings = crud_settings.get_settings(cheshire_cat.id)
     assert len(settings) > 0

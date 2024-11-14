@@ -434,7 +434,7 @@ class VectorMemoryCollection:
 
         return self.client.count(collection_name=self.collection_name, count_filter=tenant_filter).count
 
-    def destroy(self) -> bool:
+    def destroy_collection(self) -> bool:
         tenant_filter = self._qdrant_build_tenant_filter()
 
         try:

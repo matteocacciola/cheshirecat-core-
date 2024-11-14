@@ -29,4 +29,4 @@ class VectorMemory:
 
     def destroy_collections(self) -> None:
         for c in VectoryMemoryCollectionTypes:
-            self.collections[str(c)].destroy()
+            self.collections[str(c)].destroy_collection()

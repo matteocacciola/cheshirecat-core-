@@ -35,7 +35,7 @@ from cat.looking_glass.callbacks import NewTokenHandler, ModelInteractionHandler
 from cat.looking_glass.white_rabbit import WhiteRabbit
 from cat.mad_hatter.tweedledee import Tweedledee
 from cat.memory.long_term_memory import LongTermMemory
-from cat.memory.vector_memory_collection import VectoryMemoryCollectionTypes, DocumentRecall
+from cat.memory.vector_memory_collection import VectoryMemoryCollectionTypes, DocumentRecall, VectorMemoryCollection
 from cat.memory.working_memory import WorkingMemory
 from cat.rabbit_hole import RabbitHole
 from cat.utils import BaseModelDict, restore_original_model
@@ -246,7 +246,7 @@ class StrayCat:
             log.error(error_message)
             raise ValueError(error_message)
 
-        vector_memory = cheshire_cat.memory.vectors.collections[collection_name]
+        vector_memory: VectorMemoryCollection = cheshire_cat.memory.vectors.collections[collection_name]
 
         memories = vector_memory.recall_memories_from_embedding(
             query, metadata, k, threshold
@@ -282,22 +282,21 @@ class StrayCat:
         Five hooks allow to customize the recall pipeline before and after it is done.
         """
         cheshire_cat = self.cheshire_cat
-
-        # If query is not provided, use the user's message as the query
-        recall_query = query if query is not None else self.working_memory.user_message.text
-
-        # We may want to search in memory
         plugin_manager = self.plugin_manager
+
+        # We may want to search in memory. If query is not provided, use the user's message as the query
         recall_query = plugin_manager.execute_hook(
-            "cat_recall_query", recall_query, cat=self
+            "cat_recall_query",
+            query if query is not None else self.working_memory.user_message.text,
+            cat=self
         )
         log.info(f"Recall query: '{recall_query}'")
 
         # Embed recall query
         recall_query_embedding = cheshire_cat.embedder.embed_query(recall_query)
-        self.working_memory.recall_query = recall_query
 
         # keep track of embedder model usage
+        self.working_memory.recall_query = recall_query
         self.working_memory.model_interactions.append(
             EmbedderModelInteraction(
                 prompt=recall_query,
@@ -309,31 +308,21 @@ class StrayCat:
         # hook to do something before recall begins
         plugin_manager.execute_hook("before_cat_recalls_memories", cat=self)
 
-        # Setting default recall configs for each memory
-        # hooks to change recall configs for each memory
-        recall_configs = [
-            restore_original_model(plugin_manager.execute_hook(
-                "before_cat_recalls_episodic_memories",
-                RecallSettings(embedding=recall_query_embedding, metadata={"source": self.__user.id}),
-                cat=self,
-            ), RecallSettings),
-            restore_original_model(plugin_manager.execute_hook(
-                "before_cat_recalls_declarative_memories",
-                RecallSettings(embedding=recall_query_embedding),
-                cat=self,
-            ), RecallSettings),
-            restore_original_model(plugin_manager.execute_hook(
-                "before_cat_recalls_procedural_memories",
-                RecallSettings(embedding=recall_query_embedding),
-                cat=self,
-            ), RecallSettings),
-        ]
+        # Setting default recall configs for each memory + hooks to change recall configs for each memory
+        for memory_type in VectoryMemoryCollectionTypes:
+            metadata = {"source": self.__user.id} if memory_type == VectoryMemoryCollectionTypes.EPISODIC else None
+            config = restore_original_model(
+                plugin_manager.execute_hook(
+                    f"before_cat_recalls_{str(memory_type)}_memories",
+                    RecallSettings(embedding=recall_query_embedding, metadata=metadata),
+                    cat=self,
+                ),
+                RecallSettings,
+            )
 
-        memory_types = cheshire_cat.memory.vectors.collections.keys()
-        for config, memory_type in zip(recall_configs, memory_types):
             self.recall(
                 query=config.embedding,
-                collection_name=memory_type,
+                collection_name=str(memory_type),
                 k=config.k,
                 threshold=config.threshold,
                 metadata=config.metadata,

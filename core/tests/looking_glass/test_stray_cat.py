@@ -53,6 +53,11 @@ def test_recall_to_working_memory(stray_no_memory):
     # recall after episodic memory was stored
     stray_no_memory.recall_relevant_memories_to_working_memory(msg_text)
 
+    assert len(stray_no_memory.working_memory.history) == 2
+    assert stray_no_memory.working_memory.user_message.text == msg_text
+    assert stray_no_memory.working_memory.user_message_json.text == msg_text
+    assert stray_no_memory.working_memory.history[0].content.text == msg_text
+    assert stray_no_memory.working_memory.history[0].content.text == msg_text
     assert stray_no_memory.working_memory.recall_query == msg_text
     assert len(stray_no_memory.working_memory.episodic_memories) == 1
     assert stray_no_memory.working_memory.episodic_memories[0].document.page_content == msg_text

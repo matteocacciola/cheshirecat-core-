@@ -47,7 +47,7 @@ async def destroy_collections(
 
     ccat = cats.cheshire_cat
 
-    to_return = {str(c): ccat.memory.vectors.collections[str(c)].destroy() for c in VectoryMemoryCollectionTypes}
+    to_return = {str(c): ccat.memory.vectors.collections[str(c)].destroy_collection() for c in VectoryMemoryCollectionTypes}
 
     ccat.load_memory()  # recreate the long term memories
     ccat.plugin_manager.find_plugins()
@@ -68,7 +68,7 @@ async def destroy_single_collection(
         raise CustomNotFoundException("Collection does not exist.")
 
     ccat = cats.cheshire_cat
-    ret = ccat.memory.vectors.collections[collection_id].destroy()
+    ret = ccat.memory.vectors.collections[collection_id].destroy_collection()
 
     ccat.load_memory()  # recreate the long term memories
     ccat.plugin_manager.find_plugins()

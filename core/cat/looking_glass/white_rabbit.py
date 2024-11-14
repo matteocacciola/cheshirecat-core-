@@ -1,5 +1,4 @@
 from typing import Dict, List
-
 from pydantic import BaseModel
 from pytz import utc
 from datetime import datetime, timedelta
