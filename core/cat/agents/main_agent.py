@@ -7,7 +7,7 @@ from cat.agents.memory_agent import MemoryAgent
 from cat.agents.procedures_agent import ProceduresAgent
 from cat.looking_glass import prompts
 from cat.memory.vector_memory_collection import DocumentRecall
-from cat.utils import verbal_timedelta
+from cat.utils import verbal_timedelta, restore_original_model
 from cat.env import get_env
 
 
@@ -26,14 +26,18 @@ class MainAgent(BaseAgent):
         plugin_manager = stray.cheshire_cat.plugin_manager
 
         agent_input = self.format_agent_input(stray)
-        agent_input = plugin_manager.execute_hook("before_agent_starts", agent_input, cat=stray)
+        agent_input = restore_original_model(
+            plugin_manager.execute_hook("before_agent_starts", agent_input, cat=stray), AgentInput
+        )
 
         # store the agent input inside the working memory
         stray.working_memory.agent_input = agent_input
 
         # should we run the default agents?
-        agent_fast_reply = plugin_manager.execute_hook("agent_fast_reply", {}, cat=stray)
-        agent_fast_reply = AgentOutput(**agent_fast_reply) if agent_fast_reply is not None else agent_fast_reply
+        agent_fast_reply = restore_original_model(
+            plugin_manager.execute_hook("agent_fast_reply", {}, cat=stray),
+            AgentOutput
+        )
         if agent_fast_reply and agent_fast_reply.output:
             return agent_fast_reply
 

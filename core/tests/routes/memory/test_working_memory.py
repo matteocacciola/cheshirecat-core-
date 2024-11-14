@@ -31,7 +31,7 @@ def test_convo_history_update(secure_client, secure_client_headers):
 
     assert picked_history["who"] == str(Role.HUMAN)
     assert picked_history["message"] == message
-    assert picked_history["why"] == {}
+    assert picked_history["why"] is None
     assert isinstance(picked_history["when"], float)  # timestamp
 
 

@@ -152,7 +152,7 @@ def before_cat_recalls_memories(cat) -> None:
 
 
 @hook(priority=0)
-def before_cat_recalls_episodic_memories(episodic_recall_config: RecallSettings, cat) -> RecallSettings:
+def before_cat_recalls_episodic_memories(episodic_recall_config: Dict, cat) -> Dict:
     """
     Hook into semantic search in memories.
 
@@ -180,7 +180,7 @@ def before_cat_recalls_episodic_memories(episodic_recall_config: RecallSettings,
 
 
 @hook(priority=0)
-def before_cat_recalls_declarative_memories(declarative_recall_config: RecallSettings, cat) -> RecallSettings:
+def before_cat_recalls_declarative_memories(declarative_recall_config: Dict, cat) -> Dict:
     """
     Hook into semantic search in memories.
 
@@ -208,7 +208,7 @@ def before_cat_recalls_declarative_memories(declarative_recall_config: RecallSet
 
 
 @hook(priority=0)
-def before_cat_recalls_procedural_memories(procedural_recall_config: RecallSettings, cat) -> RecallSettings:
+def before_cat_recalls_procedural_memories(procedural_recall_config: Dict, cat) -> Dict:
     """
     Hook into semantic search in memories.
 
@@ -328,7 +328,7 @@ def before_cat_stores_episodic_memory(doc: Document, cat) -> Document:
 
 
 @hook(priority=0)
-def fast_reply(f_reply: Dict, cat) -> CatMessage | Dict | None:
+def fast_reply(f_reply: Dict, cat) -> Dict | None:
     """
     This hook allows for an immediate response, bypassing memory recall and agent execution.
     It's useful for canned replies, custom LLM chains / agents, topic evaluation, direct LLM interaction and so on.
@@ -341,7 +341,7 @@ def fast_reply(f_reply: Dict, cat) -> CatMessage | Dict | None:
 
     Returns:
         response : CatMessage | Dict | None
-            If you want to short-circuit the normal flow, return a CatMessage or a Dict with a valid `output` key.
+            If you want to short-circuit the normal flow, return a Dict with a valid `output` key.
             Return None or an empty Dict or a Dict without a valid `output` key to continue with normal execution.
             See below for examples of Cat response
 

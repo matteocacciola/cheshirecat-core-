@@ -207,23 +207,23 @@ class ConversationHistoryItem(BaseModelDict):
     @computed_field
     @property
     @deprecated("This attribute is deprecated. Use `content.why` instead")
-    def why(self) -> MessageWhy:
+    def why(self) -> MessageWhy | None:
         """
         This attribute is deprecated. Use `content.why` instead. Deprecated. Get additional context about the message.
 
         Returns:
-            MessageWhy: The additional context about the message.
+            MessageWhy (optional): The additional context about the message, or None.
         """
 
-        return self.content.why if isinstance(self.content, CatMessage) else {}
+        return self.content.why if isinstance(self.content, CatMessage) else None
 
     @why.setter
-    def why(self, value: MessageWhy):
+    def why(self, value: MessageWhy | None):
         """
         This attribute is deprecated. Use `content.why` instead. Set additional context about the message.
 
         Args:
-            value: MessageWhy
+            value: MessageWhy | None
         """
         self.content.why = value
 

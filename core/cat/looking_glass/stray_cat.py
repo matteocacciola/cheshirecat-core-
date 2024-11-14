@@ -38,7 +38,7 @@ from cat.memory.long_term_memory import LongTermMemory
 from cat.memory.vector_memory_collection import VectoryMemoryCollectionTypes, DocumentRecall
 from cat.memory.working_memory import WorkingMemory
 from cat.rabbit_hole import RabbitHole
-from cat.utils import BaseModelDict
+from cat.utils import BaseModelDict, restore_original_model
 
 MSG_TYPES = Literal["notification", "chat", "error", "chat_token"]
 DEFAULT_K = 3
@@ -312,21 +312,21 @@ class StrayCat:
         # Setting default recall configs for each memory
         # hooks to change recall configs for each memory
         recall_configs = [
-            plugin_manager.execute_hook(
+            restore_original_model(plugin_manager.execute_hook(
                 "before_cat_recalls_episodic_memories",
                 RecallSettings(embedding=recall_query_embedding, metadata={"source": self.__user.id}),
                 cat=self,
-            ),
-            plugin_manager.execute_hook(
+            ), RecallSettings),
+            restore_original_model(plugin_manager.execute_hook(
                 "before_cat_recalls_declarative_memories",
                 RecallSettings(embedding=recall_query_embedding),
                 cat=self,
-            ),
-            plugin_manager.execute_hook(
+            ), RecallSettings),
+            restore_original_model(plugin_manager.execute_hook(
                 "before_cat_recalls_procedural_memories",
                 RecallSettings(embedding=recall_query_embedding),
                 cat=self,
-            ),
+            ), RecallSettings),
         ]
 
         memory_types = cheshire_cat.memory.vectors.collections.keys()
@@ -422,22 +422,19 @@ class StrayCat:
 
         # Run a totally custom reply (skips all the side effects of the framework)
         fast_reply = plugin_manager.execute_hook("fast_reply", {}, cat=self)
-        fast_reply = CatMessage(
-            text=str(fast_reply.get("output", ""))
-        ) if not isinstance(fast_reply, CatMessage) else fast_reply
-        if fast_reply.text:
+        fast_reply["text"] = fast_reply.get("output", "")
+        fast_reply = restore_original_model(fast_reply, CatMessage)
+        if fast_reply and fast_reply.text:
             return fast_reply
 
-        # hook to modify/enrich user input
-        self.working_memory.user_message = plugin_manager.execute_hook(
-            "before_cat_reads_message", self.working_memory.user_message, cat=self
+        # hook to modify/enrich user input; this is the latest Human message
+        self.working_memory.user_message = restore_original_model(
+            plugin_manager.execute_hook("before_cat_reads_message", self.working_memory.user_message, cat=self),
+            UserMessage
         )
 
-        # latest Human message
-        user_message = self.working_memory.user_message
-
         # update conversation history (Human turn)
-        self.working_memory.update_history(who=Role.HUMAN, content=user_message)
+        self.working_memory.update_history(who=Role.HUMAN, content=self.working_memory.user_message)
 
         # recall episodic and declarative memories from vector collections
         #   and store them in working_memory
@@ -453,13 +450,16 @@ class StrayCat:
         log.info("Agent output returned to stray:")
         log.info(agent_output)
 
-        self._store_user_message_in_episodic_memory(user_message)
+        self._store_user_message_in_episodic_memory(self.working_memory.user_message)
 
         # prepare final cat message
         final_output = CatMessage(text=str(agent_output.output), why=self.__build_why(agent_output))
 
         # run message through plugins
-        final_output = plugin_manager.execute_hook("before_cat_sends_message", final_output, cat=self)
+        final_output = restore_original_model(
+            plugin_manager.execute_hook("before_cat_sends_message", final_output, cat=self),
+            CatMessage,
+        )
 
         # update conversation history (AI turn)
         self.working_memory.update_history(who=Role.AI, content=final_output)

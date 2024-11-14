@@ -3,7 +3,7 @@ import traceback
 import inspect
 from datetime import timedelta
 from urllib.parse import urlparse
-from typing import Dict, Tuple, List
+from typing import Dict, Tuple, List, Type
 from pydantic import BaseModel, ConfigDict
 import io
 from fastapi import UploadFile
@@ -19,6 +19,94 @@ import mimetypes
 from cat.env import get_env
 from cat.exceptions import CustomValidationException
 from cat.log import log
+
+
+class singleton:
+    instances = {}
+
+    def __new__(cls, class_):
+        def getinstance(*args, **kwargs):
+            if class_ not in cls.instances:
+                cls.instances[class_] = class_(*args, **kwargs)
+            return cls.instances[class_]
+
+        return getinstance
+
+
+class BaseModelDict(BaseModel):
+    model_config = ConfigDict(
+        extra="allow",
+        validate_assignment=True,
+        arbitrary_types_allowed=True,
+        protected_namespaces=() # avoid warning for `model_xxx` attributes
+    )
+
+    def __getitem__(self, key):
+        # deprecate dictionary usage
+        stack = traceback.extract_stack(limit=2)
+        line_code = traceback.format_list(stack)[0].split("\n")[1].strip()
+        log.warning(
+            f"Deprecation Warning: to get '{key}' use dot notation instead of dictionary keys, example: `obj.{key}` instead of `obj['{key}']`"
+        )
+        log.warning(line_code)
+
+        # return attribute
+        return getattr(self, key)
+
+    def __setitem__(self, key, value):
+        # deprecate dictionary usage
+        stack = traceback.extract_stack(limit=2)
+        line_code = traceback.format_list(stack)[0].split("\n")[1].strip()
+        log.warning(
+            f'Deprecation Warning: to set {key} use dot notation instead of dictionary keys, example: `obj.{key} = x` instead of `obj["{key}"] = x`'
+        )
+        log.warning(line_code)
+
+        # set attribute
+        setattr(self, key, value)
+
+    def get(self, key, default=None):
+        return getattr(self, key, default)
+
+    def __delitem__(self, key):
+        delattr(self, key)
+
+    def _get_all_attributes(self):
+        # return {**self.model_fields, **self.__pydantic_extra__}
+        return self.model_dump()
+
+    def keys(self):
+        return self._get_all_attributes().keys()
+
+    def values(self):
+        return self._get_all_attributes().values()
+
+    def items(self):
+        return self._get_all_attributes().items()
+
+    def __contains__(self, key):
+        return key in self.keys()
+
+
+class MetaEnum(EnumMeta):
+    """
+    Enables the use of the `in` operator for enums.
+    For example:
+    if el not in Elements:
+        raise ValueError("invalid element")
+    """
+
+    def __contains__(cls, item):
+        try:
+            cls(item)
+        except ValueError:
+            return False
+        return True
+
+
+class Enum(BaseEnum, metaclass=MetaEnum):
+    def __str__(self):
+        return self.value
 
 
 def to_camel_case(text: str) -> str:
@@ -169,7 +257,7 @@ def parse_json(json_string: str, pydantic_model: BaseModel = None) -> Dict:
 
     # parse
     parsed = parser.parse(json_string[start_index:])
-    
+
     if pydantic_model:
         return pydantic_model(**parsed)
     return parsed
@@ -196,7 +284,7 @@ def match_prompt_variables(
         if m in tmp_prompt.input_variables:
             prompt_template = prompt_template.replace("{" + m + "}", "")
             log.warning(f"Placeholder '{m}' not found in prompt variables, removed")
-            
+
     return prompt_variables, prompt_template
 
 
@@ -206,7 +294,7 @@ def get_caller_info():
         calling_frame = inspect.currentframe()
         grand_father_frame = calling_frame.f_back.f_back
         grand_father_name = grand_father_frame.f_code.co_name
-        
+
         # check if the grand_father_frame is in a class method
         if 'self' in grand_father_frame.f_locals:
             return grand_father_frame.f_locals['self'].__class__.__name__ + "." + grand_father_name
@@ -313,89 +401,9 @@ def inspect_calling_agent() -> "CheshireCat":
     raise Exception("Unable to find the calling Cheshire Cat instance")
 
 
-class singleton:
-    instances = {}
+def restore_original_model(d: BaseModelDict | Dict | None, model: Type[BaseModelDict]) -> BaseModelDict | None:
+    # restore the original model
+    if isinstance(d, Dict):
+        return model(**d)
 
-    def __new__(cls, class_):
-        def getinstance(*args, **kwargs):
-            if class_ not in cls.instances:
-                cls.instances[class_] = class_(*args, **kwargs)
-            return cls.instances[class_]
-
-        return getinstance
-
-
-class BaseModelDict(BaseModel):
-    model_config = ConfigDict(
-        extra="allow",
-        validate_assignment=True,
-        arbitrary_types_allowed=True,
-        protected_namespaces=() # avoid warning for `model_xxx` attributes
-    )
-
-    def __getitem__(self, key):
-        # deprecate dictionary usage
-        stack = traceback.extract_stack(limit=2)
-        line_code = traceback.format_list(stack)[0].split("\n")[1].strip()
-        log.warning(
-            f"Deprecation Warning: to get '{key}' use dot notation instead of dictionary keys, example: `obj.{key}` instead of `obj['{key}']`"
-        )
-        log.warning(line_code)
-
-        # return attribute
-        return getattr(self, key)
-
-    def __setitem__(self, key, value):
-        # deprecate dictionary usage
-        stack = traceback.extract_stack(limit=2)
-        line_code = traceback.format_list(stack)[0].split("\n")[1].strip()
-        log.warning(
-            f'Deprecation Warning: to set {key} use dot notation instead of dictionary keys, example: `obj.{key} = x` instead of `obj["{key}"] = x`'
-        )
-        log.warning(line_code)
-
-        # set attribute
-        setattr(self, key, value)
-
-    def get(self, key, default=None):
-        return getattr(self, key, default)
-
-    def __delitem__(self, key):
-        delattr(self, key)
-
-    def _get_all_attributes(self):
-        # return {**self.model_fields, **self.__pydantic_extra__}
-        return self.model_dump()
-
-    def keys(self):
-        return self._get_all_attributes().keys()
-
-    def values(self):
-        return self._get_all_attributes().values()
-
-    def items(self):
-        return self._get_all_attributes().items()
-
-    def __contains__(self, key):
-        return key in self.keys()
-
-
-class MetaEnum(EnumMeta):
-    """
-    Enables the use of the `in` operator for enums.
-    For example:
-    if el not in Elements:
-        raise ValueError("invalid element")
-    """
-
-    def __contains__(cls, item):
-        try:
-            cls(item)
-        except ValueError:
-            return False
-        return True
-
-
-class Enum(BaseEnum, metaclass=MetaEnum):
-    def __str__(self):
-        return self.value
+    return d

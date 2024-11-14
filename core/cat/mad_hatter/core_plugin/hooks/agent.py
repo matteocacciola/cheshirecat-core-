@@ -29,7 +29,7 @@ def before_agent_starts(agent_input: Dict, cat) -> Dict:
 
 
 @hook(priority=0)
-def agent_fast_reply(ag_fast_reply: Dict, cat) -> Dict | AgentOutput | None:
+def agent_fast_reply(ag_fast_reply: Dict, cat) -> Dict | None:
     """
     This hook allows for a custom response after memory recall, skipping default agent execution.
     It's useful for custom agent logic or when you want to use recalled memories but avoid the main agent.
@@ -42,8 +42,8 @@ def agent_fast_reply(ag_fast_reply: Dict, cat) -> Dict | AgentOutput | None:
             Stray Cat instance.
 
     Returns:
-        response: AgentOutput | Dict | None
-            If you want to bypass the main agent, return an AgentOutput or a Dict with a valid `output` key.
+        response: Dict | None
+            If you want to bypass the main agent, return a Dict with a valid `output` key.
             Return None or an empty Dict or a Dict without a valid `output` key to continue with normal execution.
             See below for examples of Cat response
 
