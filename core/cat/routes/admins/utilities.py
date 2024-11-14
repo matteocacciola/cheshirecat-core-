@@ -7,12 +7,14 @@ from cat.auth.connection import AdminConnectionAuth
 from cat.auth.permissions import AdminAuthResource, AuthPermission
 from cat.bill_the_lizard import BillTheLizard
 from cat.db.database import get_db
+from cat.utils import empty_plugin_folder
 
 router = APIRouter()
 
 class ResetResponse(BaseModel):
     deleted_settings: bool
     deleted_memories: bool
+    deleted_plugin_folders: bool
 
 
 @router.post("/factory_reset", response_model=ResetResponse)
@@ -28,17 +30,16 @@ async  def factory_reset(
         ccat.destroy()
 
     await lizard.shutdown()
-    deleted_memories = True
-
     await get_db().flushdb()
-    deleted_settings = True
+
+    empty_plugin_folder()
 
     utils.singleton.instances.clear()
 
     del request.app.state.lizard
     request.app.state.lizard = BillTheLizard()
 
-    return ResetResponse(deleted_settings=deleted_settings, deleted_memories=deleted_memories)
+    return ResetResponse(deleted_settings=True, deleted_memories=True, deleted_plugin_folders=True)
 
 
 @router.post("/agent_destroy", response_model=ResetResponse)
@@ -53,12 +54,12 @@ async def agent_destroy(
     agent_id = extract_agent_id_from_request(request)
     ccat = lizard.get_cheshire_cat(agent_id)
     if not ccat:
-        return ResetResponse(deleted_settings=False, deleted_memories=False)
+        return ResetResponse(deleted_settings=False, deleted_memories=False, deleted_plugin_folders=False)
 
     ccat.destroy()
     await lizard.remove_cheshire_cat(agent_id)
 
-    return ResetResponse(deleted_settings=True, deleted_memories=True)
+    return ResetResponse(deleted_settings=True, deleted_memories=True, deleted_plugin_folders=False)
 
 
 @router.post("/agent_reset", response_model=ResetResponse)
@@ -73,10 +74,10 @@ async def agent_reset(
     agent_id = extract_agent_id_from_request(request)
     ccat = lizard.get_cheshire_cat(agent_id)
     if not ccat:
-        return ResetResponse(deleted_settings=False, deleted_memories=False)
+        return ResetResponse(deleted_settings=False, deleted_memories=False, deleted_plugin_folders=False)
 
     ccat.destroy()
     await lizard.remove_cheshire_cat(agent_id)
     lizard.get_or_create_cheshire_cat(agent_id)
 
-    return ResetResponse(deleted_settings=True, deleted_memories=True)
+    return ResetResponse(deleted_settings=True, deleted_memories=True, deleted_plugin_folders=False)

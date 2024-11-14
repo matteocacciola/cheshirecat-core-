@@ -1,4 +1,5 @@
 import os
+import shutil
 import traceback
 import inspect
 from datetime import timedelta
@@ -407,3 +408,14 @@ def restore_original_model(d: BaseModelDict | Dict | None, model: Type[BaseModel
         return model(**d)
 
     return d
+
+
+def empty_plugin_folder():
+    # empty the plugin folder
+    plugin_folder = get_plugins_path()
+    for _, _, folders in os.walk(plugin_folder):
+        for folder in folders:
+            folder = os.path.join(plugin_folder, folder)
+            if not os.path.exists(folder):
+                continue
+            shutil.rmtree(folder)
