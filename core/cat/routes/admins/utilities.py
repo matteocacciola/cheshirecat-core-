@@ -28,16 +28,17 @@ async def factory_reset(
     """
 
     try:
-        for ccat in lizard.cheshire_cats:
+        for ccat in lizard.cheshire_cats.values():
             await ccat.destroy()
         deleted_settings = True
     except Exception as e:
         log.error(f"Error deleting settings: {e}")
+        traceback.print_exc()
         deleted_settings = False
 
     try:
         await lizard.shutdown()
-        await get_db().flushdb()
+        get_db().flushdb()
         deleted_memories = True
     except Exception as e:
         log.error(f"Error deleting memories: {e}")

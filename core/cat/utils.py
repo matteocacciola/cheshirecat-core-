@@ -415,7 +415,7 @@ def empty_plugin_folder():
     plugin_folder = get_plugins_path()
     for _, _, folders in os.walk(plugin_folder):
         for folder in folders:
-            folder = os.path.join(plugin_folder, folder)
-            if not os.path.exists(folder):
+            item = os.path.join(plugin_folder, folder)
+            if os.path.isfile(item) or not os.path.exists(item):
                 continue
-            shutil.rmtree(folder)
+            shutil.rmtree(item)
