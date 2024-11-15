@@ -37,9 +37,8 @@ def get_env(name):
 
     cat_default_env_variables = get_supported_env_variables()
 
+    default = None
     if name in cat_default_env_variables:
         default = cat_default_env_variables[name]
-    else:
-        default = None
 
     return os.getenv(name, default)

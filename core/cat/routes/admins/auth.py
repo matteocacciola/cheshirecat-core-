@@ -7,7 +7,7 @@ router = APIRouter()
 
 
 @router.post("/token", response_model=JWTResponse)
-async def auth_token(request: Request, credentials: UserCredentials):
+async def system_auth_token(request: Request, credentials: UserCredentials):
     """Endpoint called from client to get a JWT from local identity provider.
     This endpoint receives username and password as form-data, validates credentials and issues a JWT.
     """

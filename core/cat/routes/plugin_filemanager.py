@@ -15,7 +15,7 @@ router = APIRouter()
 
 # get configured Plugin File Managers and configuration schemas
 @router.get("/settings", response_model=GetSettingsResponse)
-def get_plugin_filemanager_settings(
+def get_plugin_filemanagers_settings(
     lizard: BillTheLizard = Depends(AdminConnectionAuth(AdminAuthResource.FILE_MANAGER, AuthPermission.LIST)),
 ) -> GetSettingsResponse:
     """Get the list of the Plugin File Managers and their settings"""

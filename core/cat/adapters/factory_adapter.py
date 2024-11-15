@@ -52,7 +52,7 @@ class FactoryAdapter:
         )
 
         # upsert the settings for the factory
-        final_setting = crud_settings.upsert_setting_by_name(key_id, models.Setting(
+        final_setting = crud_settings.upsert_setting_by_category(key_id, models.Setting(
             name=new_factory_name, category=self._factory.setting_factory_category, value=new_factory_settings,
         ))
 

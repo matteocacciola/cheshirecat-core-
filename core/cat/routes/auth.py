@@ -15,7 +15,7 @@ async def get_available_permissions() -> Dict[str, List[str]]:
 
 
 @router.post("/token", response_model=JWTResponse)
-async def auth_token(request: Request, credentials: UserCredentials) -> JWTResponse:
+async def agent_auth_token(request: Request, credentials: UserCredentials) -> JWTResponse:
     """Endpoint called from client to get a JWT from local identity provider.
     This endpoint receives username and password as form-data, validates credentials and issues a JWT.
     """

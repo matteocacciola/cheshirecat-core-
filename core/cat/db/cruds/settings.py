@@ -93,5 +93,18 @@ def upsert_setting_by_name(key_id: str, payload: models.Setting) -> Dict:
     return value
 
 
+def upsert_setting_by_category(key_id: str, payload: models.Setting) -> Dict:
+    value = payload.model_dump()
+
+    old_setting = get_settings_by_category(key_id, payload.category)
+    if not old_setting:
+        create_setting(key_id, payload)
+    else:
+        fkey_id = format_key(key_id)
+        crud.store(fkey_id, value, path=f'$[?(@.category=="{payload.category}")]')
+
+    return value
+
+
 def destroy_all(key_id: str) -> None:
     crud.destroy(format_key(key_id))

@@ -40,7 +40,7 @@ async def get_collections(
 
 # DELETE all collections
 @router.delete("/collections", response_model=WipeCollectionsResponse)
-async def destroy_collections(
+async def destroy_all_collection_points(
     cats: ContextualCats = Depends(HTTPAuth(AuthResource.MEMORY, AuthPermission.DELETE)),
 ) -> WipeCollectionsResponse:
     """Delete and create all collections"""
@@ -59,7 +59,7 @@ async def destroy_collections(
 
 # DELETE one collection
 @router.delete("/collections/{collection_id}", response_model=WipeCollectionsResponse)
-async def destroy_single_collection(
+async def destroy_all_single_collection_points(
     collection_id: str,
     cats: ContextualCats = Depends(HTTPAuth(AuthResource.MEMORY, AuthPermission.DELETE)),
 ) -> WipeCollectionsResponse:
