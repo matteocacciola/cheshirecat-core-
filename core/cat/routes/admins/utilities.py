@@ -19,7 +19,7 @@ class ResetResponse(BaseModel):
 
 
 @router.post("/factory_reset", response_model=ResetResponse)
-async  def factory_reset(
+async def factory_reset(
     request: Request,
     lizard: BillTheLizard = Depends(AdminConnectionAuth(AdminAuthResource.CHESHIRE_CATS, AuthPermission.DELETE)),
 ) -> ResetResponse:
@@ -29,7 +29,7 @@ async  def factory_reset(
 
     try:
         for ccat in lizard.cheshire_cats:
-            ccat.destroy()
+            await ccat.destroy()
         deleted_settings = True
     except Exception as e:
         log.error(f"Error deleting settings: {e}")
@@ -77,7 +77,7 @@ async def agent_destroy(
         return ResetResponse(deleted_settings=False, deleted_memories=False, deleted_plugin_folders=False)
 
     try:
-        ccat.destroy()
+        await ccat.destroy()
         await lizard.remove_cheshire_cat(agent_id)
         deleted_settings = True
         deleted_memories = True
@@ -108,7 +108,7 @@ async def agent_reset(
         return ResetResponse(deleted_settings=False, deleted_memories=False, deleted_plugin_folders=False)
 
     try:
-        ccat.destroy()
+        await ccat.destroy()
         await lizard.remove_cheshire_cat(agent_id)
         lizard.get_or_create_cheshire_cat(agent_id)
         deleted_settings = True

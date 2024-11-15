@@ -169,11 +169,11 @@ class CheshireCat:
         self.plugin_manager = None
         self.large_language_model = None
 
-    def destroy(self):
+    async def destroy(self):
         """Destroy all data from the cat."""
 
         self.memory.destroy()
-        self.shutdown()
+        await self.shutdown()
 
         crud_settings.destroy_all(self.id)
         crud_history.destroy_all(self.id)
