@@ -1,6 +1,6 @@
 from typing import Dict
 
-from cat.memory.vector_memory_collection import VectorMemoryCollection, VectoryMemoryCollectionTypes, VectorMemoryConfig
+from cat.memory.vector_memory_collection import VectorMemoryCollection, VectorMemoryCollectionTypes, VectorMemoryConfig
 
 
 class VectorMemory:
@@ -11,7 +11,7 @@ class VectorMemory:
         # - Episodic memory will contain user and eventually cat utterances
         # - Declarative memory will contain uploaded documents' content
         # - Procedural memory will contain tools and knowledge on how to do things
-        for collection_name in VectoryMemoryCollectionTypes:
+        for collection_name in VectorMemoryCollectionTypes:
             # Instantiate collection
             collection = VectorMemoryCollection(
                 agent_id=agent_id,
@@ -28,5 +28,5 @@ class VectorMemory:
             setattr(self, str(collection_name), collection)
 
     def destroy_collections(self) -> None:
-        for c in VectoryMemoryCollectionTypes:
-            self.collections[str(c)].destroy_collection()
+        for c in VectorMemoryCollectionTypes:
+            self.collections[str(c)].destroy_all_points()

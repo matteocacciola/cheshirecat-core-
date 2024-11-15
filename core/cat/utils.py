@@ -16,6 +16,7 @@ from enum import Enum as BaseEnum, EnumMeta
 import tomli
 import aiofiles
 import mimetypes
+from qdrant_client.http.models import Filter, FieldCondition, MatchValue
 
 from cat.env import get_env
 from cat.exceptions import CustomValidationException
@@ -419,3 +420,7 @@ def empty_plugin_folder():
             if os.path.isfile(item) or not os.path.exists(item):
                 continue
             shutil.rmtree(item)
+
+
+def qdrant_build_tenant_filter(agent_id: str) -> Filter:
+    return Filter(must=[FieldCondition(key="group_id", match=MatchValue(value=agent_id))])

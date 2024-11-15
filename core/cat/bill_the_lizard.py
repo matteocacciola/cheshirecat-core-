@@ -251,10 +251,9 @@ class BillTheLizard:
         """
 
         if agent_id in self.__cheshire_cats.keys():
-            ccat = self.__cheshire_cats[agent_id]
+            ccat = self.__cheshire_cats.pop(agent_id)
             await ccat.shutdown()
-
-            del self.__cheshire_cats[agent_id]
+            del ccat
 
     def get_cheshire_cat(self, agent_id: str) -> CheshireCat | None:
         """

@@ -11,7 +11,7 @@ from cat.factory.base_factory import ReplacedNLPConfig
 from cat.mad_hatter.mad_hatter import MadHatter
 from cat.mad_hatter.registry import registry_search_plugins
 from cat.memory.vector_memory import VectorMemory
-from cat.memory.vector_memory_collection import VectoryMemoryCollectionTypes
+from cat.memory.vector_memory_collection import VectorMemoryCollectionTypes
 
 
 class Plugins(BaseModel):
@@ -209,11 +209,11 @@ def get_plugin_settings(plugin_manager: MadHatter, plugin_id: str, agent_id: str
 
 def memory_collection_is_accessible(collection_id: str) -> None:
     # check if collection exists
-    if collection_id not in VectoryMemoryCollectionTypes:
+    if collection_id not in VectorMemoryCollectionTypes:
         raise CustomNotFoundException("Collection does not exist.")
 
     # do not touch procedural memory
-    if collection_id == str(VectoryMemoryCollectionTypes.PROCEDURAL):
+    if collection_id == str(VectorMemoryCollectionTypes.PROCEDURAL):
         raise CustomValidationException("Procedural memory is read-only.")
 
 

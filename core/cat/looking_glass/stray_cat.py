@@ -35,7 +35,7 @@ from cat.looking_glass.callbacks import NewTokenHandler, ModelInteractionHandler
 from cat.looking_glass.white_rabbit import WhiteRabbit
 from cat.mad_hatter.tweedledee import Tweedledee
 from cat.memory.long_term_memory import LongTermMemory
-from cat.memory.vector_memory_collection import VectoryMemoryCollectionTypes, DocumentRecall, VectorMemoryCollection
+from cat.memory.vector_memory_collection import VectorMemoryCollectionTypes, DocumentRecall, VectorMemoryCollection
 from cat.memory.working_memory import WorkingMemory
 from cat.rabbit_hole import RabbitHole
 from cat.utils import BaseModelDict, restore_original_model
@@ -91,7 +91,7 @@ class StrayCat:
         memory = {str(c): [dict(d.document) | {
             "score": float(d.score) if d.score else None,
             "id": d.id,
-        } for d in getattr(self.working_memory, f"{c}_memories")] for c in VectoryMemoryCollectionTypes}
+        } for d in getattr(self.working_memory, f"{c}_memories")] for c in VectorMemoryCollectionTypes}
 
         # why this response?
         return MessageWhy(
@@ -239,8 +239,8 @@ class StrayCat:
 
         cheshire_cat = self.cheshire_cat
 
-        if collection_name not in VectoryMemoryCollectionTypes:
-            memory_collections = ', '.join([str(c) for c in VectoryMemoryCollectionTypes])
+        if collection_name not in VectorMemoryCollectionTypes:
+            memory_collections = ', '.join([str(c) for c in VectorMemoryCollectionTypes])
             error_message = f"{collection_name} is not a valid collection. Available collections: {memory_collections}"
 
             log.error(error_message)
@@ -309,8 +309,8 @@ class StrayCat:
         plugin_manager.execute_hook("before_cat_recalls_memories", cat=self)
 
         # Setting default recall configs for each memory + hooks to change recall configs for each memory
-        for memory_type in VectoryMemoryCollectionTypes:
-            metadata = {"source": self.__user.id} if memory_type == VectoryMemoryCollectionTypes.EPISODIC else None
+        for memory_type in VectorMemoryCollectionTypes:
+            metadata = {"source": self.__user.id} if memory_type == VectorMemoryCollectionTypes.EPISODIC else None
             config = restore_original_model(
                 plugin_manager.execute_hook(
                     f"before_cat_recalls_{str(memory_type)}_memories",

@@ -5,7 +5,7 @@ from pydantic import BaseModel
 from cat.auth.connection import HTTPAuth, ContextualCats
 from cat.auth.permissions import AuthPermission, AuthResource
 from cat.exceptions import CustomNotFoundException
-from cat.memory.vector_memory_collection import VectoryMemoryCollectionTypes
+from cat.memory.vector_memory_collection import VectorMemoryCollectionTypes
 
 router = APIRouter()
 
@@ -33,7 +33,7 @@ async def get_collections(
     collections_metadata = [GetCollectionsItem(
         name=str(c),
         vectors_count=cats.cheshire_cat.memory.vectors.collections[str(c)].get_vectors_count()
-    ) for c in VectoryMemoryCollectionTypes]
+    ) for c in VectorMemoryCollectionTypes]
 
     return GetCollectionsResponse(collections=collections_metadata)
 
@@ -47,7 +47,9 @@ async def destroy_collections(
 
     ccat = cats.cheshire_cat
 
-    to_return = {str(c): ccat.memory.vectors.collections[str(c)].destroy_collection() for c in VectoryMemoryCollectionTypes}
+    to_return = {
+        str(c): ccat.memory.vectors.collections[str(c)].destroy_all_points() for c in VectorMemoryCollectionTypes
+    }
 
     ccat.load_memory()  # recreate the long term memories
     ccat.plugin_manager.find_plugins()
@@ -64,11 +66,11 @@ async def destroy_single_collection(
     """Delete and recreate a collection"""
 
     # check if collection exists
-    if collection_id not in VectoryMemoryCollectionTypes:
+    if collection_id not in VectorMemoryCollectionTypes:
         raise CustomNotFoundException("Collection does not exist.")
 
     ccat = cats.cheshire_cat
-    ret = ccat.memory.vectors.collections[collection_id].destroy_collection()
+    ret = ccat.memory.vectors.collections[collection_id].destroy_all_points()
 
     ccat.load_memory()  # recreate the long term memories
     ccat.plugin_manager.find_plugins()

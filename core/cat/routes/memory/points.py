@@ -6,7 +6,7 @@ from qdrant_client.http.models import UpdateResult, Record
 from cat.auth.connection import HTTPAuth, ContextualCats
 from cat.auth.permissions import AuthPermission, AuthResource
 from cat.factory.embedder import EmbedderFactory
-from cat.memory.vector_memory_collection import VectoryMemoryCollectionTypes, DocumentRecall
+from cat.memory.vector_memory_collection import VectorMemoryCollectionTypes, DocumentRecall
 from cat.routes.routes_utils import (
     MemoryPointBase,
     MemoryPoint,
@@ -62,12 +62,12 @@ async def recall_memory_points_from_text(
         memory_dict["vector"] = document_recall.vector
         return memory_dict
 
-    def get_memories(c: VectoryMemoryCollectionTypes) -> List:
+    def get_memories(c: VectorMemoryCollectionTypes) -> List:
         # only episodic collection has users
         return ccat.memory.vectors.collections[str(c)].recall_memories_from_embedding(
             query_embedding,
             k=k,
-            metadata={"source": cats.stray_cat.user.id} if c == VectoryMemoryCollectionTypes.EPISODIC else None
+            metadata={"source": cats.stray_cat.user.id} if c == VectorMemoryCollectionTypes.EPISODIC else None
         )
 
     ccat = cats.cheshire_cat
@@ -78,7 +78,7 @@ async def recall_memory_points_from_text(
     # Loop over collections and retrieve nearby memories
     recalled = {
         str(c): [build_memory_dict(document_recall) for document_recall in get_memories(c)]
-        for c in VectoryMemoryCollectionTypes
+        for c in VectorMemoryCollectionTypes
     }
 
     config_class = EmbedderFactory(ccat.plugin_manager).get_config_class_from_adapter(ccat.embedder.__class__)

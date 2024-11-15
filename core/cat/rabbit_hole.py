@@ -13,7 +13,7 @@ from langchain.document_loaders.blob_loaders.schema import Blob
 
 from cat.log import log
 from cat.looking_glass.cheshire_cat import CheshireCat
-from cat.memory.vector_memory_collection import VectoryMemoryCollectionTypes
+from cat.memory.vector_memory_collection import VectorMemoryCollectionTypes
 from cat.utils import singleton
 
 
@@ -54,7 +54,7 @@ class RabbitHole:
             )
 
         # Get Declarative memories in file
-        declarative_memories = memories["collections"][str(VectoryMemoryCollectionTypes.DECLARATIVE)]
+        declarative_memories = memories["collections"][str(VectorMemoryCollectionTypes.DECLARATIVE)]
 
         # Store data to upload the memories in batch
         ids = [m["id"] for m in declarative_memories]

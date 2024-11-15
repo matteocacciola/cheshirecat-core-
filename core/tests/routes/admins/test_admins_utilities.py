@@ -5,13 +5,19 @@ from cat.db.cruds import (
     users as crud_users,
 )
 from cat.db.database import get_db
+from cat.db.vector_database import get_vector_db
 from cat.env import get_env
 from cat.memory.long_term_memory import LongTermMemory
+from cat.memory.vector_memory_collection import VectorMemoryCollectionTypes
+from cat.utils import qdrant_build_tenant_filter
 
 from tests.utils import create_new_user, get_client_admin_headers, new_user_password
 
 
 def test_factory_reset_success(client, lizard, cheshire_cat):
+    # check that the vector database is not empty
+    assert len(get_vector_db().get_collections().collections) > 0
+
     creds = {
         "username": "admin",
         "password": get_env("CCAT_ADMIN_DEFAULT_PASSWORD"),
@@ -31,8 +37,12 @@ def test_factory_reset_success(client, lizard, cheshire_cat):
     settings = crud_settings.get_settings(cheshire_cat.id)
     assert len(settings) == 0
 
+    # check that the Lizard has been correctly recreated from scratch
     settings = crud_settings.get_settings(lizard.config_key)
     assert len(settings) > 0
+
+    # check that the vector database is empty
+    assert len(get_vector_db().get_collections().collections) == 0
 
     histories = get_db().get(crud_history.format_key(cheshire_cat.id, "*"))
     assert histories is None
@@ -77,6 +87,10 @@ def test_agent_destroy_success(client, lizard, cheshire_cat):
     assert users is None
 
     assert cheshire_cat.memory is None
+    for c in VectorMemoryCollectionTypes:
+        assert get_vector_db().count(
+            collection_name=str(c), count_filter=qdrant_build_tenant_filter(cheshire_cat.id)
+        ).count == 0
 
 
 def test_agent_reset_success(client, lizard, cheshire_cat):
@@ -108,6 +122,13 @@ def test_agent_reset_success(client, lizard, cheshire_cat):
     users = crud_users.get_users(cheshire_cat.id)
     assert len(users) == 1
 
+    ccat = lizard.get_cheshire_cat(cheshire_cat.id)
+    for c in VectorMemoryCollectionTypes:
+        num_vectors = ccat.memory.vectors.collections[str(c)].get_vectors_count()
+        points, _ = ccat.memory.vectors.collections[str(c)].get_all_points()
+        assert num_vectors == 0 if c != VectorMemoryCollectionTypes.PROCEDURAL else 1
+        assert len(points) == 0 if c != VectorMemoryCollectionTypes.PROCEDURAL else 1
+
 
 def test_agent_destroy_error_because_of_lack_of_permissions(client, lizard, cheshire_cat):
     # create new admin with wrong permissions
@@ -128,6 +149,14 @@ def test_agent_destroy_error_because_of_lack_of_permissions(client, lizard, ches
 
     settings = crud_settings.get_settings(cheshire_cat.id)
     assert len(settings) > 0
+    assert isinstance(cheshire_cat.memory, LongTermMemory)
+    assert len(cheshire_cat.memory.vectors.collections) > 0
+
+    for c in VectorMemoryCollectionTypes:
+        num_vectors = cheshire_cat.memory.vectors.collections[str(c)].get_vectors_count()
+        points, _ = cheshire_cat.memory.vectors.collections[str(c)].get_all_points()
+        assert num_vectors == 0 if c != VectorMemoryCollectionTypes.PROCEDURAL else 1
+        assert len(points) == 0 if c != VectorMemoryCollectionTypes.PROCEDURAL else 1
 
 
 def test_agent_destroy_error_because_of_lack_not_existing_agent(client, lizard, cheshire_cat):
@@ -151,3 +180,9 @@ def test_agent_destroy_error_because_of_lack_not_existing_agent(client, lizard, 
     assert len(settings) > 0
     assert isinstance(cheshire_cat.memory, LongTermMemory)
     assert len(cheshire_cat.memory.vectors.collections) > 0
+
+    for c in VectorMemoryCollectionTypes:
+        num_vectors = cheshire_cat.memory.vectors.collections[str(c)].get_vectors_count()
+        points, _ = cheshire_cat.memory.vectors.collections[str(c)].get_all_points()
+        assert num_vectors == 0 if c != VectorMemoryCollectionTypes.PROCEDURAL else 1
+        assert len(points) == 0 if c != VectorMemoryCollectionTypes.PROCEDURAL else 1

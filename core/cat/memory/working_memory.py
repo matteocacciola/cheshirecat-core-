@@ -15,7 +15,7 @@ from cat.convo.messages import (
 )
 from cat.db.cruds import history as crud_history
 from cat.experimental.form.cat_form import CatForm
-from cat.memory.vector_memory_collection import VectoryMemoryCollectionTypes
+from cat.memory.vector_memory_collection import VectorMemoryCollectionTypes
 from cat.utils import BaseModelDict
 
 
@@ -55,7 +55,7 @@ class WorkingMemory(BaseModelDict):
 
         self.history = convert_to_conversation_history(crud_history.get_history(self.agent_id, self.user_id))
 
-        for collection_name in VectoryMemoryCollectionTypes:
+        for collection_name in VectorMemoryCollectionTypes:
             setattr(self, f"{collection_name}_memories".lower(), [])
 
     def set_history(self, conversation_history: ConversationHistory) -> "WorkingMemory":

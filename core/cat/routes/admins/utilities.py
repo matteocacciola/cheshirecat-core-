@@ -7,7 +7,9 @@ from cat.auth.connection import AdminConnectionAuth
 from cat.auth.permissions import AdminAuthResource, AuthPermission
 from cat.bill_the_lizard import BillTheLizard
 from cat.db.database import get_db
+from cat.db.vector_database import get_vector_db
 from cat.log import log
+from cat.memory.vector_memory_collection import VectorMemoryCollectionTypes
 from cat.utils import empty_plugin_folder
 
 router = APIRouter()
@@ -33,12 +35,13 @@ async def factory_reset(
         deleted_settings = True
     except Exception as e:
         log.error(f"Error deleting settings: {e}")
-        traceback.print_exc()
         deleted_settings = False
 
     try:
         await lizard.shutdown()
         get_db().flushdb()
+        for collection_name in VectorMemoryCollectionTypes:
+            get_vector_db().delete_collection(str(collection_name))
         deleted_memories = True
     except Exception as e:
         log.error(f"Error deleting memories: {e}")
