@@ -12,11 +12,11 @@ import time
 
 from cat.auth import auth_utils
 from cat.auth.permissions import AuthUserInfo, get_base_permissions
-from cat.bill_the_lizard import BillTheLizard
 from cat.convo.messages import UserMessage
 from cat.db.database import Database
 from cat.db.vector_database import VectorDatabase, LOCAL_FOLDER_PATH
 from cat.env import get_env
+from cat.looking_glass.bill_the_lizard import BillTheLizard
 from cat.looking_glass.stray_cat import StrayCat
 from cat.mad_hatter.plugin import Plugin
 from cat.startup import cheshire_cat_api
@@ -32,6 +32,7 @@ from tests.utils import (
     async_run,
     mock_plugin_path,
     fake_timestamp,
+    mock_default_llm_answer_prompt,
 )
 
 redis_client = redis.Redis(host=get_env("CCAT_REDIS_HOST"), db="1", encoding="utf-8", decode_responses=True)
@@ -319,6 +320,15 @@ def plugin(client):
     p = Plugin(mock_plugin_path)
     yield p
 
+
+@pytest.fixture
+def mocked_default_llm_answer_prompt():
+    fnc = utils.default_llm_answer_prompt
+    utils.default_llm_answer_prompt = mock_default_llm_answer_prompt
+
+    yield
+
+    utils.default_llm_answer_prompt = fnc
 
 # Define the custom marker
 pytest.mark.skip_encapsulation = pytest.mark.skip_encapsulation

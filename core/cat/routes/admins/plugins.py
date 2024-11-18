@@ -6,8 +6,8 @@ from slugify import slugify
 
 from cat.auth.connection import AdminConnectionAuth
 from cat.auth.permissions import AuthPermission, AdminAuthResource
-from cat.bill_the_lizard import BillTheLizard
 from cat.exceptions import CustomValidationException, CustomNotFoundException
+from cat.looking_glass.bill_the_lizard import BillTheLizard
 from cat.mad_hatter.registry import registry_download_plugin
 from cat.routes.routes_utils import (
     DeletePluginResponse,

@@ -32,7 +32,7 @@ from langchain.docstore.document import Document
 from cat.db.vector_database import get_vector_db
 from cat.log import log
 from cat.env import get_env
-from cat.utils import Enum as BaseEnum, BaseModelDict, qdrant_build_tenant_filter
+from cat.utils import Enum as BaseEnum, BaseModelDict
 
 
 class VectorMemoryCollectionTypes(BaseEnum):
@@ -165,8 +165,12 @@ class VectorMemoryCollection:
             must=[condition for key, value in dict_filter.items() for condition in self._build_condition(key, value)]
         )
 
+
+    def _qdrant_build_tenant_filter(self) -> Filter:
+        return Filter(must=[FieldCondition(key="group_id", match=MatchValue(value=self.agent_id))])
+
     def _qdrant_combine_filter_with_tenant(self, other_filter: Filter | None = None):
-        combined_filter = qdrant_build_tenant_filter(self.agent_id)
+        combined_filter = self._qdrant_build_tenant_filter()
 
         if other_filter:
             combined_filter = Filter(must=[*combined_filter.must, *other_filter.must])
@@ -359,6 +363,7 @@ class VectorMemoryCollection:
             VectorMemoryCollection.recall_memories_from_embedding
             VectorMemoryCollection.get_all_points
         """
+
         all_points, _ = self.get_all_points()
         memories = [DocumentRecall(document=Document(**p.payload), vector=p.vector, id=p.id) for p in all_points]
 
@@ -370,7 +375,7 @@ class VectorMemoryCollection:
     ) -> Tuple[List[Record], int | str | None]:
         """Retrieve all the points in the collection with an optional offset and limit."""
 
-        tenant_filter = qdrant_build_tenant_filter(self.agent_id)
+        tenant_filter = self._qdrant_build_tenant_filter()
 
         # retrieving the points
         return self.client.scroll(
@@ -427,12 +432,12 @@ class VectorMemoryCollection:
         log.warning(f"Dump \"{new_name}\" completed")
 
     def get_vectors_count(self) -> int:
-        tenant_filter = qdrant_build_tenant_filter(self.agent_id)
+        tenant_filter = self._qdrant_build_tenant_filter()
 
         return self.client.count(collection_name=self.collection_name, count_filter=tenant_filter).count
 
     def destroy_all_points(self) -> bool:
-        tenant_filter = qdrant_build_tenant_filter(self.agent_id)
+        tenant_filter = self._qdrant_build_tenant_filter()
 
         try:
             self.client.delete(collection_name=self.collection_name, points_selector=tenant_filter)

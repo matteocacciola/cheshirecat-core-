@@ -32,5 +32,5 @@ async def message_with_cat(
     stray = cats.stray_cat
 
     user_message = UserMessage(**payload)
-    answer = await run_in_threadpool(stray.run, user_message, True)
+    answer = await run_in_threadpool(stray.run_http, user_message)
     return answer

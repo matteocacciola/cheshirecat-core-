@@ -59,7 +59,7 @@ def test_create_memory_point(secure_client, secure_client_headers, cheshire_cat,
     assert memory["metadata"] == expected_metadata
 
 
-def test_point_deleted(secure_client, secure_client_headers):
+def test_point_deleted(secure_client, secure_client_headers, mocked_default_llm_answer_prompt):
     # send websocket message
     send_websocket_message({"text": "Hello Mad Hatter"}, secure_client, {"apikey": api_key_ws})
 

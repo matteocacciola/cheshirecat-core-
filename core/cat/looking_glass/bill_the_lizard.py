@@ -8,7 +8,7 @@ from cat.adapters.factory_adapter import FactoryAdapter
 from cat.agents.main_agent import MainAgent
 from cat.auth.auth_utils import hash_password, DEFAULT_ADMIN_USERNAME
 from cat.auth.permissions import get_full_admin_permissions
-from cat.db.cruds import users as crud_users, plugins as crud_plugins
+from cat.db.cruds import settings as crud_settings, users as crud_users, plugins as crud_plugins
 from cat.db.database import DEFAULT_SYSTEM_KEY
 from cat.env import get_env
 from cat.exceptions import LoadMemoryException
@@ -270,6 +270,23 @@ class BillTheLizard:
             return self.__cheshire_cats[agent_id]
 
         return None
+
+    def get_cheshire_cat_from_db(self, agent_id: str) -> CheshireCat | None:
+        """
+        Gets the Cheshire Cat with the given id, directly from db.
+
+        Args:
+            agent_id: The id of the agent to get
+
+        Returns:
+            The Cheshire Cat with the given id, or None if it doesn't exist
+        """
+
+        agent_settings = crud_settings.get_settings(agent_id)
+        if not agent_settings:
+            return None
+
+        return self.get_or_create_cheshire_cat(agent_id)
 
     def get_or_create_cheshire_cat(self, agent_id: str) -> CheshireCat:
         """

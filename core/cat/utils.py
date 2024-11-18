@@ -4,7 +4,7 @@ import traceback
 import inspect
 from datetime import timedelta
 from urllib.parse import urlparse
-from typing import Dict, Tuple, List, Type
+from typing import Dict, Tuple, List, Type, TypeVar
 from pydantic import BaseModel, ConfigDict
 import io
 from fastapi import UploadFile
@@ -16,11 +16,13 @@ from enum import Enum as BaseEnum, EnumMeta
 import tomli
 import aiofiles
 import mimetypes
-from qdrant_client.http.models import Filter, FieldCondition, MatchValue
 
 from cat.env import get_env
 from cat.exceptions import CustomValidationException
 from cat.log import log
+
+
+_T = TypeVar("_T")
 
 
 class singleton:
@@ -403,7 +405,11 @@ def inspect_calling_agent() -> "CheshireCat":
     raise Exception("Unable to find the calling Cheshire Cat instance")
 
 
-def restore_original_model(d: BaseModelDict | Dict | None, model: Type[BaseModelDict]) -> BaseModelDict | None:
+def restore_original_model(d: _T | Dict | None, model: Type[_T]) -> _T | None:
+    # if _T is not a BaseModeDict, return the original object
+    if not issubclass(model, BaseModelDict):
+        return d
+
     # restore the original model
     if isinstance(d, Dict):
         return model(**d)
@@ -422,5 +428,5 @@ def empty_plugin_folder():
             shutil.rmtree(item)
 
 
-def qdrant_build_tenant_filter(agent_id: str) -> Filter:
-    return Filter(must=[FieldCondition(key="group_id", match=MatchValue(value=agent_id))])
+def default_llm_answer_prompt() -> str:
+    return "AI: You did not configure a Language Model. Do it in the settings!"

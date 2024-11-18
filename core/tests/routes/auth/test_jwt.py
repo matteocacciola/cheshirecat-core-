@@ -3,15 +3,11 @@ import pytest
 import time
 import jwt
 
-from cat.db.cruds import users as crud_users
 from cat.env import get_env
 from cat.auth.permissions import AuthPermission, AuthResource
 from cat.auth.auth_utils import is_jwt
 
 from tests.utils import send_websocket_message, agent_id
-
-
-# TODOAUTH: test token refresh / invalidation / logoff
 
 
 def test_is_jwt():
@@ -164,14 +160,10 @@ def test_jwt_imposes_user_id(client, cheshire_cat):
     # send user specific request via ws
     send_websocket_message(message, client, query_params={"token": token})
 
-    # we now recall episodic memories from the user, there should be two of them, both by admin
+    # we now recall episodic memories from the user, there should be none of them, since we have not set a valid LLM
     params = {"text": "hey", "agent_id": agent_id}
     response = client.get("/memory/recall/", headers=headers, params=params)
     json = response.json()
     assert response.status_code == 200
     episodic_memories = json["vectors"]["collections"]["episodic"]
-    assert len(episodic_memories) == 2
-    user_db = crud_users.get_user_by_username(agent_id, creds["username"])
-    for em in episodic_memories:
-        assert em["metadata"]["source"] == user_db["id"]
-        assert em["page_content"] == "hey"
+    assert len(episodic_memories) == 0

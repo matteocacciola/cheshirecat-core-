@@ -2,20 +2,18 @@ import time
 import asyncio
 import traceback
 from asyncio import AbstractEventLoop
+
 import tiktoken
 from typing import Literal, List, Dict, Any, get_args
 from langchain.docstore.document import Document
 from langchain_core.embeddings import Embeddings
 from langchain_core.language_models import BaseLanguageModel
-from langchain_core.messages import SystemMessage, BaseMessage
-from langchain_core.runnables import RunnableConfig, RunnableLambda
-from langchain_core.prompts import ChatPromptTemplate
-from langchain_core.output_parsers.string import StrOutputParser
+from langchain_core.messages import BaseMessage
+from langchain_core.runnables import RunnableConfig
 from fastapi import WebSocket
 from websockets.exceptions import ConnectionClosedOK
 
 from cat import utils
-from cat.bill_the_lizard import BillTheLizard
 from cat.agents.base_agent import AgentOutput
 from cat.agents.main_agent import MainAgent
 from cat.auth.permissions import AuthUserInfo
@@ -31,6 +29,7 @@ from cat.convo.messages import (
 from cat.env import get_env
 from cat.exceptions import VectorMemoryError
 from cat.log import log
+from cat.looking_glass.bill_the_lizard import BillTheLizard
 from cat.looking_glass.callbacks import NewTokenHandler, ModelInteractionHandler
 from cat.looking_glass.white_rabbit import WhiteRabbit
 from cat.mad_hatter.tweedledee import Tweedledee
@@ -38,14 +37,13 @@ from cat.memory.long_term_memory import LongTermMemory
 from cat.memory.vector_memory_collection import VectorMemoryCollectionTypes, DocumentRecall, VectorMemoryCollection
 from cat.memory.working_memory import WorkingMemory
 from cat.rabbit_hole import RabbitHole
-from cat.utils import BaseModelDict, restore_original_model
 
 MSG_TYPES = Literal["notification", "chat", "error", "chat_token"]
 DEFAULT_K = 3
 DEFAULT_THRESHOLD = 0.5
 
 
-class RecallSettings(BaseModelDict):
+class RecallSettings(utils.BaseModelDict):
     embedding: List[float]
     k: float | None = DEFAULT_K
     threshold: float | None = DEFAULT_THRESHOLD
@@ -82,12 +80,12 @@ class StrayCat:
     def __repr__(self):
         return f"StrayCat(user_id={self.__user.id},agent_id={self.__agent_id})"
 
-    def __send_ws_json(self, data: Any):
+    def _send_ws_json(self, data: Any):
         # Run the coroutine in the main event loop in the main thread
         # and wait for the result
         asyncio.run_coroutine_threadsafe(self.__ws.send_json(data), loop=self.__main_loop).result()
 
-    def __build_why(self, agent_output: AgentOutput | None = None) -> MessageWhy:
+    def _build_why(self, agent_output: AgentOutput | None = None) -> MessageWhy:
         memory = {str(c): [dict(d.document) | {
             "score": float(d.score) if d.score else None,
             "id": d.id,
@@ -127,11 +125,11 @@ class StrayCat:
             )
 
         if msg_type == "error":
-            self.__send_ws_json(
+            self._send_ws_json(
                 {"type": msg_type, "name": "GenericError", "description": str(content)}
             )
         else:
-            self.__send_ws_json({"type": msg_type, "content": content})
+            self._send_ws_json({"type": msg_type, "content": content})
 
     def send_chat_message(self, message: str | CatMessage, save=False):
         """
@@ -148,12 +146,12 @@ class StrayCat:
             return
 
         if isinstance(message, str):
-            message = CatMessage(text=message, why=self.__build_why())
+            message = CatMessage(text=message, why=self._build_why())
 
         if save:
             self.working_memory.update_history(who=Role.AI, content=message)
 
-        self.__send_ws_json(message.model_dump())
+        self._send_ws_json(message.model_dump())
 
     def send_notification(self, content: str):
         """
@@ -192,7 +190,7 @@ class StrayCat:
                 "description": str(error),
             }
 
-        self.__send_ws_json(error_message)
+        self._send_ws_json(error_message)
 
     def recall(
         self,
@@ -311,7 +309,7 @@ class StrayCat:
         # Setting default recall configs for each memory + hooks to change recall configs for each memory
         for memory_type in VectorMemoryCollectionTypes:
             metadata = {"source": self.__user.id} if memory_type == VectorMemoryCollectionTypes.EPISODIC else None
-            config = restore_original_model(
+            config = utils.restore_original_model(
                 plugin_manager.execute_hook(
                     f"before_cat_recalls_{str(memory_type)}_memories",
                     RecallSettings(embedding=recall_query_embedding, metadata=metadata),
@@ -332,7 +330,7 @@ class StrayCat:
         # hook to modify/enrich retrieved memories
         plugin_manager.execute_hook("after_cat_recalls_memories", cat=self)
 
-    def llm_response(self, prompt: str, stream: bool = False) -> str:
+    def llm(self, prompt: str, stream: bool = False) -> str:
         """
         Generate a response using the LLM model.
         This method is useful for generating a response with both a chat and a completion model using the same syntax.
@@ -347,36 +345,13 @@ class StrayCat:
         """
 
         # should we stream the tokens?
-        callbacks = []
-        if stream:
-            callbacks.append(NewTokenHandler(self))
+        callbacks = [] if not stream else NewTokenHandler(self)
 
         # Add a token counter to the callbacks
         caller = utils.get_caller_info()
         callbacks.append(ModelInteractionHandler(self, caller or "StrayCat"))
 
-        # here we deal with motherfucking langchain
-        prompt = ChatPromptTemplate(
-            messages=[
-                SystemMessage(content=prompt)
-                # TODO: add here optional convo history passed to the method or taken from working memory
-            ]
-        )
-
-        chain = (
-            prompt
-            | RunnableLambda(lambda x: utils.langchain_log_prompt(x, f"{caller} prompt"))
-            | self.cheshire_cat.large_language_model
-            | RunnableLambda(lambda x: utils.langchain_log_output(x, f"{caller} prompt output"))
-            | StrOutputParser()
-        )
-
-        output = chain.invoke(
-            {}, # in case we need to pass info to the template
-            config=RunnableConfig(callbacks=callbacks)
-        )
-
-        return output
+        return self.cheshire_cat.llm(prompt, caller=caller, config=RunnableConfig(callbacks=callbacks))
 
     async def __call__(self, user_message: UserMessage) -> CatMessage:
         """
@@ -412,12 +387,12 @@ class StrayCat:
         # Run a totally custom reply (skips all the side effects of the framework)
         fast_reply = plugin_manager.execute_hook("fast_reply", {}, cat=self)
         fast_reply["text"] = fast_reply.get("output", "")
-        fast_reply = restore_original_model(fast_reply, CatMessage)
+        fast_reply = utils.restore_original_model(fast_reply, CatMessage)
         if fast_reply and fast_reply.text:
             return fast_reply
 
         # hook to modify/enrich user input; this is the latest Human message
-        self.working_memory.user_message = restore_original_model(
+        self.working_memory.user_message = utils.restore_original_model(
             plugin_manager.execute_hook("before_cat_reads_message", self.working_memory.user_message, cat=self),
             UserMessage
         )
@@ -425,8 +400,7 @@ class StrayCat:
         # update conversation history (Human turn)
         self.working_memory.update_history(who=Role.HUMAN, content=self.working_memory.user_message)
 
-        # recall episodic and declarative memories from vector collections
-        #   and store them in working_memory
+        # recall episodic and declarative memories from vector collections and store them in working_memory
         try:
             self.recall_relevant_memories_to_working_memory()
         except Exception as e:
@@ -439,39 +413,26 @@ class StrayCat:
         log.info("Agent output returned to stray:")
         log.info(agent_output)
 
-        self._store_user_message_in_episodic_memory(self.working_memory.user_message)
+        return self._on_agent_output_built(agent_output)
 
-        # prepare final cat message
-        final_output = CatMessage(text=str(agent_output.output), why=self.__build_why(agent_output))
+    def run_http(self, user_message: UserMessage) -> CatMessage:
+        try:
+            return self.loop.run_until_complete(self.__call__(user_message))
+        except Exception as e:
+            # Log any unexpected errors
+            log.error(e)
+            traceback.print_exc()
+            return CatMessage(text="", error=str(e))
 
-        # run message through plugins
-        final_output = restore_original_model(
-            plugin_manager.execute_hook("before_cat_sends_message", final_output, cat=self),
-            CatMessage,
-        )
-
-        # update conversation history (AI turn)
-        self.working_memory.update_history(who=Role.AI, content=final_output)
-
-        self.__last_message_time = time.time()
-
-        return final_output
-
-    def run(self, user_message: UserMessage, return_message: bool | None = False):
+    def run_websocket(self, user_message: UserMessage) -> None:
         try:
             cat_message = self.loop.run_until_complete(self.__call__(user_message))
-            if return_message:
-                # return the message for HTTP usage
-                return cat_message
-
             # send message back to client via WS
             self.send_chat_message(cat_message)
         except Exception as e:
             # Log any unexpected errors
             log.error(e)
             traceback.print_exc()
-            if return_message:
-                return {"error": str(e)}
             try:
                 # Send error as websocket message
                 self.send_error(e)
@@ -528,7 +489,7 @@ Allowed classes are:
 
 "{sentence}" -> """
 
-        response = self.llm_response(prompt)
+        response = self.llm(prompt)
         log.info(response)
 
         # find the closest match and its score with levenshtein distance
@@ -601,6 +562,8 @@ Allowed classes are:
         # reply with agent
         try:
             agent_output: AgentOutput = await self.main_agent.execute(self)
+            if agent_output.output == utils.default_llm_answer_prompt():
+                agent_output.with_llm_error = True
         except Exception as e:
             # This error happens when the LLM
             #   does not respect prompt instructions.
@@ -615,11 +578,32 @@ Allowed classes are:
             unparsable_llm_output = error_description.replace(
                 "Could not parse LLM output: `", ""
             ).replace("`", "")
-            agent_output = AgentOutput(
-                output=unparsable_llm_output,
-            )
+            agent_output = AgentOutput(output=unparsable_llm_output, with_llm_error=True)
 
         return agent_output
+
+    def _on_agent_output_built(self, agent_output: AgentOutput) -> CatMessage:
+        if not agent_output.with_llm_error:
+            self._store_user_message_in_episodic_memory(self.working_memory.user_message)
+
+        # prepare final cat message
+        final_output = CatMessage(text=str(agent_output.output), why=self._build_why(agent_output))
+
+        # run message through plugins
+        final_output = utils.restore_original_model(
+            self.plugin_manager.execute_hook("before_cat_sends_message", final_output, cat=self),
+            CatMessage,
+        )
+
+        # update conversation history (AI turn)
+        if agent_output.with_llm_error:
+            self.working_memory.pop_last_message_if_human()
+        else:
+            self.working_memory.update_history(who=Role.AI, content=final_output)
+
+        self.__last_message_time = time.time()
+
+        return final_output
 
     def _store_user_message_in_episodic_memory(self, user_message: UserMessage):
         doc = Document(

@@ -4,7 +4,9 @@ from cat.looking_glass.stray_cat import StrayCat
 from tests.utils import send_websocket_message, api_key, agent_id, create_new_user, new_user_password
 
 
-def test_session_creation_from_websocket(secure_client, secure_client_headers, client, cheshire_cat):
+def test_session_creation_from_websocket(
+    secure_client, secure_client_headers, client, cheshire_cat, mocked_default_llm_answer_prompt
+):
     # create a new user with username CCC
     username = "Alice"
     data = create_new_user(secure_client, "/users", username=username, headers=secure_client_headers)
@@ -67,11 +69,3 @@ def test_session_creation_from_http(secure_client, secure_client_headers, cheshi
     assert stray_cat.user.id == user_id
     convo = stray_cat.working_memory.history
     assert len(convo) == 0  # no ws message sent from Alice
-
-
-# TODO: how do we test that:
-# - session is coherent between ws and http calls
-# - streaming happens
-# - hooks receive the correct session
-
-# REFACTOR TODO: we still do not delete sessions

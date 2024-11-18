@@ -5,9 +5,9 @@ from fastapi import APIRouter, Depends, Query
 from cat.auth.permissions import AdminAuthResource, AuthPermission, get_full_admin_permissions
 from cat.auth.auth_utils import hash_password
 from cat.auth.connection import AdminConnectionAuth
-from cat.bill_the_lizard import BillTheLizard
 from cat.db.cruds import users as crud_users
 from cat.exceptions import CustomNotFoundException, CustomForbiddenException
+from cat.looking_glass.bill_the_lizard import BillTheLizard
 
 router = APIRouter()
 

@@ -5,10 +5,10 @@ from cat import utils
 from cat.auth.auth_utils import extract_agent_id_from_request
 from cat.auth.connection import AdminConnectionAuth
 from cat.auth.permissions import AdminAuthResource, AuthPermission
-from cat.bill_the_lizard import BillTheLizard
 from cat.db.database import get_db
 from cat.db.vector_database import get_vector_db
 from cat.log import log
+from cat.looking_glass.bill_the_lizard import BillTheLizard
 from cat.memory.vector_memory_collection import VectorMemoryCollectionTypes
 from cat.utils import empty_plugin_folder
 
@@ -20,7 +20,11 @@ class ResetResponse(BaseModel):
     deleted_plugin_folders: bool
 
 
-@router.post("/factory_reset", response_model=ResetResponse)
+class CreatedResponse(BaseModel):
+    created: bool
+
+
+@router.post("/factory/reset", response_model=ResetResponse)
 async def factory_reset(
     request: Request,
     lizard: BillTheLizard = Depends(AdminConnectionAuth(AdminAuthResource.CHESHIRE_CATS, AuthPermission.DELETE)),
@@ -66,7 +70,26 @@ async def factory_reset(
     )
 
 
-@router.post("/agent_destroy", response_model=ResetResponse)
+@router.post("/agent/create", response_model=CreatedResponse)
+async def agent_create(
+    request: Request,
+    lizard: BillTheLizard = Depends(AdminConnectionAuth(AdminAuthResource.CHESHIRE_CATS, AuthPermission.DELETE)),
+) -> CreatedResponse:
+    """
+    Reset a single agent. This will delete all settings, memories, and metadata, for the agent.
+    """
+
+    try:
+        agent_id = extract_agent_id_from_request(request)
+        lizard.get_or_create_cheshire_cat(agent_id)
+
+        return CreatedResponse(created=True)
+    except Exception as e:
+        log.error(f"Error creating agent: {e}")
+        return CreatedResponse(created=False)
+
+
+@router.post("/agent/destroy", response_model=ResetResponse)
 async def agent_destroy(
     request: Request,
     lizard: BillTheLizard = Depends(AdminConnectionAuth(AdminAuthResource.CHESHIRE_CATS, AuthPermission.DELETE)),
@@ -76,7 +99,7 @@ async def agent_destroy(
     """
 
     agent_id = extract_agent_id_from_request(request)
-    ccat = lizard.get_cheshire_cat(agent_id)
+    ccat = lizard.get_cheshire_cat_from_db(agent_id)
     if not ccat:
         return ResetResponse(deleted_settings=False, deleted_memories=False, deleted_plugin_folders=False)
 
@@ -97,7 +120,7 @@ async def agent_destroy(
     )
 
 
-@router.post("/agent_reset", response_model=ResetResponse)
+@router.post("/agent/reset", response_model=ResetResponse)
 async def agent_reset(
     request: Request,
     lizard: BillTheLizard = Depends(AdminConnectionAuth(AdminAuthResource.CHESHIRE_CATS, AuthPermission.DELETE)),
@@ -107,7 +130,7 @@ async def agent_reset(
     """
 
     agent_id = extract_agent_id_from_request(request)
-    ccat = lizard.get_cheshire_cat(agent_id)
+    ccat = lizard.get_cheshire_cat_from_db(agent_id)
     if not ccat:
         return ResetResponse(deleted_settings=False, deleted_memories=False, deleted_plugin_folders=False)
 

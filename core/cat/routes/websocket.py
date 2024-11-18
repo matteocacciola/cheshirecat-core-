@@ -21,7 +21,7 @@ async def receive_message(websocket: WebSocket, stray: StrayCat):
         user_message = UserMessage(**user_message_text)
 
         # Run the `stray` object's method in a threadpool since it might be a CPU-bound operation.
-        await run_in_threadpool(stray.run, user_message, return_message=False)
+        await run_in_threadpool(stray.run_websocket, user_message)
 
 
 @router.websocket("/ws")

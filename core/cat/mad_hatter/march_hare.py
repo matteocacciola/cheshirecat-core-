@@ -10,10 +10,10 @@ import threading
 from dateutil.tz import UTC
 
 from cat import utils
-from cat.bill_the_lizard import BillTheLizard
 from cat.env import get_env
 from cat.factory.custom_filemanager import BaseFileManager
 from cat.log import log
+from cat.looking_glass.bill_the_lizard import BillTheLizard
 from cat.mad_hatter.tweedledum import Tweedledum
 from cat.utils import singleton
 

@@ -1,3 +1,6 @@
+import uuid
+from qdrant_client.http.models import Filter, FieldCondition, MatchValue
+
 from cat.db.cruds import (
     settings as crud_settings,
     history as crud_history,
@@ -9,7 +12,6 @@ from cat.db.vector_database import get_vector_db
 from cat.env import get_env
 from cat.memory.long_term_memory import LongTermMemory
 from cat.memory.vector_memory_collection import VectorMemoryCollectionTypes
-from cat.utils import qdrant_build_tenant_filter
 
 from tests.utils import create_new_user, get_client_admin_headers, new_user_password
 
@@ -28,7 +30,7 @@ def test_factory_reset_success(client, lizard, cheshire_cat):
 
     received_token = res.json()["access_token"]
     response = client.post(
-        "/admins/utils/factory_reset", headers={"Authorization": f"Bearer {received_token}", "agent_id": cheshire_cat.id}
+        "/admins/utils/factory/reset", headers={"Authorization": f"Bearer {received_token}", "agent_id": cheshire_cat.id}
     )
 
     assert response.status_code == 200
@@ -56,7 +58,6 @@ def test_factory_reset_success(client, lizard, cheshire_cat):
     assert cheshire_cat.memory is None
 
 
-
 def test_agent_destroy_success(client, lizard, cheshire_cat):
     creds = {
         "username": "admin",
@@ -68,7 +69,7 @@ def test_agent_destroy_success(client, lizard, cheshire_cat):
 
     received_token = res.json()["access_token"]
     response = client.post(
-        "/admins/utils/agent_destroy", headers={"Authorization": f"Bearer {received_token}", "agent_id": cheshire_cat.id}
+        "/admins/utils/agent/destroy", headers={"Authorization": f"Bearer {received_token}", "agent_id": cheshire_cat.id}
     )
 
     assert response.status_code == 200
@@ -87,10 +88,10 @@ def test_agent_destroy_success(client, lizard, cheshire_cat):
     assert users is None
 
     assert cheshire_cat.memory is None
+
+    qdrant_filter = Filter(must=[FieldCondition(key="group_id", match=MatchValue(value=cheshire_cat.id))])
     for c in VectorMemoryCollectionTypes:
-        assert get_vector_db().count(
-            collection_name=str(c), count_filter=qdrant_build_tenant_filter(cheshire_cat.id)
-        ).count == 0
+        assert get_vector_db().count(collection_name=str(c), count_filter=qdrant_filter).count == 0
 
 
 def test_agent_reset_success(client, lizard, cheshire_cat):
@@ -104,7 +105,7 @@ def test_agent_reset_success(client, lizard, cheshire_cat):
 
     received_token = res.json()["access_token"]
     response = client.post(
-        "/admins/utils/agent_reset", headers={"Authorization": f"Bearer {received_token}", "agent_id": cheshire_cat.id}
+        "/admins/utils/agent/reset", headers={"Authorization": f"Bearer {received_token}", "agent_id": cheshire_cat.id}
     )
 
     assert response.status_code == 200
@@ -141,7 +142,7 @@ def test_agent_destroy_error_because_of_lack_of_permissions(client, lizard, ches
     received_token = res.json()["access_token"]
 
     response = client.post(
-        "/admins/utils/agent_destroy",
+        "/admins/utils/agent/destroy",
         headers={"Authorization": f"Bearer {received_token}", "agent_id": cheshire_cat.id}
     )
 
@@ -170,7 +171,7 @@ def test_agent_destroy_error_because_of_lack_not_existing_agent(client, lizard, 
 
     received_token = res.json()["access_token"]
     response = client.post(
-        "/admins/utils/agent_destroy", headers={"Authorization": f"Bearer {received_token}", "agent_id": "wrong_id"}
+        "/admins/utils/agent/destroy", headers={"Authorization": f"Bearer {received_token}", "agent_id": "wrong_id"}
     )
 
     assert response.status_code == 200
@@ -184,5 +185,44 @@ def test_agent_destroy_error_because_of_lack_not_existing_agent(client, lizard, 
     for c in VectorMemoryCollectionTypes:
         num_vectors = cheshire_cat.memory.vectors.collections[str(c)].get_vectors_count()
         points, _ = cheshire_cat.memory.vectors.collections[str(c)].get_all_points()
+        assert num_vectors == 0 if c != VectorMemoryCollectionTypes.PROCEDURAL else 1
+        assert len(points) == 0 if c != VectorMemoryCollectionTypes.PROCEDURAL else 1
+
+
+def test_agent_create_success(client, lizard):
+    creds = {
+        "username": "admin",
+        "password": get_env("CCAT_ADMIN_DEFAULT_PASSWORD"),
+    }
+
+    new_agent_id = str(uuid.uuid4())
+
+    res = client.post("/admins/auth/token", json=creds)
+    assert res.status_code == 200
+
+    received_token = res.json()["access_token"]
+    response = client.post(
+        "/admins/utils/agent/create", headers={"Authorization": f"Bearer {received_token}", "agent_id": new_agent_id}
+    )
+
+    assert response.status_code == 200
+    assert response.json() == {"created": True}
+
+    settings = crud_settings.get_settings(new_agent_id)
+    assert len(settings) > 0
+
+    histories = get_db().get(crud_history.format_key(new_agent_id, "*"))
+    assert histories is None
+
+    plugins = get_db().get(crud_plugins.format_key(new_agent_id, "*"))
+    assert plugins is None
+
+    users = crud_users.get_users(new_agent_id)
+    assert len(users) == 1
+
+    ccat = lizard.get_cheshire_cat(new_agent_id)
+    for c in VectorMemoryCollectionTypes:
+        num_vectors = ccat.memory.vectors.collections[str(c)].get_vectors_count()
+        points, _ = ccat.memory.vectors.collections[str(c)].get_all_points()
         assert num_vectors == 0 if c != VectorMemoryCollectionTypes.PROCEDURAL else 1
         assert len(points) == 0 if c != VectorMemoryCollectionTypes.PROCEDURAL else 1

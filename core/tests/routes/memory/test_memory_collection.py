@@ -20,7 +20,9 @@ def test_memory_collections_created(secure_client, secure_client_headers):
     assert collections_n_points["declarative"] == 0
 
 
-def test_memory_collection_episodic_stores_messages(secure_client, secure_client_headers):
+def test_memory_collection_episodic_stores_messages(
+    secure_client, secure_client_headers, mocked_default_llm_answer_prompt
+):
     # before sending messages, episodic memory should be empty
     collections_n_points = get_collections_names_and_point_count(secure_client, secure_client_headers)
     assert collections_n_points["episodic"] == 0
@@ -34,8 +36,6 @@ def test_memory_collection_episodic_stores_messages(secure_client, secure_client
     collections_n_points = get_collections_names_and_point_count(secure_client, secure_client_headers)
     assert collections_n_points["episodic"] == 1
 
-    # TOODO: check point metadata
-
 
 def test_memory_collection_non_existent_clear(secure_client, secure_client_headers):
     non_existent_collection = "nonexistent"
@@ -45,7 +45,9 @@ def test_memory_collection_non_existent_clear(secure_client, secure_client_heade
     assert "Collection does not exist" in json["detail"]["error"]
 
 
-def test_memory_collection_episodic_cleared(secure_client, secure_client_headers):
+def test_memory_collection_episodic_cleared(
+    secure_client, secure_client_headers, cheshire_cat, mocked_default_llm_answer_prompt
+):
     # send message via websocket
     message = {"text": "Meow"}
     res = send_websocket_message(message, secure_client, {"apikey": api_key_ws})
@@ -78,7 +80,9 @@ def test_memory_collection_procedural_has_tools_after_clear(secure_client, secur
     assert collections_n_points["procedural"] == 3  # still 1!
 
 
-def test_memory_collections_wipe(secure_client, secure_client_headers):
+def test_memory_collections_wipe(
+    secure_client, secure_client_headers, mocked_default_llm_answer_prompt
+):
     # create episodic memory
     message = {"text": "Meow"}
     send_websocket_message(message, secure_client, {"apikey": api_key_ws})

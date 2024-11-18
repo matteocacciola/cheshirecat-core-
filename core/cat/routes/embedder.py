@@ -3,11 +3,11 @@ from fastapi import APIRouter, Body, Depends
 
 from cat.auth.connection import AdminConnectionAuth
 from cat.auth.permissions import AdminAuthResource, AuthPermission
-from cat.bill_the_lizard import BillTheLizard
 from cat.db.cruds import settings as crud_settings
 from cat.exceptions import CustomValidationException
 from cat.factory.base_factory import ReplacedNLPConfig
 from cat.factory.embedder import EmbedderFactory
+from cat.looking_glass.bill_the_lizard import BillTheLizard
 from cat.routes.routes_utils import GetSettingsResponse, GetSettingResponse, UpsertSettingResponse
 
 router = APIRouter()

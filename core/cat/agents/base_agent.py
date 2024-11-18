@@ -16,6 +16,7 @@ class AgentOutput(BaseModelDict):
     output: str | None = None
     intermediate_steps: List = []
     return_direct: bool = False
+    with_llm_error: bool = False
 
 
 class BaseAgent(ABC):

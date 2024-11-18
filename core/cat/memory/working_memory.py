@@ -136,11 +136,24 @@ class WorkingMemory(BaseModelDict):
         """
 
         # we are sure that who is not change in the current call
-        conversation_history_info = ConversationHistoryItem(who=who, content=content)
+        conversation_history_item = ConversationHistoryItem(who=who, content=content)
 
         # append latest message in conversation
         self.history = convert_to_conversation_history(
-            crud_history.update_history(self.agent_id, self.user_id, conversation_history_info)
+            crud_history.update_history(self.agent_id, self.user_id, conversation_history_item)
+        )
+
+    def pop_last_message_if_human(self) -> None:
+        """
+        Pop the last message if it was said by the human.
+        """
+
+        if not self.history or self.history[-1].who != Role.HUMAN:
+            return
+
+        self.history.pop()
+        crud_history.set_history(
+            self.agent_id, self.user_id, [message.model_dump() for message in self.history]
         )
 
     @property

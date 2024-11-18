@@ -125,6 +125,7 @@ class CatMessage(BaseMessage):
     """
 
     why: MessageWhy | None = None
+    error: str | None = None
 
     @computed_field
     @property

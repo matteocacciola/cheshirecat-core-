@@ -1,10 +1,11 @@
 from typing import List, Any, Mapping, Dict
 import httpx
 from langchain_core.callbacks import CallbackManagerForLLMRun, AsyncCallbackManagerForLLMRun
-
 from langchain_core.language_models.llms import LLM
 from langchain_openai.chat_models import ChatOpenAI
 from langchain_ollama import ChatOllama
+
+from cat.utils import default_llm_answer_prompt
 
 
 class LLMDefault(LLM):
@@ -19,7 +20,7 @@ class LLMDefault(LLM):
         run_manager: CallbackManagerForLLMRun | None = None,
         **kwargs: Any,
     ) -> str:
-        return "AI: You did not configure a Language Model. " "Do it in the settings!"
+        return default_llm_answer_prompt()
 
     async def _acall(
         self,
@@ -28,7 +29,7 @@ class LLMDefault(LLM):
         run_manager: AsyncCallbackManagerForLLMRun | None = None,
         **kwargs: Any,
     ) -> str:
-        return "AI: You did not configure a Language Model. " "Do it in the settings!"
+        return default_llm_answer_prompt()
 
 
 # elaborated from

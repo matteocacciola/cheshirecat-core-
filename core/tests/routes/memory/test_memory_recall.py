@@ -35,7 +35,7 @@ def test_memory_recall_without_query_error(secure_client, secure_client_headers)
 
 
 # search with query
-def test_memory_recall_success(secure_client, secure_client_headers):
+def test_memory_recall_success(secure_client, secure_client_headers, mocked_default_llm_answer_prompt):
     # send a few messages via chat
     num_messages = 3
     send_n_websocket_messages(num_messages, secure_client)
@@ -50,7 +50,7 @@ def test_memory_recall_success(secure_client, secure_client_headers):
 
 
 # search with query and k
-def test_memory_recall_with_k_success(secure_client, secure_client_headers):
+def test_memory_recall_with_k_success(secure_client, secure_client_headers, mocked_default_llm_answer_prompt):
     # send a few messages via chat
     num_messages = 6
     send_n_websocket_messages(num_messages, secure_client)

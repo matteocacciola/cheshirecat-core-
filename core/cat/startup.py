@@ -7,7 +7,6 @@ from fastapi.responses import JSONResponse
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 
-from cat.bill_the_lizard import BillTheLizard
 from cat.db.database import get_db
 from cat.db.vector_database import get_vector_db
 from cat.env import get_env
@@ -18,6 +17,7 @@ from cat.exceptions import (
     CustomForbiddenException
 )
 from cat.log import log
+from cat.looking_glass.bill_the_lizard import BillTheLizard
 from cat.routes import (
     admins_router as admins,
     auth,

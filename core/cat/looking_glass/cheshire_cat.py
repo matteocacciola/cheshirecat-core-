@@ -294,7 +294,7 @@ class CheshireCat:
         )
 
         # in case we need to pass info to the template
-        return chain.invoke({})
+        return chain.invoke({}, config=kwargs.get("config", None))
 
     def replace_llm(self, language_model_name: str, settings: Dict) -> ReplacedNLPConfig:
         """
@@ -350,7 +350,7 @@ class CheshireCat:
 
     @property
     def lizard(self) -> "BillTheLizard":
-        from cat.bill_the_lizard import BillTheLizard
+        from cat.looking_glass.bill_the_lizard import BillTheLizard
         return BillTheLizard()
 
     @property

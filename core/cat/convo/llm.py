@@ -35,10 +35,14 @@ class LargeLanguageModelModality(BaseModel):
             setattr(self, field, self.__single_modality(field, value) if value else False)
 
     def _build_data_uri(self):
-        response = requests.get(self.__url)
-        if response.status_code == 200:
-            encoded_image = base64.b64encode(response.content).decode('utf-8')
-            return f"data:image/jpeg;base64,{encoded_image}"
+        try:
+            response = requests.get(self.__url)
+            if response.status_code == 200:
+                encoded_image = base64.b64encode(response.content).decode('utf-8')
+                return f"data:image/jpeg;base64,{encoded_image}"
+        except Exception as e:
+            log.warning(f"Failed to encode image to data URI.")
+            log.debug(e)
         return None
 
     def _build_image_url(self):

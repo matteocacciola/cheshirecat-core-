@@ -306,7 +306,7 @@ class LLMAnthropicChatConfig(LLMSettings):
 
 
 class LLMMistralAIChatConfig(LLMSettings):
-    api_key: str | None = None
+    api_key: str
     model: str = "mistral-large-latest"
     temperature: float = 0.7
     max_tokens: int = 8192
@@ -325,7 +325,7 @@ class LLMMistralAIChatConfig(LLMSettings):
 
 
 class LLMMGroqChatConfig(LLMSettings):
-    api_key: str | None = None
+    api_key: str
     model: str = "mixtral-8x7b-32768"
     temperature: float = 0.7
     max_tokens: int | None = None

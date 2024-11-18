@@ -13,7 +13,7 @@ def test_stray_initialization(stray_no_memory):
 
 
 def test_stray_nlp(stray_no_memory):
-    res = stray_no_memory.llm_response("hey")
+    res = stray_no_memory.llm("hey")
     assert "You did not configure" in res
 
     embedding = stray_no_memory.embedder.embed_documents(["hey"])
@@ -40,7 +40,7 @@ def test_stray_classify(stray_no_memory):
     assert label is None
 
 
-def test_recall_to_working_memory(stray_no_memory):
+def test_recall_to_working_memory(stray_no_memory, mocked_default_llm_answer_prompt):
     # empty working memory / episodic
     assert stray_no_memory.working_memory.episodic_memories == []
 
@@ -69,7 +69,7 @@ def test_stray_recall_invalid_collection_name(stray, embedder):
     assert "invalid_collection is not a valid collection" in str(exc_info.value)
 
 
-def test_stray_recall_query(stray, embedder):
+def test_stray_recall_query(stray, embedder, mocked_default_llm_answer_prompt):
     msg_text = "Hello! I'm Alice"
     msg = {"text": msg_text}
 
@@ -112,7 +112,7 @@ def test_stray_recall_all_memories(secure_client, secure_client_headers, stray, 
     assert len(memories) == expected_chunks
 
 
-def test_stray_recall_override_working_memory(stray, embedder):
+def test_stray_recall_override_working_memory(stray, embedder, mocked_default_llm_answer_prompt):
     # empty working memory / episodic
     assert stray.working_memory.episodic_memories == []
 

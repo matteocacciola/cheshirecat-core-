@@ -14,7 +14,21 @@ def test_convo_history_absent(secure_client, secure_client_headers):
     assert len(json["history"]) == 0
 
 
-def test_convo_history_update(secure_client, secure_client_headers):
+def test_convo_history_no_update_invalid_llm(secure_client, secure_client_headers):
+    message = "It's late! It's late!"
+
+    # send websocket messages
+    send_websocket_message({"text": message}, secure_client, {"apikey": api_key_ws})
+
+    # check working memory update
+    response = secure_client.get("/memory/conversation_history", headers=secure_client_headers)
+    json = response.json()
+    assert response.status_code == 200
+    assert "history" in json
+    assert len(json["history"]) == 0
+
+
+def test_convo_history_update(secure_client, secure_client_headers, mocked_default_llm_answer_prompt):
     message = "It's late! It's late!"
 
     # send websocket messages
@@ -35,7 +49,7 @@ def test_convo_history_update(secure_client, secure_client_headers):
     assert isinstance(picked_history["when"], float)  # timestamp
 
 
-def test_convo_history_reset(secure_client, secure_client_headers):
+def test_convo_history_reset(secure_client, secure_client_headers, mocked_default_llm_answer_prompt):
     # send websocket messages
     send_websocket_message({"text": "It's late! It's late!"}, secure_client, {"apikey": api_key_ws})
 
@@ -51,7 +65,7 @@ def test_convo_history_reset(secure_client, secure_client_headers):
     assert len(json["history"]) == 0
 
 
-def test_convo_history_by_user(secure_client, secure_client_headers, client):
+def test_convo_history_by_user(secure_client, secure_client_headers, client, mocked_default_llm_answer_prompt):
     convos = {
         # user_id: n_messages
         "White Rabbit": 2,

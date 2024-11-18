@@ -1,13 +1,9 @@
-# Helper classes for connection handling
-# Credential extraction from ws / http connections is not delegated to the custom auth handlers,
-# to have a standard auth interface.
 import asyncio
 from abc import ABC, abstractmethod
 from fastapi import Request, WebSocket, HTTPException, WebSocketException
 from fastapi.requests import HTTPConnection
 from pydantic import BaseModel, ConfigDict
 
-from cat.bill_the_lizard import BillTheLizard
 from cat.auth.auth_utils import extract_agent_id_from_request
 from cat.auth.permissions import (
     AdminAuthResource,
@@ -19,6 +15,7 @@ from cat.auth.permissions import (
 )
 from cat.db.cruds import users as crud_users
 from cat.factory.custom_auth_handler import BaseAuthHandler
+from cat.looking_glass.bill_the_lizard import BillTheLizard
 from cat.looking_glass.cheshire_cat import CheshireCat
 from cat.looking_glass.stray_cat import StrayCat
 from cat.log import log
