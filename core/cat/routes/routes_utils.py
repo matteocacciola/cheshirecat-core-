@@ -92,7 +92,7 @@ async def auth_token(request: Request, credentials: UserCredentials, agent_id: s
     """
 
     # use username and password to authenticate user from local identity provider and get token
-    access_token = await request.app.state.lizard.core_auth_handler.issue_jwt(
+    access_token = request.app.state.lizard.core_auth_handler.issue_jwt(
         credentials.username, credentials.password, key_id=agent_id
     )
 

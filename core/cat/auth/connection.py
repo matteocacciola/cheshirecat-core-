@@ -33,10 +33,10 @@ class AdminConnectionAuth:
         self.resource = resource
         self.permission = permission
 
-    async def __call__(self, request: Request) -> BillTheLizard:
+    def __call__(self, request: Request) -> BillTheLizard:
         lizard: BillTheLizard = request.app.state.lizard
 
-        user: AuthUserInfo = await lizard.core_auth_handler.authorize(
+        user: AuthUserInfo = lizard.core_auth_handler.authorize(
             request,
             self.resource,
             self.permission,
@@ -72,7 +72,7 @@ class ConnectionAuth(ABC):
         ]
 
         # is that an admin able to manage agents?
-        user = await lizard.core_auth_handler.authorize(
+        user = lizard.core_auth_handler.authorize(
             connection,
             AdminAuthResource.CHESHIRE_CATS,
             self.permission,
@@ -83,7 +83,7 @@ class ConnectionAuth(ABC):
         # no admin was found? try to look for agent's users
         counter = 0
         while not user and counter < len(auth_handlers):
-            user = await self.get_agent_user_info(connection, auth_handlers[counter], agent_id)
+            user = self.get_agent_user_info(connection, auth_handlers[counter], agent_id)
             counter += 1
 
         if not user:
@@ -94,7 +94,7 @@ class ConnectionAuth(ABC):
         return ContextualCats(cheshire_cat=ccat, stray_cat=stray)
 
     @abstractmethod
-    async def get_agent_user_info(
+    def get_agent_user_info(
         self, connection: HTTPConnection, auth_handler: BaseAuthHandler, agent_id: str
     ) -> AuthUserInfo | None:
         pass
@@ -109,10 +109,10 @@ class ConnectionAuth(ABC):
         
 
 class HTTPAuth(ConnectionAuth):
-    async def get_agent_user_info(
+    def get_agent_user_info(
         self, connection: HTTPConnection, auth_handler: BaseAuthHandler, agent_id: str
     ) -> AuthUserInfo | None:
-        user = await auth_handler.authorize(
+        user = auth_handler.authorize(
             connection,
             self.resource,
             self.permission,
@@ -136,7 +136,7 @@ class HTTPAuth(ConnectionAuth):
     
 
 class WebSocketAuth(ConnectionAuth):
-    async def get_agent_user_info(
+    def get_agent_user_info(
         self, connection: HTTPConnection, auth_handler: BaseAuthHandler, agent_id: str
     ) -> AuthUserInfo | None:
         user_id = auth_handler.extract_user_id_websocket(connection)
@@ -146,7 +146,7 @@ class WebSocketAuth(ConnectionAuth):
                 {"id": user_id, "username": user_id, "password": user_id, "permissions": get_base_permissions()},
             )
 
-        user = await auth_handler.authorize(
+        user = auth_handler.authorize(
             connection,
             self.resource,
             self.permission,

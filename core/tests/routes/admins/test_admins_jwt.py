@@ -48,7 +48,7 @@ async def test_issue_jwt(client, lizard):
 
     # is the JWT correct for core auth handler?
     auth_handler = lizard.core_auth_handler
-    user_info = await auth_handler.authorize_user_from_jwt(
+    user_info = auth_handler.authorize_user_from_jwt(
         received_token, AdminAuthResource.EMBEDDER, AuthPermission.WRITE, key_id=DEFAULT_SYSTEM_KEY
     )
     assert len(user_info.id) == 36 and len(user_info.id.split("-")) == 5 # uuid4

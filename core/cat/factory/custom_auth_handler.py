@@ -29,7 +29,7 @@ class BaseAuthHandler(ABC):
 
     # when there is no JWT, user id is passed via `user_id: xxx` header or via websocket path
     # with JWT, the user id is in the token ad has priority
-    async def authorize(
+    def authorize(
         self,
         request: HTTPConnection,
         auth_resource: AuthResource | AdminAuthResource,
@@ -71,10 +71,10 @@ class BaseAuthHandler(ABC):
 
         if is_jwt(token):
             # JSON Web Token auth
-            return await self.authorize_user_from_jwt(token, auth_resource, auth_permission, **kwargs)
+            return self.authorize_user_from_jwt(token, auth_resource, auth_permission, **kwargs)
 
         # API_KEY auth
-        return await self.authorize_user_from_key(protocol, token, auth_resource, auth_permission, user_id, **kwargs)
+        return self.authorize_user_from_key(protocol, token, auth_resource, auth_permission, user_id, **kwargs)
 
     @abstractmethod
     def extract_token_http(self, request: HTTPConnection) -> str | None:
@@ -143,7 +143,7 @@ class BaseAuthHandler(ABC):
         pass
 
     @abstractmethod
-    async def authorize_user_from_jwt(
+    def authorize_user_from_jwt(
         self,
         token: str,
         auth_resource: AuthResource | AdminAuthResource,
@@ -167,7 +167,7 @@ class BaseAuthHandler(ABC):
         pass
 
     @abstractmethod
-    async def authorize_user_from_key(
+    def authorize_user_from_key(
         self,
         protocol: Literal["http", "websocket"],
         api_key: str,
@@ -212,7 +212,7 @@ class CoreAuthHandler(BaseAuthHandler):
     def extract_user_id_websocket(self, request: HTTPConnection) -> str | None:
         return request.query_params.get("user_id")
 
-    async def authorize_user_from_jwt(
+    def authorize_user_from_jwt(
         self,
         token: str,
         auth_resource: AuthResource | AdminAuthResource,
@@ -249,7 +249,7 @@ class CoreAuthHandler(BaseAuthHandler):
             extra=user,
         )
 
-    async def authorize_user_from_key(
+    def authorize_user_from_key(
         self,
         protocol: Literal["http", "websocket"],
         api_key: str,
@@ -288,7 +288,7 @@ class CoreAuthHandler(BaseAuthHandler):
         # No match -> deny access
         return None
 
-    async def issue_jwt(self, username: str, password: str, **kwargs) -> str | None:
+    def issue_jwt(self, username: str, password: str, **kwargs) -> str | None:
         """
         Authenticate local user credentials and return a JWT token.
 
@@ -338,8 +338,8 @@ class CoreOnlyAuthHandler(BaseAuthHandler):
     def extract_user_id_websocket(self, request: HTTPConnection) -> str | None:
         return None
 
-    async def authorize_user_from_jwt(*args, **kwargs) -> AuthUserInfo | None:
+    def authorize_user_from_jwt(*args, **kwargs) -> AuthUserInfo | None:
         return None
 
-    async def authorize_user_from_key(*args, **kwargs) -> AuthUserInfo | None:
+    def authorize_user_from_key(*args, **kwargs) -> AuthUserInfo | None:
         return None

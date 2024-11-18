@@ -1,4 +1,4 @@
-FROM python:3.10.11-slim-bullseye AS libraries
+FROM python:3.10.11-slim-bullseye AS system
 
 ### ENVIRONMENT VARIABLES ###
 ENV PYTHONUNBUFFERED=1
@@ -25,16 +25,19 @@ RUN apt-get -y update && apt-get install -y \
 # Add Cargo to PATH
 ENV PATH="/root/.cargo/bin:${PATH}"
 
-FROM libraries AS build
+FROM system AS libraries
 
 ### PREPARE BUILD WITH NECESSARY FILES AND FOLDERS ###
 COPY ./pyproject.toml /app/pyproject.toml
+COPY ./requirements.txt /app/requirements.txt
 
 ### INSTALL PYTHON DEPENDENCIES (Core) ###
 WORKDIR /app
 RUN pip install -U pip && \
-    pip install --no-cache-dir . &&\
+    pip install --no-cache-dir -r requirements.txt &&\
     python3 -c "import nltk; nltk.download('punkt');nltk.download('averaged_perceptron_tagger')"
+
+FROM libraries AS build
 
 ### COPY CAT CODE INSIDE THE CONTAINER (so it can be run standalone) ###
 COPY ./cat /app/cat
