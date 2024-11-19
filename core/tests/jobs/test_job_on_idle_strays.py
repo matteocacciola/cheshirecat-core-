@@ -19,6 +19,7 @@ def test_job_on_idle_strays(lizard):
 
     user = AuthUserInfo(id="user_queen", name="Queen", permissions=get_base_permissions())
     stray = StrayCat(user_data=user, main_loop=loop, agent_id=ccat.id)
+    ccat.add_stray(stray)
 
     # Run the job asynchronously
     loop.run_until_complete(async_run(loop, job_on_idle_strays, lizard, loop))

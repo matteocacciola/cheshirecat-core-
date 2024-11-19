@@ -64,7 +64,7 @@ class RabbitHole:
         ]
         vectors = [m["vector"] for m in declarative_memories]
 
-        log.info(f"Preparing to load {len(vectors)} vector memories")
+        log.info(f"Agent id: {ccat.id}. Preparing to load {len(vectors)} vector memories")
 
         # Check embedding size is correct
         embedder_size = ccat.memory.vectors.declarative.embedder_size
@@ -182,7 +182,7 @@ class RabbitHole:
                     # Get binary content of url
                     file_bytes = request.content
                 except HTTPError as e:
-                    log.error(e)
+                    log.error(f"Agent id: {stray.agent_id}. Error: {e}")
             else:
                 # Get mime type from file extension and source
                 content_type = mimetypes.guess_type(file)[0]
@@ -288,9 +288,9 @@ class RabbitHole:
         to edit the memories before they are inserted in the vector database.
         """
 
-        log.info(f"Preparing to memorize {len(docs)} vectors")
-
         ccat = stray.cheshire_cat
+        log.info(f"Agent id: {ccat.id}. Preparing to memorize {len(docs)} vectors")
+
         embedder = ccat.embedder
         memory = ccat.memory
 
@@ -312,7 +312,6 @@ class RabbitHole:
                 perc_read = int(d / len(docs) * 100)
                 read_message = f"Read {perc_read}% of {source}"
                 stray.send_ws_message(read_message)
-                log.warning(read_message)
 
             # add default metadata
             doc.metadata["source"] = source
@@ -333,9 +332,9 @@ class RabbitHole:
                 )
                 stored_points.append(stored_point)
 
-                log.info(f"Inserted into memory ({inserting_info})")
+                log.info(f"Agent id: {ccat.id}. Inserted into memory ({inserting_info})")
             else:
-                log.info(f"Skipped memory insertion of empty doc ({inserting_info})")
+                log.info(f"Agent id: {ccat.id}. Skipped memory insertion of empty doc ({inserting_info})")
 
             # wait a little to avoid APIs rate limit errors
             time.sleep(0.05)
@@ -352,7 +351,7 @@ class RabbitHole:
 
         stray.send_ws_message(finished_reading_message)
 
-        log.warning(f"Done uploading {source}")
+        log.warning(f"Agent id: {ccat.id}. Done uploading {source}")
 
     def __split_text(self, stray, text: List[Document], chunk_size: int, chunk_overlap: int):
         """Split text in overlapped chunks.
@@ -398,7 +397,7 @@ class RabbitHole:
         if chunk_overlap:
             text_splitter._chunk_overlap = chunk_overlap
 
-        log.info(f"Chunk size: {chunk_size}, chunk overlap: {chunk_overlap}")
+        log.info(f"Agent id: {stray.agent_id}. Chunk size: {chunk_size}, chunk overlap: {chunk_overlap}")
         # split text
         docs = text_splitter.split_documents(text)
         # remove short texts (page numbers, isolated words, etc.)

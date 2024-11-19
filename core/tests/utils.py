@@ -201,7 +201,3 @@ def settings_model():
 
     with open(file_path, "w") as file:
         file.write(content)
-
-
-def mock_default_llm_answer_prompt() -> str:
-    return "Ops AI: You did not configure a Language Model. Do it in the settings!"

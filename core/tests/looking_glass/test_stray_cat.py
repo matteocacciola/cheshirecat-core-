@@ -123,7 +123,7 @@ def test_stray_recall_override_working_memory(stray, embedder, mocked_default_ll
     stray.loop.run_until_complete(stray.__call__(UserMessage(**msg)))
 
     query = embedder.embed_query("Alice")
-    memories = stray.recall(query, "episodic", override_working_memory=True)
+    memories = stray.recall(query, "episodic")
 
     assert stray.working_memory.episodic_memories == memories
     assert len(stray.working_memory.episodic_memories) == 1

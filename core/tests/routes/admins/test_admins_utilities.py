@@ -89,7 +89,7 @@ def test_agent_destroy_success(client, lizard, cheshire_cat):
 
     assert cheshire_cat.memory is None
 
-    qdrant_filter = Filter(must=[FieldCondition(key="group_id", match=MatchValue(value=cheshire_cat.id))])
+    qdrant_filter = Filter(must=[FieldCondition(key="tenant_id", match=MatchValue(value=cheshire_cat.id))])
     for c in VectorMemoryCollectionTypes:
         assert get_vector_db().count(collection_name=str(c), count_filter=qdrant_filter).count == 0
 

@@ -1,3 +1,5 @@
+from cat.db.cruds import users as crud_users
+
 from tests.utils import send_n_websocket_messages, agent_id
 
 
@@ -40,9 +42,13 @@ def test_memory_recall_success(secure_client, secure_client_headers, mocked_defa
     num_messages = 3
     send_n_websocket_messages(num_messages, secure_client)
 
+    user = crud_users.get_user_by_username(agent_id, "user")
+
     # recall
     params = {"text": "Red Queen"}
-    response = secure_client.get("/memory/recall/", params=params, headers=secure_client_headers)
+    response = secure_client.get(
+        "/memory/recall/", params=params, headers={**secure_client_headers, **{"user_id": user["id"]}}
+    )
     json = response.json()
     assert response.status_code == 200
     episodic_memories = json["vectors"]["collections"]["episodic"]
@@ -55,10 +61,14 @@ def test_memory_recall_with_k_success(secure_client, secure_client_headers, mock
     num_messages = 6
     send_n_websocket_messages(num_messages, secure_client)
 
+    user = crud_users.get_user_by_username(agent_id, "user")
+
     # recall at max k memories
     max_k = 2
     params = {"k": max_k, "text": "Red Queen"}
-    response = secure_client.get("/memory/recall/", params=params, headers=secure_client_headers)
+    response = secure_client.get(
+        "/memory/recall/", params=params, headers={**secure_client_headers, **{"user_id": user["id"]}}
+    )
     json = response.json()
     assert response.status_code == 200
     episodic_memories = json["vectors"]["collections"]["episodic"]

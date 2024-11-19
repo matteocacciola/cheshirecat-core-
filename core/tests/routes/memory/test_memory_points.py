@@ -63,9 +63,13 @@ def test_point_deleted(secure_client, secure_client_headers, mocked_default_llm_
     # send websocket message
     send_websocket_message({"text": "Hello Mad Hatter"}, secure_client, {"apikey": api_key_ws})
 
+    user = crud_users.get_user_by_username(agent_id, "user")
+
     # get point back
     params = {"text": "Mad Hatter"}
-    response = secure_client.get("/memory/recall/", params=params, headers=secure_client_headers)
+    response = secure_client.get(
+        "/memory/recall/", params=params, headers={**secure_client_headers, **{"user_id": user["id"]}}
+    )
     json = response.json()
     assert response.status_code == 200
     assert len(json["vectors"]["collections"]["episodic"]) == 1
@@ -78,7 +82,7 @@ def test_point_deleted(secure_client, secure_client_headers, mocked_default_llm_
     assert res.json()["detail"]["error"] == "Collection does not exist."
 
     # cannot write procedural point
-    res = secure_client.delete("/memory/collections/procedural/points/{mem['id']}", headers=secure_client_headers)
+    res = secure_client.delete(f"/memory/collections/procedural/points/{mem['id']}", headers=secure_client_headers)
     assert res.status_code == 400
     assert "Procedural memory is read-only" in res.json()["detail"]["error"]
 
@@ -94,7 +98,9 @@ def test_point_deleted(secure_client, secure_client_headers, mocked_default_llm_
 
     # there is no point now
     params = {"text": "Mad Hatter"}
-    response = secure_client.get("/memory/recall/", params=params, headers=secure_client_headers)
+    response = secure_client.get(
+        "/memory/recall/", params=params, headers={**secure_client_headers, **{"user_id": user["id"]}}
+    )
     json = response.json()
     assert response.status_code == 200
     assert len(json["vectors"]["collections"]["episodic"]) == 0
@@ -212,7 +218,7 @@ def test_get_collection_points(secure_client, secure_client_headers, cheshire_ca
                 "source": headers["user_id"],
                 **p["metadata"]
             },
-            "group_id": agent_id,
+            "tenant_id": agent_id,
         } for p in new_points
     ]
 
@@ -275,7 +281,7 @@ def test_get_collection_points_offset(secure_client, secure_client_headers, ches
                 "source": headers["user_id"],
                 **p["metadata"]
             },
-            "group_id": agent_id,
+            "tenant_id": agent_id,
         } for p in new_points
     ]
 

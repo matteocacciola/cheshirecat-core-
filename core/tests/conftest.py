@@ -32,7 +32,6 @@ from tests.utils import (
     async_run,
     mock_plugin_path,
     fake_timestamp,
-    mock_default_llm_answer_prompt,
 )
 
 redis_client = redis.Redis(host=get_env("CCAT_REDIS_HOST"), db="1", encoding="utf-8", decode_responses=True)
@@ -323,6 +322,9 @@ def plugin(client):
 
 @pytest.fixture
 def mocked_default_llm_answer_prompt():
+    def mock_default_llm_answer_prompt() -> str:
+        return "Ops AI: You did not configure a Language Model. Do it in the settings!"
+
     fnc = utils.default_llm_answer_prompt
     utils.default_llm_answer_prompt = mock_default_llm_answer_prompt
 

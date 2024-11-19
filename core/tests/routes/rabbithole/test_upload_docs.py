@@ -1,6 +1,6 @@
 import json
 
-from tests.utils import get_declarative_memory_contents
+from tests.utils import get_declarative_memory_contents, api_key
 
 
 def test_rabbithole_upload_txt(secure_client, secure_client_headers):
@@ -26,7 +26,9 @@ def test_rabbithole_upload_txt(secure_client, secure_client_headers):
     )  # TODO: why txt produces one chunk less than pdf?
 
 
-def test_rabbithole_upload_pdf(secure_client, secure_client_headers):
+def test_rabbithole_upload_pdf(lizard, secure_client, secure_client_headers):
+    lizard.get_or_create_cheshire_cat("another_agent_test")
+
     content_type = "application/pdf"
     file_name = "sample.pdf"
     file_path = f"tests/mocks/{file_name}"
@@ -41,10 +43,15 @@ def test_rabbithole_upload_pdf(secure_client, secure_client_headers):
     assert json["content_type"] == content_type
     assert "File is being ingested" in json["info"]
 
-    # check memory contents
-    # check declarative memory is empty
+    # check memory contents: declarative memory is not empty
     declarative_memories = get_declarative_memory_contents(secure_client, secure_client_headers)
     assert len(declarative_memories) == 4
+
+    # declarative memory should be empty for another agent
+    declarative_memories = get_declarative_memory_contents(
+        secure_client, {"agent_id": "another_agent_test", "Authorization": f"Bearer {api_key}"}
+    )
+    assert len(declarative_memories) == 0
 
 
 def test_rabbithole_upload_batch_one_file(secure_client, secure_client_headers):
@@ -64,8 +71,6 @@ def test_rabbithole_upload_batch_one_file(secure_client, secure_client_headers):
     assert json[file_name]["content_type"] == content_type
     assert "File is being ingested" in json[file_name]["info"]
 
-    # check memory contents
-    # check declarative memory is empty
     declarative_memories = get_declarative_memory_contents(secure_client, secure_client_headers)
     assert len(declarative_memories) == 4
 
@@ -90,8 +95,6 @@ def test_rabbithole_upload_batch_multiple_files(secure_client, secure_client_hea
         assert json[file_name]["content_type"] == files_to_upload[file_name]
         assert "File is being ingested" in json[file_name]["info"]
 
-    # check memory contents
-    # check declarative memory is empty
     declarative_memories = get_declarative_memory_contents(secure_client, secure_client_headers)
     assert len(declarative_memories) == 7
 
@@ -112,7 +115,6 @@ def test_rabbithole_chunking(secure_client, secure_client_headers):
     # check response
     assert response.status_code == 200
 
-    # check memory contents
     declarative_memories = get_declarative_memory_contents(secure_client, secure_client_headers)
     assert len(declarative_memories) == 7
 
@@ -136,7 +138,6 @@ def test_rabbithole_upload_doc_with_metadata(secure_client, secure_client_header
     # check response
     assert response.status_code == 200
 
-    # check memory contents
     declarative_memories = get_declarative_memory_contents(secure_client, secure_client_headers)
     assert len(declarative_memories) == 4
     for dm in declarative_memories:
@@ -179,7 +180,6 @@ def test_rabbithole_upload_docs_batch_with_metadata(secure_client, secure_client
     # check response
     assert response.status_code == 200
 
-    # check memory contents
     declarative_memories = get_declarative_memory_contents(secure_client, secure_client_headers)
     assert len(declarative_memories) == 7
     for dm in declarative_memories:

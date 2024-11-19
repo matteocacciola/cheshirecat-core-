@@ -57,15 +57,23 @@ class ConnectionAuth(ABC):
         self.resource = resource
         self.permission = permission
 
-    async def __call__(
-        self,
-        connection: HTTPConnection # Request | WebSocket,
-    ) -> ContextualCats:
+    async def __call__(self, connection: HTTPConnection) -> ContextualCats:
         agent_id = extract_agent_id_from_request(connection)
-
         lizard: BillTheLizard = connection.app.state.lizard
         ccat = lizard.get_or_create_cheshire_cat(agent_id)
 
+        user = self.get_user_from_auth_handlers(connection, lizard, ccat)
+
+        if not user:
+            # if no user was obtained, raise exception
+            self.not_allowed(connection)
+
+        stray = await self.get_user_stray(ccat, user, connection)
+        return ContextualCats(cheshire_cat=ccat, stray_cat=stray)
+
+    def get_user_from_auth_handlers(
+        self, connection: HTTPConnection, lizard: BillTheLizard, ccat: CheshireCat
+    ) -> AuthUserInfo | None:
         auth_handlers = [
             lizard.core_auth_handler,  # try to get user from local id
             ccat.custom_auth_handler,  # try to get user from auth_handler
@@ -83,15 +91,10 @@ class ConnectionAuth(ABC):
         # no admin was found? try to look for agent's users
         counter = 0
         while not user and counter < len(auth_handlers):
-            user = self.get_agent_user_info(connection, auth_handlers[counter], agent_id)
+            user = self.get_agent_user_info(connection, auth_handlers[counter], ccat.id)
             counter += 1
 
-        if not user:
-            # if no user was obtained, raise exception
-            self.not_allowed(connection)
-
-        stray = await self.get_user_stray(ccat, user, connection)
-        return ContextualCats(cheshire_cat=ccat, stray_cat=stray)
+        return user
 
     @abstractmethod
     def get_agent_user_info(
@@ -110,7 +113,7 @@ class ConnectionAuth(ABC):
 
 class HTTPAuth(ConnectionAuth):
     def get_agent_user_info(
-        self, connection: HTTPConnection, auth_handler: BaseAuthHandler, agent_id: str
+        self, connection: Request, auth_handler: BaseAuthHandler, agent_id: str
     ) -> AuthUserInfo | None:
         user = auth_handler.authorize(
             connection,
@@ -133,11 +136,45 @@ class HTTPAuth(ConnectionAuth):
     
     def not_allowed(self, connection: Request, **kwargs):
         raise HTTPException(status_code=403, detail={"error": "Invalid Credentials"})
-    
+
+
+class HTTPAuthMessage(HTTPAuth):
+    def get_user_from_auth_handlers(
+        self, connection: Request, lizard: BillTheLizard, ccat: CheshireCat
+    ) -> AuthUserInfo | None:
+        auth_handlers = [
+            lizard.core_auth_handler,  # try to get user from local id
+            ccat.custom_auth_handler,  # try to get user from auth_handler
+        ]
+
+        user = None
+        counter = 0
+        while not user and counter < len(auth_handlers):
+            user = self.get_agent_user_info(connection, auth_handlers[counter], ccat.id)
+            counter += 1
+
+        return user
+
 
 class WebSocketAuth(ConnectionAuth):
+    def get_user_from_auth_handlers(
+        self, connection: WebSocket, lizard: BillTheLizard, ccat: CheshireCat
+    ) -> AuthUserInfo | None:
+        auth_handlers = [
+            lizard.core_auth_handler,  # try to get user from local id
+            ccat.custom_auth_handler,  # try to get user from auth_handler
+        ]
+
+        user = None
+        counter = 0
+        while not user and counter < len(auth_handlers):
+            user = self.get_agent_user_info(connection, auth_handlers[counter], ccat.id)
+            counter += 1
+
+        return user
+
     def get_agent_user_info(
-        self, connection: HTTPConnection, auth_handler: BaseAuthHandler, agent_id: str
+        self, connection: WebSocket, auth_handler: BaseAuthHandler, agent_id: str
     ) -> AuthUserInfo | None:
         user_id = auth_handler.extract_user_id_websocket(connection)
         if user_id:

@@ -4,9 +4,9 @@ from cat.memory.vector_memory_collection import VectorMemoryCollection, VectorMe
 
 
 class VectorMemory:
-    collections: Dict[str, VectorMemoryCollection] = {}
-
     def __init__(self, agent_id: str, vector_memory_config: VectorMemoryConfig) -> None:
+        self.collections: Dict[str, VectorMemoryCollection] = {}
+
         # Create vector collections
         # - Episodic memory will contain user and eventually cat utterances
         # - Declarative memory will contain uploaded documents' content

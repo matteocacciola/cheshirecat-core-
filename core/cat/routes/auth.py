@@ -22,4 +22,4 @@ async def agent_auth_token(request: Request, credentials: UserCredentials) -> JW
 
     agent_id = extract_agent_id_from_request(request)
 
-    return await fnc_auth_token(request, credentials, agent_id)
+    return await fnc_auth_token(credentials, agent_id)

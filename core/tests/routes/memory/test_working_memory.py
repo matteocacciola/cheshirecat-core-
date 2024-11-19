@@ -1,6 +1,7 @@
 import time
 
 from cat.convo.messages import Role
+from cat.db.cruds import users as crud_users
 
 from tests.utils import send_websocket_message, agent_id, api_key, create_new_user, new_user_password, api_key_ws
 
@@ -33,9 +34,12 @@ def test_convo_history_update(secure_client, secure_client_headers, mocked_defau
 
     # send websocket messages
     send_websocket_message({"text": message}, secure_client, {"apikey": api_key_ws})
+    user = crud_users.get_user_by_username(agent_id, "user")
 
     # check working memory update
-    response = secure_client.get("/memory/conversation_history", headers=secure_client_headers)
+    response = secure_client.get(
+        "/memory/conversation_history", headers={**secure_client_headers, **{"user_id": user["id"]}}
+    )
     json = response.json()
     assert response.status_code == 200
     assert "history" in json
@@ -52,13 +56,18 @@ def test_convo_history_update(secure_client, secure_client_headers, mocked_defau
 def test_convo_history_reset(secure_client, secure_client_headers, mocked_default_llm_answer_prompt):
     # send websocket messages
     send_websocket_message({"text": "It's late! It's late!"}, secure_client, {"apikey": api_key_ws})
+    user = crud_users.get_user_by_username(agent_id, "user")
 
     # delete convo history
-    response = secure_client.delete("/memory/conversation_history", headers=secure_client_headers)
+    response = secure_client.delete(
+        "/memory/conversation_history", headers={**secure_client_headers, **{"user_id": user["id"]}}
+    )
     assert response.status_code == 200
 
     # check working memory update
-    response = secure_client.get("/memory/conversation_history", headers=secure_client_headers)
+    response = secure_client.get(
+        "/memory/conversation_history", headers={**secure_client_headers, **{"user_id": user["id"]}}
+    )
     json = response.json()
     assert response.status_code == 200
     assert "history" in json

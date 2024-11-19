@@ -1,20 +1,11 @@
 from abc import ABC, abstractmethod
-from datetime import datetime, timedelta
 from typing import Literal, Dict, List
-from pytz import utc
 import jwt
 from fastapi.requests import HTTPConnection
 
 
-from cat.auth.auth_utils import is_jwt, extract_token, extract_user_info
-from cat.auth.permissions import (
-    AdminAuthResource,
-    AuthPermission,
-    AuthResource,
-    AuthUserInfo,
-    get_base_permissions,
-    get_full_permissions,
-)
+from cat.auth.auth_utils import is_jwt, extract_token, extract_user_info_on_api_key
+from cat.auth.permissions import AdminAuthResource, AuthPermission, AuthResource, AuthUserInfo
 from cat.db.cruds import users as crud_users
 from cat.env import get_env
 from cat.log import log
@@ -265,7 +256,7 @@ class CoreAuthHandler(BaseAuthHandler):
             return None
 
         key_id = kwargs.get("key_id")
-        user_info = extract_user_info(key_id, request_user_id)
+        user_info = extract_user_info_on_api_key(key_id, request_user_id)
         if not user_info:
             return None
 
@@ -287,41 +278,6 @@ class CoreAuthHandler(BaseAuthHandler):
 
         # No match -> deny access
         return None
-
-    def issue_jwt(self, username: str, password: str, **kwargs) -> str | None:
-        """
-        Authenticate local user credentials and return a JWT token.
-
-        Args:
-            username: the username of the user to authenticate
-            password: the password of the user to authenticate
-            kwargs: additional keyword arguments
-
-        Returns:
-            A JWT token if the user is authenticated, None otherwise.
-        """
-
-        key_id = kwargs.get("key_id")
-
-        # brutal search over users, which are stored in a simple dictionary.
-        # waiting to have graph in core to store them properly
-        user = crud_users.get_user_by_credentials(key_id, username, password)
-        if not user:
-            return None
-
-        # TODO AUTH: expiration with timezone needs to be tested
-        # using seconds for easier testing
-        expire_delta_in_seconds = float(get_env("CCAT_JWT_EXPIRE_MINUTES")) * 60
-        expires = datetime.now(utc) + timedelta(seconds=expire_delta_in_seconds)
-
-        # TODO AUTH: add issuer and redirect_uri (and verify them when a token is validated)
-        jwt_content = {
-            "sub": user["id"],                   # Subject (the user ID)
-            "username": username,                # Username
-            "permissions": user["permissions"],  # User permissions
-            "exp": expires                       # Expiry date as a Unix timestamp
-        }
-        return jwt.encode(jwt_content, get_env("CCAT_JWT_SECRET"), algorithm=get_env("CCAT_JWT_ALGORITHM"))
 
 
 # Default Auth, always deny auth by default (only core auth decides).

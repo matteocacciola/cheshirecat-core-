@@ -3,8 +3,8 @@ import time
 from copy import deepcopy
 from typing import Dict, List, Any
 from pydantic import BaseModel
-from fastapi import Request
 
+from cat.auth.auth_utils import issue_jwt
 from cat.auth.connection import ContextualCats
 from cat.exceptions import CustomForbiddenException, CustomValidationException, CustomNotFoundException
 from cat.factory.base_factory import ReplacedNLPConfig
@@ -86,15 +86,13 @@ class MemoryPoint(MemoryPointBase):
     vector: List[float]
 
 
-async def auth_token(request: Request, credentials: UserCredentials, agent_id: str):
+async def auth_token(credentials: UserCredentials, agent_id: str):
     """Endpoint called from client to get a JWT from local identity provider.
     This endpoint receives username and password as form-data, validates credentials and issues a JWT.
     """
 
     # use username and password to authenticate user from local identity provider and get token
-    access_token = request.app.state.lizard.core_auth_handler.issue_jwt(
-        credentials.username, credentials.password, key_id=agent_id
-    )
+    access_token = issue_jwt(credentials.username, credentials.password, key_id=agent_id)
 
     if access_token:
         return JWTResponse(access_token=access_token)

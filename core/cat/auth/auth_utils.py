@@ -4,9 +4,12 @@ import jwt
 from jwt.exceptions import InvalidTokenError
 from fastapi.requests import HTTPConnection
 from pydantic import BaseModel
+from datetime import datetime, timedelta
+from pytz import utc
 
-from cat.log import log
 from cat.db.database import DEFAULT_AGENT_KEY, DEFAULT_SYSTEM_KEY
+from cat.env import get_env
+from cat.log import log
 
 DEFAULT_ADMIN_USERNAME = "admin"
 DEFAULT_USER_USERNAME = "user"
@@ -60,7 +63,7 @@ def extract_agent_id_from_request(request: HTTPConnection) -> str:
     )
 
 
-def extract_user_info(agent_key: str, user_id: str | None = None) -> UserInfo | None:
+def extract_user_info_on_api_key(agent_key: str, user_id: str | None = None) -> UserInfo | None:
     from cat.db.cruds import users as crud_users
 
     if user_id:
@@ -92,3 +95,41 @@ def extract_token(request: HTTPConnection) -> str | None:
 
     # some clients may send an empty string instead of just not setting the header
     return token
+
+
+def issue_jwt(username: str, password: str, **kwargs) -> str | None:
+    """
+    Authenticate local user credentials and return a JWT token.
+
+    Args:
+        username: the username of the user to authenticate
+        password: the password of the user to authenticate
+        kwargs: additional keyword arguments
+
+    Returns:
+        A JWT token if the user is authenticated, None otherwise.
+    """
+
+    from cat.db.cruds import users as crud_users
+
+    key_id = kwargs.get("key_id")
+
+    # brutal search over users, which are stored in a simple dictionary.
+    # waiting to have graph in core to store them properly
+    user = crud_users.get_user_by_credentials(key_id, username, password)
+    if not user:
+        return None
+
+    # TODO AUTH: expiration with timezone needs to be tested
+    # using seconds for easier testing
+    expire_delta_in_seconds = float(get_env("CCAT_JWT_EXPIRE_MINUTES")) * 60
+    expires = datetime.now(utc) + timedelta(seconds=expire_delta_in_seconds)
+
+    # TODO AUTH: add issuer and redirect_uri (and verify them when a token is validated)
+    jwt_content = {
+        "sub": user["id"],                   # Subject (the user ID)
+        "username": username,                # Username
+        "permissions": user["permissions"],  # User permissions
+        "exp": expires                       # Expiry date as a Unix timestamp
+    }
+    return jwt.encode(jwt_content, get_env("CCAT_JWT_SECRET"), algorithm=get_env("CCAT_JWT_ALGORITHM"))

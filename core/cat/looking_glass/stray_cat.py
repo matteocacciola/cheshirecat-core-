@@ -78,7 +78,7 @@ class StrayCat:
         return hash(self.__user.id)
 
     def __repr__(self):
-        return f"StrayCat(user_id={self.__user.id},agent_id={self.__agent_id})"
+        return f"StrayCat(user_id={self.__user.id}, agent_id={self.__agent_id})"
 
     def _send_ws_json(self, data: Any):
         # Run the coroutine in the main event loop in the main thread
@@ -199,7 +199,6 @@ class StrayCat:
         k: int | None = 5,
         threshold: int | None = None,
         metadata: Dict | None = None,
-        override_working_memory: bool = False
     ) -> List[DocumentRecall]:
         """
         This is a proxy method to perform search in a vector memory collection.
@@ -223,8 +222,6 @@ class StrayCat:
                 Memories with lower similarity are ignored.
             metadata: Dict
                 Additional filter to retrieve memories with specific metadata.
-            override_working_memory: bool
-                Store the retrieved memories in the Working Memory and override the previous ones, if any.
 
         Returns:
             memories: List[DocumentRecall]
@@ -250,8 +247,7 @@ class StrayCat:
             query, metadata, k, threshold
         ) if k else vector_memory.recall_all_memories()
 
-        if override_working_memory:
-            setattr(self.working_memory, f"{collection_name}_memories", memories)
+        setattr(self.working_memory, f"{collection_name}_memories", memories)
 
         return memories
 
@@ -288,7 +284,7 @@ class StrayCat:
             query if query is not None else self.working_memory.user_message.text,
             cat=self
         )
-        log.info(f"Recall query: '{recall_query}'")
+        log.info(f"Agent id: {self.__agent_id}. Recall query: '{recall_query}'")
 
         # Embed recall query
         recall_query_embedding = cheshire_cat.embedder.embed_query(recall_query)
@@ -324,7 +320,6 @@ class StrayCat:
                 k=config.k,
                 threshold=config.threshold,
                 metadata=config.metadata,
-                override_working_memory=True
             )
 
         # hook to modify/enrich retrieved memories
@@ -373,9 +368,6 @@ class StrayCat:
         answer. This is formatted in a dictionary to be sent as a JSON via Websocket to the client.
         """
 
-        # Parse websocket message into UserMessage obj
-        log.info(user_message)
-
         ### setup working memory
         # keeping track of model interactions
         self.working_memory.model_interactions = []
@@ -404,13 +396,13 @@ class StrayCat:
         try:
             self.recall_relevant_memories_to_working_memory()
         except Exception as e:
-            log.error(e)
+            log.error(f"Agent id: {self.__agent_id}. Error {e}")
             traceback.print_exc()
 
             raise VectorMemoryError("An error occurred while recalling relevant memories.")
 
         agent_output = await self._build_agent_output()
-        log.info("Agent output returned to stray:")
+        log.info(f"Agent id: {self.__agent_id}. Agent output returned to stray:")
         log.info(agent_output)
 
         return self._on_agent_output_built(agent_output)
@@ -420,7 +412,7 @@ class StrayCat:
             return self.loop.run_until_complete(self.__call__(user_message))
         except Exception as e:
             # Log any unexpected errors
-            log.error(e)
+            log.error(f"Agent id: {self.__agent_id}. Error {e}")
             traceback.print_exc()
             return CatMessage(text="", error=str(e))
 
@@ -431,13 +423,13 @@ class StrayCat:
             self.send_chat_message(cat_message)
         except Exception as e:
             # Log any unexpected errors
-            log.error(e)
+            log.error(f"Agent id: {self.__agent_id}. Error {e}")
             traceback.print_exc()
             try:
                 # Send error as websocket message
                 self.send_error(e)
             except ConnectionClosedOK as ex:
-                log.warning(ex)
+                log.warning(f"Agent id: {self.__agent_id}. Warning {ex}")
                 # self.nullify_connection()
 
     def classify(self, sentence: str, labels: List[str] | Dict[str, List[str]]) -> str | None:
@@ -548,7 +540,7 @@ Allowed classes are:
         try:
             await self.__ws.close()
         except RuntimeError as ex:
-            log.warning(ex)
+            log.warning(f"Agent id: {self.__agent_id}. Warning {ex}")
             self.nullify_connection()
 
     def nullify_connection(self):
@@ -571,7 +563,7 @@ Allowed classes are:
             #   non instruction-fine-tuned models can still be used.
             error_description = str(e)
 
-            log.error(error_description)
+            log.error(f"Agent id: {self.__agent_id}. Error: {error_description}")
             if "Could not parse LLM output: `" not in error_description:
                 raise e
 

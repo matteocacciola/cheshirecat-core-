@@ -152,7 +152,6 @@ class BillTheLizard:
         embedder_size = len(self.embedder.embed_query("hello world"))
         self.embedder_size = VectorEmbedderSize(text=embedder_size)
 
-
     def load_plugin_filemanager(self):
         """
         Hook into the plugin file manager selection. Allows to modify how the Lizard selects the plugin file manager at
@@ -298,8 +297,9 @@ class BillTheLizard:
         Returns:
             The Cheshire Cat with the given id or a new one if it doesn't exist yet
         """
+
         current_cat = self.get_cheshire_cat(agent_id)
-        if current_cat:  # agent already exists
+        if current_cat:  # agent already exists in memory
             return current_cat
 
         if agent_id == DEFAULT_SYSTEM_KEY:

@@ -241,7 +241,7 @@ class CheshireCat:
         points_to_be_embedded = set(active_procedures_hashes.keys()) - set(embedded_procedures_hashes.keys())
 
         if points_to_be_deleted_ids := [embedded_procedures_hashes[p] for p in points_to_be_deleted]:
-            log.warning(f"Deleting triggers: {points_to_be_deleted}")
+            log.warning(f"Agent id: {self.id}. Deleting triggers: {points_to_be_deleted}")
             self.memory.vectors.procedural.delete_points(points_to_be_deleted_ids)
 
         active_triggers_to_be_embedded = [active_procedures_hashes[p] for p in points_to_be_embedded]
@@ -258,12 +258,11 @@ class CheshireCat:
                 },
             )
 
-            log.warning(
-                f"Newly embedded {t['type']} trigger: {t['source']}, {t['trigger_type']}, {t['content']}"
-            )
+            log.warning(f"Agent id: {self.id}. "
+                        f"Newly embedded {t['type']} trigger: {t['source']}, {t['trigger_type']}, {t['content']}")
 
     def send_ws_message(self, content: str, msg_type="notification"):
-        log.error("No websocket connection open")
+        log.error(f"Agent id: {self.id}. No websocket connection open")
 
     # REFACTOR: cat.llm should be available here, without streaming clearly
     # (one could be interested in calling the LLM anytime, not only when there is a session)
@@ -314,7 +313,7 @@ class CheshireCat:
             # try to reload the llm of the cat
             self.load_language_model()
         except ValueError as e:
-            log.error(f"Error while loading the new LLM: {e}")
+            log.error(f"Agent id: {self.id}. Error while loading the new LLM: {e}")
 
             # something went wrong: rollback
             adapter.rollback_factory_config(self.id)

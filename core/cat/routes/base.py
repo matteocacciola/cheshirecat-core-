@@ -4,7 +4,7 @@ from typing import Dict
 from pydantic import BaseModel
 
 from cat.auth.permissions import AuthPermission, AuthResource
-from cat.auth.connection import HTTPAuth, ContextualCats
+from cat.auth.connection import HTTPAuthMessage, ContextualCats
 from cat.convo.messages import CatMessage, UserMessage
 from cat.utils import get_cat_version
 
@@ -26,7 +26,7 @@ async def home() -> HomeResponse:
 @router.post("/message", response_model=CatMessage, tags=["Message"])
 async def message_with_cat(
     payload: Dict = Body(...),
-    cats: ContextualCats = Depends(HTTPAuth(AuthResource.CONVERSATION, AuthPermission.WRITE)),
+    cats: ContextualCats = Depends(HTTPAuthMessage(AuthResource.CONVERSATION, AuthPermission.WRITE)),
 ) -> CatMessage:
     """Get a response from the Cat"""
     stray = cats.stray_cat

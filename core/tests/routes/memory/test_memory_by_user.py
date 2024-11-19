@@ -1,4 +1,4 @@
-from tests.utils import agent_id, api_key, send_websocket_message, create_new_user, new_user_password
+from tests.utils import agent_id, send_websocket_message, create_new_user, new_user_password
 
 
 # episodic memories are saved having the correct user

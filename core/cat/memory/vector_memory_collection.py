@@ -1,7 +1,7 @@
 import asyncio
 import os
 import uuid
-from typing import Any, List, Iterable, Dict, Tuple
+from typing import Any, List, Iterable, Dict, Tuple, Final
 import aiofiles
 import httpx
 from pydantic import BaseModel
@@ -68,15 +68,15 @@ class VectorMemoryCollection:
     def __init__(self, agent_id: str, collection_name: str, vector_memory_config: VectorMemoryConfig):
         self.snapshot_info = None
 
-        self.agent_id = agent_id
+        self.agent_id: Final[str] = agent_id
 
         # Set attributes (metadata on the embedder are useful because it may change at runtime)
-        self.collection_name = collection_name
-        self.embedder_name = vector_memory_config.embedder_name
-        self.embedder_size = vector_memory_config.embedder_size.text
+        self.collection_name: Final[str] = collection_name
+        self.embedder_name: Final[str] = vector_memory_config.embedder_name
+        self.embedder_size: Final[int] = vector_memory_config.embedder_size.text
 
         # connects to Qdrant and creates self.client attribute
-        self.client = get_vector_db()
+        self.client: Final = get_vector_db()
 
         # Check if memory collection exists also in vectorDB, otherwise create it
         self.create_db_collection_if_not_exists()
@@ -156,28 +156,11 @@ class VectorMemoryCollection:
             ]
         )
 
-    # adapted from https://github.com/langchain-ai/langchain/blob/bfc12a4a7644cfc4d832cc4023086a7a5374f46a/libs/langchain/langchain/vectorstores/qdrant.py#L1965
-    def _qdrant_filter_from_dict(self, dict_filter: Dict) -> Filter | None:
-        if not dict_filter:
-            return None
-
-        return Filter(
-            must=[condition for key, value in dict_filter.items() for condition in self._build_condition(key, value)]
-        )
-
-
-    def _qdrant_build_tenant_filter(self) -> Filter:
-        return Filter(must=[FieldCondition(key="group_id", match=MatchValue(value=self.agent_id))])
-
-    def _qdrant_combine_filter_with_tenant(self, other_filter: Filter | None = None):
-        combined_filter = self._qdrant_build_tenant_filter()
-
-        if other_filter:
-            combined_filter = Filter(must=[*combined_filter.must, *other_filter.must])
-
-        return combined_filter
+    def _tenant_field_condition(self) -> FieldCondition:
+        return FieldCondition(key="tenant_id", match=MatchValue(value=self.agent_id))
 
     # adapted from https://github.com/langchain-ai/langchain/blob/bfc12a4a7644cfc4d832cc4023086a7a5374f46a/libs/langchain/langchain/vectorstores/qdrant.py#L1941
+    # see also https://github.com/langchain-ai/langchain/blob/bfc12a4a7644cfc4d832cc4023086a7a5374f46a/libs/langchain/langchain/vectorstores/qdrant.py#L1965
     def _build_condition(self, key: str, value: Any) -> List[FieldCondition]:
         out = []
 
@@ -205,7 +188,7 @@ class VectorMemoryCollection:
 
         results = self.client.scroll(
             collection_name=self.collection_name,
-            scroll_filter=self._qdrant_combine_filter_with_tenant(Filter(must=[HasIdCondition(has_id=points)])),
+            scroll_filter=Filter(must=[self._tenant_field_condition(), HasIdCondition(has_id=points)]),
             limit=len(points),
             with_payload=True,
             with_vectors=True,
@@ -240,7 +223,7 @@ class VectorMemoryCollection:
             payload={
                 "page_content": content,
                 "metadata": metadata,
-                "group_id": self.agent_id,
+                "tenant_id": self.agent_id,
             },
             vector=vector,
         )
@@ -266,7 +249,7 @@ class VectorMemoryCollection:
             the response of the upsert operation
         """
 
-        payloads = [p | {"group_id": self.agent_id} for p in payloads]
+        payloads = [{**p, **{"tenant_id": self.agent_id}} for p in payloads]
         points = Batch(ids=ids, payloads=payloads, vectors=vectors)
 
         res = self.client.upsert(
@@ -275,12 +258,16 @@ class VectorMemoryCollection:
         )
         return res
 
-    def delete_points_by_metadata_filter(self, metadata=None) -> UpdateResult:
-        combined_filter = self._qdrant_combine_filter_with_tenant(self._qdrant_filter_from_dict(metadata))
+    def delete_points_by_metadata_filter(self, metadata: Dict | None = None) -> UpdateResult:
+        conditions = [self._tenant_field_condition()]
+        if metadata:
+            conditions.extend([
+            condition for key, value in metadata.items() for condition in self._build_condition(key, value)
+        ])
 
         res = self.client.delete(
             collection_name=self.collection_name,
-            points_selector=combined_filter,
+            points_selector=Filter(must=conditions),
         )
         return res
 
@@ -294,7 +281,7 @@ class VectorMemoryCollection:
 
     # retrieve similar memories from embedding
     def recall_memories_from_embedding(
-        self, embedding, metadata: Dict | None = None, k: int | None = 5, threshold: float | None =None
+        self, embedding: List[float], metadata: Dict | None = None, k: int | None = 5, threshold: float | None = None
     ) -> List[DocumentRecall]:
         """
         Retrieve memories from the collection based on an embedding vector. The memories are sorted by similarity to the
@@ -315,13 +302,18 @@ class VectorMemoryCollection:
         Returns:
             List: List of DocumentRecall.
         """
-        combined_filter = self._qdrant_combine_filter_with_tenant(self._qdrant_filter_from_dict(metadata))
+
+        conditions = [self._tenant_field_condition()]
+        if metadata:
+            conditions.extend([
+                condition for key, value in metadata.items() for condition in self._build_condition(key, value)
+            ])
 
         # retrieve memories
         memories = self.client.search(
             collection_name=self.collection_name,
             query_vector=embedding,
-            query_filter=combined_filter,
+            query_filter=Filter(must=conditions),
             with_payload=True,
             with_vectors=True,
             limit=k,
@@ -375,12 +367,10 @@ class VectorMemoryCollection:
     ) -> Tuple[List[Record], int | str | None]:
         """Retrieve all the points in the collection with an optional offset and limit."""
 
-        tenant_filter = self._qdrant_build_tenant_filter()
-
         # retrieving the points
         return self.client.scroll(
             collection_name=self.collection_name,
-            scroll_filter=tenant_filter,
+            scroll_filter=Filter(must=[self._tenant_field_condition()]),
             with_vectors=True,
             offset=offset,  # Start from the given offset, or the beginning if None.
             limit=limit  # Limit the number of points retrieved to the specified limit.
@@ -432,15 +422,17 @@ class VectorMemoryCollection:
         log.warning(f"Dump \"{new_name}\" completed")
 
     def get_vectors_count(self) -> int:
-        tenant_filter = self._qdrant_build_tenant_filter()
-
-        return self.client.count(collection_name=self.collection_name, count_filter=tenant_filter).count
+        return self.client.count(
+            collection_name=self.collection_name,
+            count_filter=Filter(must=[self._tenant_field_condition()]),
+        ).count
 
     def destroy_all_points(self) -> bool:
-        tenant_filter = self._qdrant_build_tenant_filter()
-
         try:
-            self.client.delete(collection_name=self.collection_name, points_selector=tenant_filter)
+            self.client.delete(
+                collection_name=self.collection_name,
+                points_selector=Filter(must=[self._tenant_field_condition()]),
+            )
             return True
         except Exception as e:
             log.error(f"Error deleting collection {self.collection_name}, agent {self.agent_id}: {e}")
