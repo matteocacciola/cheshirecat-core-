@@ -8,7 +8,6 @@ from typing import Literal, List, Dict, Any, get_args
 from langchain.docstore.document import Document
 from langchain_core.embeddings import Embeddings
 from langchain_core.language_models import BaseLanguageModel
-from langchain_core.messages import BaseMessage
 from langchain_core.runnables import RunnableConfig
 from fastapi import WebSocket
 from websockets.exceptions import ConnectionClosedOK
@@ -17,15 +16,7 @@ from cat import utils
 from cat.agents.base_agent import AgentOutput
 from cat.agents.main_agent import MainAgent
 from cat.auth.permissions import AuthUserInfo
-from cat.convo.llm import LargeLanguageModelModality
-from cat.convo.messages import (
-    EmbedderModelInteraction,
-    CatMessage,
-    Role,
-    MessageWhy,
-    UserMessage,
-    convert_to_langchain_message,
-)
+from cat.convo.messages import EmbedderModelInteraction, CatMessage, Role, MessageWhy, UserMessage
 from cat.env import get_env
 from cat.exceptions import VectorMemoryError
 from cat.log import log
@@ -493,47 +484,6 @@ Allowed classes are:
         # set 0.5 as threshold - let's see if it works properly
         return best_label if score < 0.5 else None
 
-    def stringify_chat_history(self, latest_n: int = 5) -> str:
-        """
-        Serialize chat history.
-        Converts to text the recent conversation turns.
-
-        Args:
-            latest_n (int. optional): How many latest turns to stringify. Defaults to 5.
-
-        Returns:
-            str: String with recent conversation turns.
-
-        Notes
-        -----
-        Such context is placed in the `agent_prompt_suffix` in the place held by {chat_history}.
-
-        The chat history is a dictionary with keys::
-            'who': the name of who said the utterance;
-            'message': the utterance.
-        """
-
-        history = self.working_memory.history[-latest_n:]
-        history = [h.model_dump() for h in history]
-
-        history_strings = [f"\n - {str(turn['who'])}: {turn['message']}" for turn in history]
-        return "".join(history_strings)
-
-    def langchainfy_chat_history(self, latest_n: int = 5) -> List[BaseMessage]:
-        """
-        Get the chat history in Langchain format.
-
-        Args:
-            latest_n (int, optional): Number of latest messages to get. Defaults to 5.
-
-        Returns:
-            List[BaseMessage]: List of Langchain messages.
-        """
-
-        chat_history = self.working_memory.history[-latest_n:]
-
-        return [convert_to_langchain_message(h, self.large_language_model_modality) for h in chat_history]
-
     async def close_connection(self):
         if not self.__ws:
             return
@@ -643,10 +593,6 @@ Allowed classes are:
     @property
     def large_language_model(self) -> BaseLanguageModel:
         return self.cheshire_cat.large_language_model
-
-    @property
-    def large_language_model_modality(self) -> LargeLanguageModelModality:
-        return self.cheshire_cat.large_language_model_modality
 
     @property
     def _llm(self) -> BaseLanguageModel:

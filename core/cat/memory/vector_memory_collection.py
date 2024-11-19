@@ -26,6 +26,7 @@ from qdrant_client.http.models import (
     UpdateResult,
     HasIdCondition,
     Payload,
+    PayloadSchemaType,
 )
 from langchain.docstore.document import Document
 
@@ -145,6 +146,8 @@ class VectorMemoryCollection:
             # shard_number=3,
         )
 
+        self.create_payload_index("tenant_id", PayloadSchemaType.KEYWORD)
+
         self.client.update_collection_aliases(
             change_aliases_operations=[
                 CreateAliasOperation(
@@ -174,6 +177,33 @@ class VectorMemoryCollection:
             out.append(FieldCondition(key=f"metadata.{key}", match=MatchValue(value=value)))
 
         return out
+
+    def create_payload_index(self, field_name: str, field_type: PayloadSchemaType):
+        """
+        Create a new index on a field of the payload for an existing collection.
+
+        Args:
+            field_name: Name of the field on which to create the index
+            field_type: Type of the index (es. PayloadSchemaType.KEYWORD)
+        """
+        try:
+            self.client.create_payload_index(
+                collection_name=self.collection_name,
+                field_name=field_name,
+                field_schema=field_type
+            )
+        except Exception as e:
+            log.error(f"Agent id {self.agent_id}. Error when creating a schema index: {e}")
+
+    def get_payload_indexes(self) -> Dict:
+        """
+        Retrieve the indexes configured on the collection.
+
+        Returns:
+            Dictionary with the configuration of the indexes
+        """
+        collection_info = self.client.get_collection(self.collection_name)
+        return collection_info.payload_schema
 
     def retrieve_points(self, points: List) -> List[Record]:
         """

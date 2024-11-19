@@ -2,6 +2,7 @@ from typing import List, Any
 from typing_extensions import deprecated
 
 from cat.agents import AgentInput
+from cat.convo.llm import LargeLanguageModelModality
 from cat.convo.messages import (
     Role,
     BaseMessage,
@@ -12,9 +13,12 @@ from cat.convo.messages import (
     ConversationHistoryItem,
     ConversationHistory,
     convert_to_conversation_history,
+    convert_to_langchain_message,
 )
 from cat.db.cruds import history as crud_history
 from cat.experimental.form.cat_form import CatForm
+from cat.looking_glass.bill_the_lizard import BillTheLizard
+from cat.looking_glass.cheshire_cat import CheshireCat
 from cat.memory.vector_memory_collection import DocumentRecall
 from cat.utils import BaseModelDict
 
@@ -156,6 +160,63 @@ class WorkingMemory(BaseModelDict):
             self.agent_id, self.user_id, [message.model_dump() for message in self.history]
         )
 
+    def stringify_chat_history(self, latest_n: int = 5) -> str:
+        """
+        Serialize chat history.
+        Converts to text the recent conversation turns.
+
+        Args:
+            latest_n (int. optional): How many latest turns to stringify. Defaults to 5.
+
+        Returns:
+            str: String with recent conversation turns.
+
+        Notes
+        -----
+        Such context is placed in the `agent_prompt_suffix` in the place held by {chat_history}.
+
+        The chat history is a dictionary with keys::
+            'who': the name of who said the utterance;
+            'message': the utterance.
+        """
+
+        history = self.history[-latest_n:]
+        history = [h.model_dump() for h in history]
+
+        history_strings = [f"\n - {str(turn['who'])}: {turn['message']}" for turn in history]
+        return "".join(history_strings)
+
+    def langchainfy_chat_history(self, latest_n: int = 5) -> List[BaseMessage]:
+        """
+        Get the chat history in Langchain format.
+
+        Args:
+            latest_n (int, optional): Number of latest messages to get. Defaults to 5.
+
+        Returns:
+            List[BaseMessage]: List of Langchain messages.
+        """
+
+        chat_history = self.history[-latest_n:]
+
+        return [convert_to_langchain_message(h, self.large_language_model_modality) for h in chat_history]
+
     @property
     def user_message_json(self) -> UserMessage | None:
         return self.user_message
+
+    @property
+    def lizard(self) -> BillTheLizard:
+        return BillTheLizard()
+
+    @property
+    def cheshire_cat(self) -> CheshireCat:
+        ccat = self.lizard.get_cheshire_cat(self.agent_id)
+        if not ccat:
+            raise ValueError(f"Cheshire Cat not found for the StrayCat {self.__user.id}.")
+
+        return ccat
+
+    @property
+    def large_language_model_modality(self) -> LargeLanguageModelModality:
+        return self.cheshire_cat.large_language_model_modality

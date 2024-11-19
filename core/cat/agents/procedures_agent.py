@@ -112,7 +112,7 @@ class ProceduresAgent(BaseAgent):
                 for tool in allowed_procedures.values()
             ),
             "tool_names": '"' + '", "'.join(allowed_procedures.keys()) + '"',
-            #"chat_history": stray.stringify_chat_history(),
+            #"chat_history": stray.working_memory.stringify_chat_history(),
             "examples": self.generate_examples(allowed_procedures),
         }
 
@@ -127,7 +127,7 @@ class ProceduresAgent(BaseAgent):
                 SystemMessagePromptTemplate.from_template(
                     template=procedures_prompt_template
                 ),
-                *(stray.langchainfy_chat_history()),
+                *(stray.working_memory.langchainfy_chat_history()),
             ]
         )
 

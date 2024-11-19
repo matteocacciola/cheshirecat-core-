@@ -68,7 +68,7 @@ class MainAgent(BaseAgent):
 
         return memory_agent_out
 
-    def format_agent_input(self, stray) -> AgentInput:
+    def format_agent_input(self, stray: "StrayCat") -> AgentInput:
         """Format the input for the Agent.
 
         The method formats the strings of recalled memories and chat history that will be provided to the Langchain
@@ -76,7 +76,7 @@ class MainAgent(BaseAgent):
 
         Args:
             stray: StrayCat
-                StrayCat instance containing the working memory and the chat history.
+                Stray Cat instance containing the working memory and the chat history.
 
         Returns:
             AgentInput
@@ -103,7 +103,7 @@ class MainAgent(BaseAgent):
 
         # format conversation history to be inserted in the prompt
         # TODO V2: take away
-        conversation_history_formatted_content = stray.stringify_chat_history()
+        conversation_history_formatted_content = stray.working_memory.stringify_chat_history()
 
         return AgentInput(
             episodic_memory=episodic_memory_formatted_content,
