@@ -73,3 +73,41 @@ def test_memory_recall_with_k_success(secure_client, secure_client_headers, mock
     assert response.status_code == 200
     episodic_memories = json["vectors"]["collections"]["episodic"]
     assert len(episodic_memories) == max_k  # only 2 of 6 memories recalled
+
+
+def test_memory_recall_with_metadata(secure_client, secure_client_headers, mocked_default_llm_answer_prompt):
+    messages = [
+        {
+            "content": "MEOW_ONE",
+            "metadata": {"key_first": "value_one", "key_second": "value_two"},
+        },
+        {
+            "content": "MEOW_TWO",
+            "metadata": {"key_first": "value_one", "key_second": "value_three"},
+        },
+        {
+            "content": "MEOW_THREE",
+            "metadata": {},
+        }
+    ]
+
+    # insert a new points with metadata
+    for req_json in messages:
+        secure_client.post("/memory/collections/episodic/points", json=req_json, headers=secure_client_headers)
+
+    # recall with metadata
+    params = {"text": "MEOW", "metadata": {"key_first": "value_one"}}
+    response = secure_client.get("/memory/recall/", params=params, headers=secure_client_headers)
+    json = response.json()
+    assert response.status_code == 200
+    episodic_memories = json["vectors"]["collections"]["episodic"]
+    assert len(episodic_memories) == 2
+
+    # recall with metadata multiple keys in metadata
+    params = {"text": "MEOW", "metadata": {"key_first": "value_one", "key_second": "value_two"}}
+    response = secure_client.get("/memory/recall/", params=params, headers=secure_client_headers)
+    json = response.json()
+    assert response.status_code == 200
+    episodic_memories = json["vectors"]["collections"]["episodic"]
+    assert len(episodic_memories) == 1
+    assert episodic_memories[0]["page_content"] == "MEOW_ONE"

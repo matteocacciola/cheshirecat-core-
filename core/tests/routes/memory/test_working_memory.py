@@ -148,3 +148,47 @@ def test_convo_history_by_user(secure_client, secure_client_headers, client, moc
     )
     json = response.json()
     assert len(json["history"]) == convos["Alice"] * 2
+
+
+def test_add_items_to_convo_history(secure_client, secure_client_headers, cheshire_cat):
+    user = crud_users.get_user_by_username(agent_id, "user")
+
+    # add user item to convo history
+    response = secure_client.post(
+        "/memory/conversation_history",
+        headers={**secure_client_headers, **{"user_id": user["id"]}},
+        json={"who": "Human", "text": "Hello, Alice!"}
+    )
+    assert response.status_code == 200
+
+    # add cat item to convo history
+    response = secure_client.post(
+        "/memory/conversation_history",
+        headers={**secure_client_headers, **{"user_id": user["id"]}},
+        json={
+            "who": "AI",
+            "text": "Hello, how are you?",
+            "why": {"input": "This is an input", "intermediate_steps": [], "model_interactions": [], "memory": {}}
+        }
+    )
+    assert response.status_code == 200
+
+    # check working memory update
+    response = secure_client.get(
+        "/memory/conversation_history", headers={**secure_client_headers, **{"user_id": user["id"]}}
+    )
+    json = response.json()
+    assert response.status_code == 200
+    assert "history" in json
+    assert len(json["history"]) == 2
+
+    # check items
+    assert json["history"][0]["who"] == "Human"
+    assert json["history"][0]["message"] == "Hello, Alice!"
+    assert json["history"][0]["why"] is None
+    assert json["history"][1]["who"] == "AI"
+    assert json["history"][1]["message"] == "Hello, how are you?"
+    assert json["history"][1]["why"]["input"] == "This is an input"
+    assert json["history"][1]["why"]["intermediate_steps"] == []
+    assert json["history"][1]["why"]["model_interactions"] == []
+    assert json["history"][1]["why"]["memory"] == {}

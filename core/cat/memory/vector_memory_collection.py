@@ -96,12 +96,14 @@ class VectorMemoryCollection:
             self.client.get_collection(self.collection_name).config.params.vectors.size
             == self.embedder_size
         )
-        alias = self.embedder_name + "_" + self.collection_name
-        if (
-            same_size and alias == self.client.get_collection_aliases(self.collection_name)
-                .aliases[0]
-                .alias_name
-        ):
+        local_alias = self.embedder_name + "_" + self.collection_name
+        db_aliases = self.client.get_collection_aliases(self.collection_name).aliases
+        # no aliases? try to create the collection again
+        if not db_aliases:
+            self.create_db_collection_if_not_exists()
+            db_aliases = self.client.get_collection_aliases(self.collection_name).aliases
+
+        if same_size and local_alias == db_aliases[0].alias_name:
             log.debug(f"Collection \"{self.collection_name}\" has the same embedder")
             return
 
@@ -146,8 +148,6 @@ class VectorMemoryCollection:
             # shard_number=3,
         )
 
-        self.create_payload_index("tenant_id", PayloadSchemaType.KEYWORD)
-
         self.client.update_collection_aliases(
             change_aliases_operations=[
                 CreateAliasOperation(
@@ -158,6 +158,10 @@ class VectorMemoryCollection:
                 )
             ]
         )
+
+        # if the client is remote, create an index on the tenant_id field
+        if self.db_is_remote():
+            self.create_payload_index("tenant_id", PayloadSchemaType.KEYWORD)
 
     def _tenant_field_condition(self) -> FieldCondition:
         return FieldCondition(key="tenant_id", match=MatchValue(value=self.agent_id))

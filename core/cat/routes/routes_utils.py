@@ -1,7 +1,9 @@
 import asyncio
+from ast import literal_eval
 import time
 from copy import deepcopy
 from typing import Dict, List, Any
+from fastapi import Query
 from pydantic import BaseModel
 
 from cat.auth.auth_utils import issue_jwt
@@ -255,3 +257,20 @@ def upsert_memory_point(
         vector=qdrant_point.vector,
         id=qdrant_point.id
     )
+
+
+def create_dict_parser(param_name: str, description: str | None = None):
+    def parser(
+        param_value: str | None = Query(
+            default=None,
+            alias=param_name,
+            description=description or f"{param_name} JSON filter."
+        )
+    ) -> Dict[str, Any]:
+        if not param_value:
+            return {}
+        try:
+            return literal_eval(param_value)
+        except ValueError:
+            return {}
+    return parser

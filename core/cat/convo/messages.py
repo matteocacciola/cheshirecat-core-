@@ -181,7 +181,7 @@ class ConversationHistoryItem(BaseModelDict):
 
     who: Role
     when: float | None = time.time()
-    content: BaseMessage
+    content: CatMessage | UserMessage
 
     @computed_field
     @property

@@ -120,12 +120,11 @@ class WorkingMemory(BaseModelDict):
                 The reason why the message was said. Default is None.
         """
 
-        role = Role.AI if who == Role.AI else Role.HUMAN
-        message = CatMessage(text=message, images=images, audio=audio, why=why) if role == Role.AI else UserMessage(
+        message = CatMessage(text=message, images=images, audio=audio, why=why) if who == Role.AI else UserMessage(
             text=message, images=images, audio=audio,
         )
 
-        return self.update_history(role, message)
+        return self.update_history(who, message)
 
     def update_history(self, who: Role, content: BaseMessage):
         """

@@ -13,6 +13,7 @@ from cat.routes.routes_utils import (
     upsert_memory_point,
     verify_memory_point_existence,
     memory_collection_is_accessible,
+    create_dict_parser,
 )
 
 router = APIRouter()
@@ -50,9 +51,43 @@ class DeleteMemoryPointsByMetadataResponse(BaseModel):
 async def recall_memory_points_from_text(
     text: str = Query(description="Find memories similar to this text."),
     k: int = Query(default=100, description="How many memories to return."),
+    metadata: Dict[str, Any] = Depends(create_dict_parser(
+        "metadata",
+        description="Flat dictionary where each key-value pair represents a filter."
+                    "The memory points returned will match the specified metadata criteria."
+    )),
     cats: ContextualCats = Depends(HTTPAuth(AuthResource.MEMORY, AuthPermission.READ)),
 ) -> RecallResponse:
-    """Search k memories similar to given text."""
+    """
+    Search k memories similar to given text with specified metadata criteria.
+
+    Example
+    ----------
+    ```
+    collection = "episodic"
+    content = "MIAO!"
+    metadata = {"custom_key": "custom_value"}
+    req_json = {
+        "content": content,
+        "metadata": metadata,
+    }
+    # create a point
+    res = requests.post(
+        f"http://localhost:1865/memory/collections/{collection}/points", json=req_json
+    )
+
+    # recall with metadata
+    req_json = {
+        "text": "CAT",
+        "metadata":{"custom_key":"custom_value"}
+    }
+    res = requests.post(
+        f"http://localhost:1865/memory/recall", json=req_json
+    )
+    json = res.json()
+    print(json)
+    ```
+    """
 
     def build_memory_dict(document_recall: DocumentRecall) -> Dict[str, Any]:
         memory_dict = dict(document_recall.document)
@@ -63,11 +98,13 @@ async def recall_memory_points_from_text(
         return memory_dict
 
     def get_memories(c: VectorMemoryCollectionTypes) -> List:
-        # only episodic collection has users
+        # only episodic collection has users, and then a source
+        if c == VectorMemoryCollectionTypes.EPISODIC:
+            metadata["source"] = cats.stray_cat.user.id
+        else:
+            metadata.pop("source", None)
         return ccat.memory.vectors.collections[str(c)].recall_memories_from_embedding(
-            query_embedding,
-            k=k,
-            metadata={"source": cats.stray_cat.user.id} if c == VectorMemoryCollectionTypes.EPISODIC else None
+            query_embedding, k=k, metadata=metadata
         )
 
     ccat = cats.cheshire_cat
