@@ -98,10 +98,6 @@ class VectorMemoryCollection:
         )
         local_alias = self.embedder_name + "_" + self.collection_name
         db_aliases = self.client.get_collection_aliases(self.collection_name).aliases
-        # no aliases? try to create the collection again
-        if not db_aliases:
-            self.create_db_collection_if_not_exists()
-            db_aliases = self.client.get_collection_aliases(self.collection_name).aliases
 
         if same_size and local_alias == db_aliases[0].alias_name:
             log.debug(f"Collection \"{self.collection_name}\" has the same embedder")
