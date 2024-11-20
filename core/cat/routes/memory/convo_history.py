@@ -57,7 +57,7 @@ async def add_conversation_history(
     """Insert the specified conversation item into the working memory"""
 
     payload_dict = payload.model_dump()
-    content = UserMessage(**payload_dict) if payload.why is None else CatMessage(**payload_dict)
+    content = UserMessage(**payload_dict) if payload.who == str(Role.HUMAN) else CatMessage(**payload_dict)
 
     cats.stray_cat.working_memory.update_history(Role(payload.who), content)
 
