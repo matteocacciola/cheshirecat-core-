@@ -24,10 +24,10 @@ from cat.routes import (
     auth_handler,
     base,
     embedder,
+    file_manager,
     llm,
     memory_router as memory,
     plugins,
-    plugin_filemanager,
     rabbit_hole,
     settings,
     static,
@@ -95,10 +95,10 @@ cheshire_cat_api.include_router(base.router)
 cheshire_cat_api.include_router(admins.router, prefix="/admins")
 cheshire_cat_api.include_router(auth_handler.router, tags=["AuthHandler"], prefix="/auth_handler")
 cheshire_cat_api.include_router(embedder.router, tags=["Embedder"], prefix="/embedder")
+cheshire_cat_api.include_router(file_manager.router, tags=["File Manager"], prefix="/file_manager")
 cheshire_cat_api.include_router(llm.router, tags=["Large Language Model"], prefix="/llm")
 cheshire_cat_api.include_router(memory.router, prefix="/memory")
 cheshire_cat_api.include_router(plugins.router, tags=["Plugins"], prefix="/plugins")
-cheshire_cat_api.include_router(plugin_filemanager.router, tags=["Plugin File Manager"], prefix="/plugin_filemanager")
 cheshire_cat_api.include_router(rabbit_hole.router, tags=["Rabbit Hole"], prefix="/rabbithole")
 cheshire_cat_api.include_router(settings.router, tags=["Settings"], prefix="/settings")
 cheshire_cat_api.include_router(auth.router, tags=["User Auth"], prefix="/auth")

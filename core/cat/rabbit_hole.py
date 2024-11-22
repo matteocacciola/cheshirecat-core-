@@ -1,9 +1,10 @@
 import os
+import tempfile
 import time
 import json
 import mimetypes
 import httpx
-from typing import List, Dict
+from typing import List, Dict, Tuple
 from urllib.parse import urlparse
 from urllib.error import HTTPError
 from starlette.datastructures import UploadFile
@@ -11,6 +12,7 @@ from langchain.docstore.document import Document
 from langchain_community.document_loaders.parsers.generic import MimeTypeBasedParser
 from langchain.document_loaders.blob_loaders.schema import Blob
 
+from cat.env import get_env
 from cat.log import log
 from cat.looking_glass.cheshire_cat import CheshireCat
 from cat.memory.vector_memory_collection import VectorMemoryCollectionTypes
@@ -80,7 +82,7 @@ class RabbitHole:
 
     def ingest_file(
         self,
-        stray,
+        stray: "StrayCat",
         file: str | UploadFile,
         chunk_size: int | None = None,
         chunk_overlap: int | None = None,
@@ -93,7 +95,7 @@ class RabbitHole:
 
         Args:
             stray: StrayCat
-                StrayCat instance.
+                Stray Cat instance.
             file: str, UploadFile
                 The file can be a path passed as a string or an `UploadFile` object if the document is ingested using the
                 `rabbithole` endpoint.
@@ -114,29 +116,33 @@ class RabbitHole:
         """
 
         # split file into a list of docs
-        docs = self.file_to_docs(stray=stray, file=file, chunk_size=chunk_size, chunk_overlap=chunk_overlap)
+        file_bytes, content_type, docs = self.file_to_docs(
+            stray=stray, file=file, chunk_size=chunk_size, chunk_overlap=chunk_overlap
+        )
         metadata = metadata or {}
 
         # store in memory
         filename = file if isinstance(file, str) else file.filename
 
         self.store_documents(stray=stray, docs=docs, source=filename, metadata=metadata)
+        self.save_file(stray, file_bytes, content_type)
 
     def file_to_docs(
         self,
-        stray,
+        stray: "StrayCat",
         file: str | UploadFile,
         chunk_size: int | None = None,
         chunk_overlap: int | None = None
-    ) -> List[Document]:
-        """Load and convert files to Langchain `Document`.
+    ) -> Tuple[bytes, str | None, List[Document]]:
+        """
+        Load and convert files to Langchain `Document`.
 
         This method takes a file either from a Python script, from the `/rabbithole/` or `/rabbithole/web` endpoints.
         Hence, it loads it in memory and splits it in overlapped chunks of text.
 
         Args:
             stray: StrayCat
-                StrayCat instance.
+                Stray Cat instance.
             file: str, UploadFile
                 The file can be either a string path if loaded programmatically, a FastAPI `UploadFile`
                 if coming from the `/rabbithole/` endpoint or a URL if coming from the `/rabbithole/web` endpoint.
@@ -146,8 +152,8 @@ class RabbitHole:
                 Number of overlapping tokens between consecutive chunks.
 
         Returns:
-            docs: List[Document]
-                List of Langchain `Document` of chunked text.
+            (bytes, content_type, docs): Tuple[bytes, List[Document]]
+                The file bytes, the content type and the list of Langchain `Document` of chunked text.
 
         Notes
         -----
@@ -197,7 +203,7 @@ class RabbitHole:
         if not file_bytes:
             raise ValueError(f"Something went wrong with the file {source}")
 
-        return self.string_to_docs(
+        return file_bytes, content_type, self.string_to_docs(
             stray=stray,
             file_bytes=file_bytes,
             source=source,
@@ -208,7 +214,7 @@ class RabbitHole:
 
     def string_to_docs(
         self,
-        stray,
+        stray: "StrayCat",
         file_bytes: bytes,
         source: str = None,
         content_type: str = "text/plain",
@@ -222,7 +228,7 @@ class RabbitHole:
 
         Args:
             stray: StrayCat
-                StrayCat instance.
+                Stray Cat instance.
             file_bytes: bytes
                 The bytes to be converted.
             source: str
@@ -259,7 +265,7 @@ class RabbitHole:
 
     def store_documents(
         self,
-        stray,
+        stray: "StrayCat",
         docs: List[Document],
         source: str, # TODO V2: is this necessary?
         metadata: Dict = None
@@ -271,7 +277,7 @@ class RabbitHole:
 
         Args:
             stray: StrayCat
-                StrayCat instance.
+                Stray Cat instance.
             docs: List[Document]
                 List of Langchain `Document` to be inserted in the Cat's declarative memory.
             source: str
@@ -353,7 +359,7 @@ class RabbitHole:
 
         log.warning(f"Agent id: {ccat.id}. Done uploading {source}")
 
-    def __split_text(self, stray, text: List[Document], chunk_size: int, chunk_overlap: int):
+    def __split_text(self, stray: "StrayCat", text: List[Document], chunk_size: int, chunk_overlap: int):
         """Split text in overlapped chunks.
 
         This method splits the incoming text in overlapped  chunks of text. Other two hooks are available to edit the
@@ -361,7 +367,7 @@ class RabbitHole:
 
         Args:
             stray: StrayCat
-                StrayCat instance.
+                Stray Cat instance.
             text: List[Document]
                 Content of the loaded file.
             chunk_size: int
@@ -410,3 +416,34 @@ class RabbitHole:
         )
 
         return docs
+
+    def save_file(self, stray: "StrayCat", file_bytes: bytes, content_type: str):
+        """
+        Save file in the Rabbit Hole remote storage handled by the BillTheLizard's file manager.
+        This method saves the file in the Rabbit Hole storage. The file is saved in a temporary folder and the path is
+        stored in the remote storage handled by the BillTheLizard's file manager.
+
+        Args:
+            stray: StrayCat
+                Stray Cat instance.
+            file_bytes: bytes
+                The file bytes to be saved.
+            content_type: str
+                The content type of the file.
+        """
+
+        if get_env("CCAT_RABBIT_HOLE_STORAGE_ENABLED") not in ("1", "true"):
+            return
+
+        # save file in a temporary folder
+        extension = mimetypes.guess_extension(content_type)
+        with tempfile.NamedTemporaryFile(delete=False, suffix=extension) as temp_file:
+            temp_file.write(file_bytes)
+            file_path = temp_file.name
+
+            self.lizard.file_manager.upload_file_to_storage_and_remove(file_path, f"rabbit_hole/{stray.agent_id}")
+
+    @property
+    def lizard(self) -> "BillTheLizard":
+        from cat.looking_glass.bill_the_lizard import BillTheLizard
+        return BillTheLizard()

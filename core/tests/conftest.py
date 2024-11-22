@@ -53,11 +53,8 @@ def mock_classes(monkeypatch):
 
     monkeypatch.setattr(get_class_from_decorated_singleton(Database), "get_redis_client", mock_get_redis_client)
 
-    # Use mock utils plugin folder
-    def get_test_plugin_folder():
-        return "tests/mocks/mock_plugin_folder/"
-
-    utils.get_plugins_path = get_test_plugin_folder
+    utils.get_plugins_path = lambda: "tests/mocks/mock_plugin_folder/"
+    utils.get_file_manager_root_storage_path = lambda: "tests/data/storage"
 
     # do not check plugin dependencies at every restart
     def mock_install_requirements(self, *args, **kwargs):
@@ -78,9 +75,9 @@ def clean_up():
         "tests/mocks/mock_plugin.zip",
         "tests/mocks/mock_plugin/settings.json",
         "tests/mocks/mock_plugin_folder/mock_plugin",
-        "tests/mocks/mock_plugin_folder_new/mock_plugin",
         "tests/mocks/mock_plugin/settings.py",
         "tests/mocks/empty_folder",
+        "tests/data",
     ]
     for tbr in to_be_removed:
         if os.path.exists(tbr):
@@ -120,8 +117,10 @@ def encapsulate_each_test(request, monkeypatch):
     mock_classes(monkeypatch)
 
     # env variables
-    current_ccat_debug = get_env("CCAT_DEBUG")
+    current_debug = get_env("CCAT_DEBUG")
     os.environ["CCAT_DEBUG"] = "false"  # do not autoreload
+    current_rabbit_hole_storage_enabled = get_env("CCAT_RABBIT_HOLE_STORAGE_ENABLED")
+    os.environ["CCAT_RABBIT_HOLE_STORAGE_ENABLED"] = "true"
 
     # clean up tmp files, folders and redis database
     clean_up()
@@ -134,8 +133,14 @@ def encapsulate_each_test(request, monkeypatch):
     # clean up tmp files, folders and redis database
     clean_up()
 
-    if current_ccat_debug:
-        os.environ["CCAT_DEBUG"] = current_ccat_debug
+    if current_debug:
+        os.environ["CCAT_DEBUG"] = current_debug
+    else:
+        del os.environ["CCAT_DEBUG"]
+    if current_rabbit_hole_storage_enabled:
+        os.environ["CCAT_RABBIT_HOLE_STORAGE_ENABLED"] = current_rabbit_hole_storage_enabled
+    else:
+        del os.environ["CCAT_RABBIT_HOLE_STORAGE_ENABLED"]
 
     clean_up_qdrant()
 

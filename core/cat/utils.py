@@ -6,7 +6,6 @@ from datetime import timedelta
 from urllib.parse import urlparse
 from typing import Dict, Tuple, List, Type, TypeVar
 from pydantic import BaseModel, ConfigDict
-import io
 from fastapi import UploadFile
 from langchain.evaluation import StringDistance, load_evaluator, EvaluatorType
 from langchain_core.output_parsers import JsonOutputParser
@@ -188,6 +187,11 @@ def get_plugins_path():
     return os.path.join(get_base_path(), "plugins/")
 
 
+def get_file_manager_root_storage_path():
+    """Allows exposing the local storage path."""
+    return os.path.join(get_base_path(), "data/storage/")
+
+
 def get_static_url():
     """Allows exposing the static server url."""
     return get_base_url() + "static/"
@@ -322,11 +326,6 @@ def langchain_log_output(langchain_output, title):
         print(langchain_output)
     print(get_colored_text("========================================", "blue"))
     return langchain_output
-
-
-def format_upload_file(upload_file: UploadFile) -> UploadFile:
-    file_content = upload_file.file.read()
-    return UploadFile(filename=upload_file.filename, file=io.BytesIO(file_content))
 
 
 async def load_uploaded_file(file: UploadFile, allowed_mime_types: List[str]) -> str:

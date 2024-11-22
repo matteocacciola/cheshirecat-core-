@@ -6,7 +6,7 @@ from cat.auth.permissions import AdminAuthResource, AuthPermission
 from cat.db.cruds import settings as crud_settings
 from cat.exceptions import CustomValidationException
 from cat.factory.base_factory import ReplacedNLPConfig
-from cat.factory.plugin_filemanager import PluginFileManagerFactory
+from cat.factory.file_manager import FileManagerFactory
 from cat.looking_glass.bill_the_lizard import BillTheLizard
 from cat.routes.routes_utils import GetSettingsResponse, GetSettingResponse, UpsertSettingResponse
 
@@ -15,12 +15,12 @@ router = APIRouter()
 
 # get configured Plugin File Managers and configuration schemas
 @router.get("/settings", response_model=GetSettingsResponse)
-def get_plugin_filemanagers_settings(
+def get_file_managers_settings(
     lizard: BillTheLizard = Depends(AdminConnectionAuth(AdminAuthResource.FILE_MANAGER, AuthPermission.LIST)),
 ) -> GetSettingsResponse:
     """Get the list of the Plugin File Managers and their settings"""
 
-    factory = PluginFileManagerFactory(lizard.plugin_manager)
+    factory = FileManagerFactory(lizard.plugin_manager)
 
     selected = crud_settings.get_setting_by_name(lizard.config_key, factory.setting_name)
     if selected is not None:
@@ -38,43 +38,43 @@ def get_plugin_filemanagers_settings(
     return GetSettingsResponse(settings=settings, selected_configuration=selected)
 
 
-@router.get("/settings/{plugin_filemanager_name}", response_model=GetSettingResponse)
-def get_plugin_filemanager_settings(
-    plugin_filemanager_name: str,
+@router.get("/settings/{file_manager_name}", response_model=GetSettingResponse)
+def get_file_manager_settings(
+    file_manager_name: str,
     lizard: BillTheLizard = Depends(AdminConnectionAuth(AdminAuthResource.FILE_MANAGER, AuthPermission.READ)),
 ) -> GetSettingResponse:
     """Get settings and scheme of the specified Plugin File Manager"""
 
-    plugin_filemanager_schemas = PluginFileManagerFactory(lizard.plugin_manager).get_schemas()
+    plugin_filemanager_schemas = FileManagerFactory(lizard.plugin_manager).get_schemas()
     # check that plugin_filemanager_name is a valid name
     allowed_configurations = list(plugin_filemanager_schemas.keys())
-    if plugin_filemanager_name not in allowed_configurations:
+    if file_manager_name not in allowed_configurations:
         raise CustomValidationException(
-            f"{plugin_filemanager_name} not supported. Must be one of {allowed_configurations}"
+            f"{file_manager_name} not supported. Must be one of {allowed_configurations}"
         )
 
-    setting = crud_settings.get_setting_by_name(lizard.config_key, plugin_filemanager_name)
+    setting = crud_settings.get_setting_by_name(lizard.config_key, file_manager_name)
     setting = {} if setting is None else setting["value"]
 
-    scheme = plugin_filemanager_schemas[plugin_filemanager_name]
+    scheme = plugin_filemanager_schemas[file_manager_name]
 
-    return GetSettingResponse(name=plugin_filemanager_name, value=setting, scheme=scheme)
+    return GetSettingResponse(name=file_manager_name, value=setting, scheme=scheme)
 
 
-@router.put("/settings/{plugin_filemanager_name}", response_model=UpsertSettingResponse)
-def upsert_plugin_filemanager_setting(
-    plugin_filemanager_name: str,
+@router.put("/settings/{file_manager_name}", response_model=UpsertSettingResponse)
+def upsert_file_manager_setting(
+    file_manager_name: str,
     payload: Dict = Body(...),
     lizard: BillTheLizard = Depends(AdminConnectionAuth(AdminAuthResource.FILE_MANAGER, AuthPermission.EDIT)),
 ) -> ReplacedNLPConfig:
     """Upsert the Plugin File Manager setting"""
 
-    plugin_filemanager_schemas = PluginFileManagerFactory(lizard.plugin_manager).get_schemas()
+    plugin_filemanager_schemas = FileManagerFactory(lizard.plugin_manager).get_schemas()
     # check that plugin_filemanager_name is a valid name
     allowed_configurations = list(plugin_filemanager_schemas.keys())
-    if plugin_filemanager_name not in allowed_configurations:
+    if file_manager_name not in allowed_configurations:
         raise CustomValidationException(
-            f"{plugin_filemanager_name} not supported. Must be one of {allowed_configurations}"
+            f"{file_manager_name} not supported. Must be one of {allowed_configurations}"
         )
 
-    return lizard.replace_plugin_filemanager(plugin_filemanager_name, payload)
+    return lizard.replace_file_manager(file_manager_name, payload)

@@ -14,9 +14,9 @@ from cat.env import get_env
 from cat.exceptions import LoadMemoryException
 from cat.factory.base_factory import ReplacedNLPConfig
 from cat.factory.custom_auth_handler import CoreAuthHandler
-from cat.factory.custom_filemanager import BaseFileManager
+from cat.factory.custom_file_manager import BaseFileManager
 from cat.factory.embedder import EmbedderFactory
-from cat.factory.plugin_filemanager import PluginFileManagerFactory
+from cat.factory.file_manager import FileManagerFactory
 from cat.jobs import job_on_idle_strays
 from cat.log import log
 from cat.looking_glass.cheshire_cat import CheshireCat
@@ -61,7 +61,7 @@ class BillTheLizard:
         self.embedder_name: str | None = None
         self.embedder_size: VectorEmbedderSize | None = None
 
-        self.plugin_filemanager: BaseFileManager | None = None
+        self.file_manager: BaseFileManager | None = None
 
         # Start scheduling system
         self.white_rabbit = WhiteRabbit()
@@ -74,8 +74,8 @@ class BillTheLizard:
         # load embedder
         self.load_language_embedder()
 
-        # load plugin file manager
-        self.load_plugin_filemanager()
+        # load file manager
+        self.load_filemanager()
 
         # Rabbit Hole Instance
         self.rabbit_hole = RabbitHole()
@@ -152,17 +152,17 @@ class BillTheLizard:
         embedder_size = len(self.embedder.embed_query("hello world"))
         self.embedder_size = VectorEmbedderSize(text=embedder_size)
 
-    def load_plugin_filemanager(self):
+    def load_filemanager(self):
         """
-        Hook into the plugin file manager selection. Allows to modify how the Lizard selects the plugin file manager at
-        bootstrap time.
+        Hook into the file manager selection. Allows to modify how the Lizard selects the file manager at bootstrap
+        time.
         """
 
-        factory = PluginFileManagerFactory(self.plugin_manager)
+        factory = FileManagerFactory(self.plugin_manager)
 
         selected_config = FactoryAdapter(factory).get_factory_config_by_settings(self.__key)
 
-        self.plugin_filemanager = factory.get_from_config_name(self.__key, selected_config["value"]["name"])
+        self.file_manager = factory.get_from_config_name(self.__key, selected_config["value"]["name"])
 
     def replace_embedder(self, language_embedder_name: str, settings: Dict) -> ReplacedNLPConfig:
         """
@@ -202,41 +202,40 @@ class BillTheLizard:
 
         return ReplacedNLPConfig(name=language_embedder_name, value=updater.new_setting["value"])
 
-    def replace_plugin_filemanager(self, plugin_filemanager_name: str, settings: Dict) -> ReplacedNLPConfig:
+    def replace_file_manager(self, file_manager_name: str, settings: Dict) -> ReplacedNLPConfig:
         """
-        Replace the current plugin file manager with a new one. This method is used to change the plugin file manager of
-        the lizard.
+        Replace the current file manager with a new one. This method is used to change the file manager of the lizard.
 
         Args:
-            plugin_filemanager_name: name of the new plugin file manager
-            settings: settings of the new plugin file manager
+            file_manager_name: name of the new file manager
+            settings: settings of the new file manager
 
         Returns:
-            The dictionary resuming the new name and settings of the plugin file manager
+            The dictionary resuming the new name and settings of the file manager
         """
 
-        adapter = FactoryAdapter(PluginFileManagerFactory(self.plugin_manager))
-        updater = adapter.upsert_factory_config_by_settings(self.__key, plugin_filemanager_name, settings)
+        adapter = FactoryAdapter(FileManagerFactory(self.plugin_manager))
+        updater = adapter.upsert_factory_config_by_settings(self.__key, file_manager_name, settings)
 
         try:
-            old_filemanager = self.plugin_filemanager
+            old_filemanager = self.file_manager
 
-            # reload the plugin file manager of the lizard
-            self.load_plugin_filemanager()
+            # reload the file manager of the lizard
+            self.load_filemanager()
 
-            self.plugin_filemanager.transfer(old_filemanager)
+            self.file_manager.transfer(old_filemanager)
         except ValueError as e:
-            log.error(f"Error while loading the new Plugin File Manager: {e}")
+            log.error(f"Error while loading the new File Manager: {e}")
 
             # something went wrong: rollback
             adapter.rollback_factory_config(self.__key)
 
             if updater.old_setting is not None:
-                self.replace_plugin_filemanager(updater.old_setting["value"]["name"], updater.new_setting["value"])
+                self.replace_file_manager(updater.old_setting["value"]["name"], updater.new_setting["value"])
 
             raise e
 
-        return ReplacedNLPConfig(name=plugin_filemanager_name, value=updater.new_setting["value"])
+        return ReplacedNLPConfig(name=file_manager_name, value=updater.new_setting["value"])
 
     async def remove_cheshire_cat(self, agent_id: str) -> None:
         """
@@ -333,7 +332,7 @@ class BillTheLizard:
         self.embedder = None
         self.embedder_name = None
         self.embedder_size = None
-        self.plugin_filemanager = None
+        self.file_manager = None
 
     @property
     def cheshire_cats(self):

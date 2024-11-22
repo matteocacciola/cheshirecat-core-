@@ -3,8 +3,9 @@ from ast import literal_eval
 import time
 from copy import deepcopy
 from typing import Dict, List, Any
-from fastapi import Query
+from fastapi import Query, UploadFile
 from pydantic import BaseModel
+import io
 
 from cat.auth.auth_utils import issue_jwt
 from cat.auth.connection import ContextualCats
@@ -274,3 +275,8 @@ def create_dict_parser(param_name: str, description: str | None = None):
         except ValueError:
             return {}
     return parser
+
+
+def format_upload_file(upload_file: UploadFile) -> UploadFile:
+    file_content = upload_file.file.read()
+    return UploadFile(filename=upload_file.filename, file=io.BytesIO(file_content))
