@@ -5,7 +5,7 @@ from pydantic import BaseModel
 from cat.auth.connection import HTTPAuth, ContextualCats
 from cat.auth.permissions import AuthPermission, AuthResource
 from cat.exceptions import CustomNotFoundException
-from cat.memory.vector_memory_collection import VectorMemoryCollectionTypes
+from cat.memory.utils import VectorMemoryCollectionTypes
 
 router = APIRouter()
 
