@@ -1,20 +1,21 @@
-import os
-import shutil
-import traceback
-import inspect
+import aiofiles
 from datetime import timedelta
-from urllib.parse import urlparse
-from typing import Dict, Tuple, List, Type, TypeVar
-from pydantic import BaseModel, ConfigDict
+from enum import Enum as BaseEnum, EnumMeta
 from fastapi import UploadFile
+import inspect
+from pydantic import BaseModel, ConfigDict
 from langchain.evaluation import StringDistance, load_evaluator, EvaluatorType
+from langchain_core.embeddings import Embeddings
 from langchain_core.output_parsers import JsonOutputParser
 from langchain_core.prompts import PromptTemplate
 from langchain_core.utils import get_colored_text
-from enum import Enum as BaseEnum, EnumMeta
-import tomli
-import aiofiles
 import mimetypes
+import os
+import shutil
+import tomli
+import traceback
+from typing import Dict, Tuple, List, Type, TypeVar
+from urllib.parse import urlparse
 
 from cat.env import get_env
 from cat.exceptions import CustomValidationException
@@ -424,3 +425,19 @@ def empty_plugin_folder():
 
 def default_llm_answer_prompt() -> str:
     return "AI: You did not configure a Language Model. Do it in the settings!"
+
+
+def get_embedder_name(embedder: Embeddings) -> str:
+    embedder_name = "default_embedder"
+    if hasattr(embedder, "model"):
+        embedder_name = embedder.model
+    if hasattr(embedder, "model_name"):
+        embedder_name = embedder.model_name
+    if hasattr(embedder, "repo_id"):
+        embedder_name = embedder.repo_id
+
+    replaces = ["/", "-", "."]
+    for v in replaces:
+        embedder_name = embedder_name.replace(v, "_")
+
+    return embedder_name.lower()

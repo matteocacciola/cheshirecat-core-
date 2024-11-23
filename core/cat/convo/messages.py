@@ -9,6 +9,7 @@ from io import BytesIO
 from PIL import Image
 from typing_extensions import deprecated
 
+from cat.agents import AgentOutput
 from cat.convo.llm import LargeLanguageModelModality
 from cat.log import log
 from cat.utils import BaseModelDict, Enum
@@ -95,7 +96,7 @@ class MessageWhy(BaseModelDict):
     intermediate_steps: List
     memory: Dict
     model_interactions: List[LLMModelInteraction | EmbedderModelInteraction]
-    agent_output: Dict | None = None
+    agent_output: AgentOutput | None = None
 
 
 class BaseMessage(BaseModelDict, ABC):

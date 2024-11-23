@@ -20,6 +20,7 @@ services:
       - CCAT_QDRANT_HOST=cheshire_cat_vector_memory
       - CCAT_QDRANT_PORT=6333
       - CCAT_API_KEY=test
+      - CCAT_API_KEY_WS=test
       - CCAT_REDIS_HOST=cheshire_cat_redis
       - CCAT_REDIS_PORT=6379
     volumes:

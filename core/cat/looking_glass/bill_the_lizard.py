@@ -25,7 +25,7 @@ from cat.mad_hatter.mad_hatter import MadHatter
 from cat.mad_hatter.tweedledum import Tweedledum
 from cat.memory.vector_memory_collection import VectorEmbedderSize
 from cat.rabbit_hole import RabbitHole
-from cat.utils import singleton
+from cat.utils import singleton, get_embedder_name
 
 
 @singleton
@@ -141,12 +141,7 @@ class BillTheLizard:
         selected_config = FactoryAdapter(factory).get_factory_config_by_settings(self.__key)
 
         self.embedder = factory.get_from_config_name(self.__key, selected_config["value"]["name"])
-
-        self.embedder_name = "default_embedder"
-        if hasattr(self.embedder, "model"):
-            self.embedder_name = self.embedder.model
-        if hasattr(self.embedder, "repo_id"):
-            self.embedder_name = self.embedder.repo_id
+        self.embedder_name = get_embedder_name(self.embedder)
 
         # Get embedder size (langchain classes do not store it)
         embedder_size = len(self.embedder.embed_query("hello world"))
