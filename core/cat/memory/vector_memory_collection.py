@@ -1,10 +1,9 @@
 import asyncio
 import os
 import uuid
-from typing import Any, List, Iterable, Dict, Tuple, Final
+from typing import Any, List, Dict, Tuple, Final
 import aiofiles
 import httpx
-from pydantic import BaseModel, Field
 from qdrant_client.qdrant_remote import QdrantRemote
 from qdrant_client.http.models import (
     Batch,
@@ -28,41 +27,18 @@ from qdrant_client.http.models import (
     Payload,
     PayloadSchemaType,
 )
-from langchain.docstore.document import Document
 
 from cat.db.vector_database import get_vector_db
-from cat.log import log
 from cat.env import get_env
-from cat.utils import Enum as BaseEnum, BaseModelDict
-
-
-class VectorMemoryCollectionTypes(BaseEnum):
-    EPISODIC = "episodic"
-    DECLARATIVE = "declarative"
-    PROCEDURAL = "procedural"
-
-
-class VectorEmbedderSize(BaseModel):
-    text: int
-    image: int | None = None
-    audio: int | None = None
-
-
-class VectorMemoryConfig(BaseModelDict):
-    embedder_name: str
-    embedder_size: VectorEmbedderSize
-
-
-class DocumentRecall(BaseModelDict):
-    """
-    Langchain `Document` retrieved from the episodic memory, with the similarity score, the list of embeddings and the
-    id of the memory.
-    """
-
-    document: Document
-    score: float | None = None
-    vector: List[float] = Field(default_factory=list)
-    id: str | None = None
+from cat.log import log
+from cat.memory.utils import (
+    ContentType,
+    DocumentRecall,
+    MultimodalContent,
+    VectorMemoryConfig,
+    VectorEmbedderSize,
+    to_document_recall,
+)
 
 
 class VectorMemoryCollection:
@@ -74,47 +50,66 @@ class VectorMemoryCollection:
         # Set attributes (metadata on the embedder are useful because it may change at runtime)
         self.collection_name: Final[str] = collection_name
         self.embedder_name: Final[str] = vector_memory_config.embedder_name
-        self.embedder_size: Final[int] = vector_memory_config.embedder_size.text
+        self.embedder_sizes: Final[VectorEmbedderSize] = vector_memory_config.embedder_size
 
         # connects to Qdrant and creates self.client attribute
         self.client: Final = get_vector_db()
 
         # Check if memory collection exists also in vectorDB, otherwise create it
-        self.create_db_collection_if_not_exists()
+        self._create_db_collection_if_not_exists()
 
-        # Check db collection vector size is same as embedder size
-        self.check_embedding_size()
+        # Check db collection vector sizes are same as embedder sizes
+        self._check_embedding_sizes()
 
-        # log collection info
         log.debug(f"Agent {self.agent_id}, Collection {self.collection_name}:")
         log.debug(self.client.get_collection(self.collection_name))
 
-    def check_embedding_size(self):
-        # having the same size does not necessarily imply being the same embedder
-        # having vectors with the same size but from different embedder in the same vector space is wrong
-        same_size = (
-            self.client.get_collection(self.collection_name).config.params.vectors.size
-            == self.embedder_size
-        )
-        local_alias = self.embedder_name + "_" + self.collection_name
-        db_aliases = self.client.get_collection_aliases(self.collection_name).aliases
+    def _check_embedding_sizes(self):
+        collection_info = self.client.get_collection(self.collection_name)
 
-        if same_size and local_alias == db_aliases[0].alias_name:
-            log.debug(f"Collection \"{self.collection_name}\" has the same embedder")
+        # Check if the collection exists and has the correct vector configurations
+        # Single vector configuration (legacy)
+        if (
+                hasattr(collection_info.config.params, "vectors")
+                and collection_info.config.params.vectors.size != self.embedder_sizes.text
+        ):
+            self._recreate_collection()
             return
 
-        log.warning(f"Collection \"{self.collection_name}\" has different embedder")
-        # Memory snapshot saving can be turned off in the .env file with:
-        # SAVE_MEMORY_SNAPSHOTS=false
+        # Multiple vector configurations
+        vectors_config = collection_info.config.params.vectors_config
+        needs_update = False
+
+        text_lbl = str(ContentType.TEXT)
+        image_lbl = str(ContentType.IMAGE)
+        audio_lbl = str(ContentType.AUDIO)
+
+        if text_lbl in vectors_config and vectors_config[text_lbl].size != self.embedder_sizes.text:
+            needs_update = True
+        if self.embedder_sizes.image and (
+                image_lbl not in vectors_config or vectors_config[image_lbl].size != self.embedder_sizes.image
+        ):
+            needs_update = True
+        if self.embedder_sizes.audio and (
+                audio_lbl not in vectors_config or
+                vectors_config[audio_lbl].size != self.embedder_sizes.audio
+        ):
+            needs_update = True
+
+        if needs_update:
+            self._recreate_collection()
+
+    def _recreate_collection(self):
+        """Recreate the collection with updated vector configurations"""
+        log.warning(f"Collection {self.collection_name} has different embedder sizes. Recreating...")
+
         if get_env("CCAT_SAVE_MEMORY_SNAPSHOTS") == "true":
-            # dump collection on disk before deleting
-            asyncio.get_event_loop().run_until_complete(self.save_dump())
+            asyncio.get_event_loop().run_until_complete(self._save_dump())
 
         self.client.delete_collection(self.collection_name)
-        log.warning(f"Collection \"{self.collection_name}\" deleted")
-        self.create_collection()
+        self._create_collection()
 
-    def create_db_collection_if_not_exists(self):
+    def _create_db_collection_if_not_exists(self):
         # is collection present in DB?
         collections_response = self.client.get_collections()
         if any(c.name == self.collection_name for c in collections_response.collections):
@@ -124,18 +119,31 @@ class VectorMemoryCollection:
             )
             return
 
-        self.create_collection()
+        self._create_collection()
 
     # create collection
-    def create_collection(self):
-        log.warning(f"Creating collection \"{self.collection_name}\" ...")
+    def _create_collection(self):
+        log.warning(f"Creating collection {self.collection_name} ...")
+
+        # Create vector config for each modality
+        vectors_config = {
+            str(ContentType.TEXT): VectorParams(size=self.embedder_sizes.text, distance=Distance.COSINE)
+        }
+
+        if self.embedder_sizes.image:
+            vectors_config[str(ContentType.IMAGE)] = VectorParams(
+                size=self.embedder_sizes.image, distance=Distance.COSINE
+            )
+
+        if self.embedder_sizes.audio:
+            vectors_config[str(ContentType.AUDIO)] = VectorParams(
+                size=self.embedder_sizes.audio, distance=Distance.COSINE
+            )
+
         self.client.create_collection(
             collection_name=self.collection_name,
-            vectors_config=VectorParams(
-                size=self.embedder_size, distance=Distance.COSINE
-            ),
-            # hybrid mode: original vector on Disk, quantized vector in RAM
-            optimizers_config=OptimizersConfigDiff(memmap_threshold=20000),
+            vectors_config=vectors_config,
+            optimizers_config=OptimizersConfigDiff(memmap_threshold=20000, indexing_threshold=20000),
             quantization_config=ScalarQuantization(
                 scalar=ScalarQuantizationConfig(
                     type=ScalarType.INT8, quantile=0.95, always_ram=True
@@ -229,33 +237,33 @@ class VectorMemoryCollection:
 
     def add_point(
         self,
-        content: str,
-        vector: Iterable,
+        content: MultimodalContent,
+        vectors: Dict[ContentType, List[float]],
         metadata: Dict = None,
         id: str | None = None,
         **kwargs,
     ) -> PointStruct | None:
-        """Add a point (and its metadata) to the vectorstore.
+        """
+        Add a multimodal point to the vectorstore.
 
         Args:
-            content: original text.
-            vector: Embedding vector.
-            metadata: Optional metadata dictionary associated with the text.
-            id:
-                Optional id to associate with the point. Id has to be an uuid-like string.
+            content: MultimodalContent object containing text, image and/or audio data
+            vectors: Dictionary mapping modality to its vector representation
+            metadata: Optional metadata dictionary
+            id: Optional unique identifier
 
         Returns:
-            PointStruct: The stored point.
+            PointStruct: The stored point
         """
 
         point = PointStruct(
             id=id or uuid.uuid4().hex,
             payload={
-                "page_content": content,
+                "page_content": content.model_dump(),
                 "metadata": metadata,
                 "tenant_id": self.agent_id,
             },
-            vector=vector,
+            vector={str(k): v for k, v in vectors.items()}  # Using named vectors
         )
 
         update_status = self.client.upsert(collection_name=self.collection_name, points=[point], **kwargs)
@@ -267,7 +275,7 @@ class VectorMemoryCollection:
         return None
 
     # add points in collection
-    def add_points(self, ids: List, payloads: List[Payload], vectors: List):
+    def add_points(self, ids: List, payloads: List[Payload], vectors: List[Dict[str, List[float]]]) -> UpdateResult:
         """
         Upsert memories in batch mode
         Args:
@@ -282,11 +290,7 @@ class VectorMemoryCollection:
         payloads = [{**p, **{"tenant_id": self.agent_id}} for p in payloads]
         points = Batch(ids=ids, payloads=payloads, vectors=vectors)
 
-        res = self.client.upsert(
-            collection_name=self.collection_name,
-            points=points,
-        )
-        return res
+        return self.client.upsert(collection_name=self.collection_name, points=points)
 
     def delete_points_by_metadata_filter(self, metadata: Dict | None = None) -> UpdateResult:
         conditions = [self._tenant_field_condition()]
@@ -303,15 +307,15 @@ class VectorMemoryCollection:
 
     # delete point in collection
     def delete_points(self, points_ids: List) -> UpdateResult:
-        res = self.client.delete(
-            collection_name=self.collection_name,
-            points_selector=points_ids,
-        )
-        return res
+        return self.client.delete(collection_name=self.collection_name, points_selector=points_ids)
 
     # retrieve similar memories from embedding
     def recall_memories_from_embedding(
-        self, embedding: List[float], metadata: Dict | None = None, k: int | None = 5, threshold: float | None = None
+        self,
+        query_vectors: Dict[ContentType, List[float]],
+        metadata: Dict | None = None,
+        k: int | None = 5,
+        threshold: float | None =None
     ) -> List[DocumentRecall]:
         """
         Retrieve memories from the collection based on an embedding vector. The memories are sorted by similarity to the
@@ -324,10 +328,10 @@ class VectorMemoryCollection:
         parameter is None, all memories are retrieved. If the threshold parameter is None, no memories are filtered out.
 
         Args:
-            embedding: Embedding vector.
-            metadata: Dictionary containing metadata filter.
-            k: Number of memories to retrieve.
-            threshold: Similarity threshold.
+            query_vectors: Dictionary mapping modality to query vector
+            metadata: Optional metadata filter
+            k: Number of results to return
+            threshold: Optional similarity threshold
 
         Returns:
             List: List of DocumentRecall.
@@ -339,10 +343,9 @@ class VectorMemoryCollection:
                 condition for key, value in metadata.items() for condition in self._build_condition(key, value)
             ])
 
-        # retrieve memories
         memories = self.client.search(
             collection_name=self.collection_name,
-            query_vector=embedding,
+            query_vector={str(k): v for k, v in query_vectors.items()},  # Using named vectors for search
             query_filter=Filter(must=conditions),
             with_payload=True,
             with_vectors=True,
@@ -352,24 +355,13 @@ class VectorMemoryCollection:
                 quantization=QuantizationSearchParams(
                     ignore=False,
                     rescore=True,
-                    oversampling=2.0,  # Available as of v1.3.0
+                    oversampling=2.0,
                 )
             ),
         )
 
-        # convert Qdrant points to langchain.Document
-        langchain_documents_from_points = [DocumentRecall(
-            document=Document(page_content=m.payload.get("page_content"), metadata=m.payload.get("metadata") or {}),
-            score=m.score,
-            vector=m.vector,
-            id=m.id,
-        ) for m in memories]
-
-        # we'll move out of langchain conventions soon and have our own cat Document
-        # for doc, score, vector in langchain_documents_from_points:
-        #    doc.lc_kwargs = None
-
-        return langchain_documents_from_points
+        # convert Qdrant points to a structure containing langchain.Document and its information
+        return [to_document_recall(m) for m in memories]
 
     def recall_all_memories(self) -> List[DocumentRecall]:
         """
@@ -387,15 +379,22 @@ class VectorMemoryCollection:
         """
 
         all_points, _ = self.get_all_points()
-        memories = [DocumentRecall(document=Document(**p.payload), vector=p.vector, id=p.id) for p in all_points]
+        memories = [to_document_recall(p) for p in all_points]
 
         return memories
 
     # retrieve all the points in the collection
-    def get_all_points(
-        self, limit: int = 10000, offset: str | None = None
-    ) -> Tuple[List[Record], int | str | None]:
-        """Retrieve all the points in the collection with an optional offset and limit."""
+    def get_all_points(self, limit: int = 10000, offset: str | None = None) -> Tuple[List[Record], int | str | None]:
+        """
+        Retrieve all the points in the collection with an optional offset and limit.
+
+        Args:
+            limit: The maximum number of points to retrieve.
+            offset: The offset from which to start retrieving points.
+
+        Returns:
+            Tuple: A tuple containing the list of points and the next offset.
+        """
 
         # retrieving the points
         return self.client.scroll(

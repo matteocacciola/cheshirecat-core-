@@ -1,5 +1,5 @@
+from cat.memory.utils import VectorMemoryConfig
 from cat.memory.vector_memory import VectorMemory
-from cat.memory.vector_memory_collection import VectorMemoryConfig
 
 
 # This class represents the Cat long term memory (content the cat saves on disk).
