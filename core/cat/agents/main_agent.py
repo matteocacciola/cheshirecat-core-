@@ -6,7 +6,7 @@ from cat.agents import AgentInput, AgentOutput, BaseAgent
 from cat.agents.memory_agent import MemoryAgent
 from cat.agents.procedures_agent import ProceduresAgent
 from cat.looking_glass import prompts
-from cat.memory.vector_memory_collection import DocumentRecall
+from cat.memory.utils import DocumentRecall
 from cat.utils import verbal_timedelta, restore_original_model
 from cat.env import get_env
 

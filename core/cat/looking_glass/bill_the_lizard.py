@@ -23,7 +23,7 @@ from cat.looking_glass.cheshire_cat import CheshireCat
 from cat.looking_glass.white_rabbit import WhiteRabbit
 from cat.mad_hatter.mad_hatter import MadHatter
 from cat.mad_hatter.tweedledum import Tweedledum
-from cat.memory.vector_memory_collection import VectorEmbedderSize
+from cat.memory.utils import VectorEmbedderSize
 from cat.rabbit_hole import RabbitHole
 from cat.utils import singleton
 

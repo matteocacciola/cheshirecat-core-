@@ -1,6 +1,7 @@
 from typing import Dict
 
-from cat.memory.vector_memory_collection import VectorMemoryCollection, VectorMemoryCollectionTypes, VectorMemoryConfig
+from cat.memory.utils import VectorMemoryCollectionTypes, VectorMemoryConfig
+from cat.memory.vector_memory_collection import VectorMemoryCollection
 
 
 class VectorMemory:
