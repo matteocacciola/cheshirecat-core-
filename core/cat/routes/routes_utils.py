@@ -162,11 +162,11 @@ async def get_available_plugins(
     plugins = await get_plugins(plugin_manager, query)
 
     return GetAvailablePluginsResponse(
-        filters={
-            "query": query,
+        filters=GetAvailablePluginsFilter(
+            query=query,
             # "author": author, to be activated in case of more granular search
             # "tag": tag, to be activated in case of more granular search
-        },
+        ),
         installed=plugins.installed,
         registry=plugins.registry,
     )
