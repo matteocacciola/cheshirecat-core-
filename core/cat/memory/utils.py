@@ -46,7 +46,7 @@ class DocumentRecall(BaseModelDict):
     """
     document: Document
     score: float | None = None
-    vectors: Dict[ContentType, List[float]] = {}  # Mapping of modality to vector
+    vectors: Dict[ContentType, List[float]] = Field(default_factory=dict)  # Mapping of modality to vector
     id: str | None = None
 
 
