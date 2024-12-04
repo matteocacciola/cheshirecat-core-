@@ -90,10 +90,8 @@ class MadHatter(ABC):
         # Execute hook on plugin deactivation
         # Deactivation hook must happen before actual deactivation,
         # otherwise the hook will not be available in _plugin_overrides anymore
-        for hook in self.plugins[plugin_id].plugin_overrides:
-            if hook.name != "deactivated":
-                continue
-            hook.function(self.plugins[plugin_id])
+        if "deactivated" in self.plugins[plugin_id].plugin_overrides:
+            self.plugins[plugin_id].plugin_overrides["deactivated"].function(self.plugins[plugin_id])
 
         # Remove the plugin from the list of active plugins
         self.active_plugins.remove(plugin_id)
@@ -116,9 +114,8 @@ class MadHatter(ABC):
         # Execute hook on plugin activation
         # Activation hook must happen before actual activation,
         # otherwise the hook will still not be available in _plugin_overrides
-        for hook in self.plugins[plugin_id].plugin_overrides:
-            if hook.name == "activated":
-                hook.function(self.plugins[plugin_id])
+        if "activated" in self.plugins[plugin_id].plugin_overrides:
+            self.plugins[plugin_id].plugin_overrides["activated"].function(self.plugins[plugin_id])
 
         # Add the plugin in the list of active plugins
         self.active_plugins.append(plugin_id)
