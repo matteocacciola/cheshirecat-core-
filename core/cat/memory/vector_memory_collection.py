@@ -4,7 +4,7 @@ import uuid
 from typing import Any, List, Iterable, Dict, Tuple, Final
 import aiofiles
 import httpx
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from qdrant_client.qdrant_remote import QdrantRemote
 from qdrant_client.http.models import (
     Batch,
@@ -61,7 +61,7 @@ class DocumentRecall(BaseModelDict):
 
     document: Document
     score: float | None = None
-    vector: List[float] = []
+    vector: List[float] = Field(default_factory=list)
     id: str | None = None
 
 

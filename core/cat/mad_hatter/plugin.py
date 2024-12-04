@@ -65,7 +65,7 @@ class Plugin:
         self._forms: List[CatForm] = []  # list of plugin forms
 
         # list of @plugin decorated functions overriding default plugin behaviour
-        self._plugin_overrides = []  # TODO: make this a dictionary indexed by func name, for faster access
+        self._plugin_overrides: Dict[str, CatPluginDecorator] = {}
 
         # plugin starts deactivated
         self._active = False
@@ -113,7 +113,7 @@ class Plugin:
         self._hooks = []
         self._tools = []
         self._forms = []
-        self._plugin_overrides = []
+        self._plugin_overrides = {}
         self._active = False
 
         # remove the settings
@@ -122,20 +122,21 @@ class Plugin:
     # get plugin settings JSON schema
     def settings_schema(self):
         # is "settings_schema" hook defined in the plugin?
-        # otherwise, if the "settings_schema" is not defined but "settings_model" is it get the schema from the model
-        ph = next((h for h in self._plugin_overrides if h.name in ["settings_schema", "settings_model"]), None)
-        if ph is None:
-            # default schema (empty)
-            return PluginSettingsModel.model_json_schema()
+        if "settings_schema" in self._plugin_overrides:
+            return self._plugin_overrides["settings_schema"].function()
 
-        return ph.function() if ph.name == "settings_schema" else ph.function().model_json_schema()
+        # otherwise, if the "settings_schema" is not defined but "settings_model" is it get the schema from the model
+        if "settings_model" in self._plugin_overrides:
+            return self._plugin_overrides["settings_model"].function().model_json_schema()
+
+        # default schema (empty)
+        return PluginSettingsModel.model_json_schema()
 
     # get plugin settings Pydantic model
     def settings_model(self):
         # is "settings_model" hook defined in the plugin?
-        ph = next((h for h in self._plugin_overrides if h.name == "settings_model"), None)
-        if ph is not None:
-            return ph.function()
+        if "settings_model" in self._plugin_overrides:
+            return self._plugin_overrides["settings_model"].function()
 
         # default schema (empty)
         return PluginSettingsModel
@@ -152,9 +153,8 @@ class Plugin:
                 agent_id = DEFAULT_SYSTEM_KEY
 
         # is "settings_load" hook defined in the plugin?
-        ph = next((h for h in self._plugin_overrides if h.name == "load_settings"), None)
-        if ph is not None:
-            return ph.function()
+        if "load_settings" in self._plugin_overrides:
+            return self._plugin_overrides["load_settings"].function()
 
         # by default, plugin settings are saved inside the Redis database
         settings = crud_plugins.get_setting(agent_id, self._id)
@@ -175,9 +175,8 @@ class Plugin:
     # save plugin settings
     def save_settings(self, settings: Dict, agent_id: str):
         # is "settings_save" hook defined in the plugin?
-        ph = next((h for h in self._plugin_overrides if h.name == "save_settings"), None)
-        if ph is not None:
-            return ph.function(settings)
+        if "save_settings" in self._plugin_overrides:
+            return self._plugin_overrides["save_settings"].function(settings)
 
         try:
             # overwrite settings over old ones
@@ -340,9 +339,7 @@ class Plugin:
         self._hooks = list(map(self._clean_hook, hooks))
         self._tools = list(map(self._clean_tool, tools))
         self._forms = list(map(self._clean_form, forms))
-        self._plugin_overrides = list(
-            map(self._clean_plugin_override, plugin_overrides)
-        )
+        self._plugin_overrides = {override.name: override for _, override in plugin_overrides}
 
     def plugin_specific_error_message(self):
         name = self.manifest.get("name")
@@ -366,10 +363,6 @@ class Plugin:
         f = form[1]
         f.plugin_id = self._id
         return f
-
-    def _clean_plugin_override(self, plugin_override):
-        # getmembers returns a tuple
-        return plugin_override[1]
 
     # a plugin hook function has to be decorated with @hook
     # (which returns an instance of CatHook)
