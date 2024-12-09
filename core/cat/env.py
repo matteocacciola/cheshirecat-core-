@@ -27,6 +27,7 @@ def get_supported_env_variables():
         "CCAT_CORS_FORWARDED_ALLOW_IPS": "*",
         "CCAT_STRAYCAT_TIMEOUT": str(59),  # in seconds
         "CCAT_RABBIT_HOLE_STORAGE_ENABLED": "false",
+        "CCAT_CORS_ENABLED": "true",
     }
 
 

@@ -85,19 +85,14 @@ class Tweedledum(MadHatter):
         # and stored in a dictionary plugin_id -> plugin_obj
         self.plugins = {}
 
-        self.active_plugins = self.load_active_plugins_from_db()
-
         # plugins are found in the plugins folder,
-        # plus the default core plugin s(where default hooks and tools are defined)
+        # plus the default core plugin (where default hooks and tools are defined)
         core_plugin_folder = "cat/mad_hatter/core_plugin/"
 
         # plugin folder is "cat/plugins/" in production, "tests/mocks/mock_plugin_folder/" during tests
         all_plugin_folders = [core_plugin_folder] + glob.glob(
             f"{self.__plugins_folder}*/"
         )
-
-        log.info("ACTIVE PLUGINS:")
-        log.info(self.active_plugins)
 
         # discover plugins, folder by folder
         for folder in all_plugin_folders:
@@ -107,15 +102,17 @@ class Tweedledum(MadHatter):
 
             self.__load_plugin(folder)
 
-            if plugin_id not in self.active_plugins:
-                continue
-
             try:
                 self.plugins[plugin_id].activate(self.agent_key)
             except Exception as e:
                 # Couldn't activate the plugin -> Deactivate it
                 self.deactivate_plugin(plugin_id)
                 raise e
+
+        self.active_plugins = self.load_active_plugins_from_db()
+
+        log.info("ACTIVE PLUGINS:")
+        log.info(self.active_plugins)
 
         self._sync_hooks_tools_and_forms()
 
