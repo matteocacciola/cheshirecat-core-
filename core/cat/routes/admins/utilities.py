@@ -9,7 +9,7 @@ from cat.db.database import get_db
 from cat.db.vector_database import get_vector_db
 from cat.log import log
 from cat.looking_glass.bill_the_lizard import BillTheLizard
-from cat.memory.vector_memory_collection import VectorMemoryCollectionTypes
+from cat.memory.utils import VectorMemoryCollectionTypes
 from cat.utils import empty_plugin_folder
 
 router = APIRouter()
