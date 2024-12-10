@@ -2,7 +2,6 @@ from typing import List, Any
 from typing_extensions import deprecated
 
 from cat.agents import AgentInput
-from cat.convo.llm import LargeLanguageModelModality
 from cat.convo.messages import (
     Role,
     BaseMessage,
@@ -198,7 +197,7 @@ class WorkingMemory(BaseModelDict):
 
         chat_history = self.history[-latest_n:]
 
-        return [convert_to_langchain_message(h, self.large_language_model_modality) for h in chat_history]
+        return [convert_to_langchain_message(h) for h in chat_history]
 
     @property
     def user_message_json(self) -> UserMessage | None:
@@ -215,7 +214,3 @@ class WorkingMemory(BaseModelDict):
             raise ValueError(f"Cheshire Cat not found for the StrayCat {self.__user.id}.")
 
         return ccat
-
-    @property
-    def large_language_model_modality(self) -> LargeLanguageModelModality:
-        return self.cheshire_cat.large_language_model_modality
