@@ -507,10 +507,8 @@ Allowed classes are:
             if agent_output.output == utils.default_llm_answer_prompt():
                 agent_output.with_llm_error = True
         except Exception as e:
-            # This error happens when the LLM
-            #   does not respect prompt instructions.
-            # We grab the LLM output here anyway, so small and
-            #   non instruction-fine-tuned models can still be used.
+            # This error happens when the LLM does not respect prompt instructions.
+            # We grab the LLM output here anyway, so small and non instruction-fine-tuned models can still be used.
             error_description = str(e)
 
             log.error(f"Agent id: {self.__agent_id}. Error: {error_description}")

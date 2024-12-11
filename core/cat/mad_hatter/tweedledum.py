@@ -2,7 +2,9 @@ import os
 import glob
 import shutil
 
+from cat.db.cruds import settings as crud_settings
 from cat.db.database import DEFAULT_SYSTEM_KEY
+from cat.db.models import Setting
 from cat.log import log
 from cat.mad_hatter.mad_hatter import MadHatter
 from cat.mad_hatter.plugin_extractor import PluginExtractor
@@ -49,11 +51,8 @@ class Tweedledum(MadHatter):
         plugin_path = extractor.extract(self.__plugins_folder)
         plugin_id = extractor.id
 
-        if plugin_id != "core_plugin":
-            # create plugin obj
-            self.__load_plugin(plugin_path)
-
-            # activate it
+        # create plugin obj, and eventually activate it
+        if plugin_id != "core_plugin" and self.__load_plugin(plugin_path):
             self.activate_plugin(plugin_id)
 
         # notify install has finished (the Lizard will ensure to notify the already loaded Cheshire Cats about the
@@ -85,10 +84,8 @@ class Tweedledum(MadHatter):
         # and stored in a dictionary plugin_id -> plugin_obj
         self.plugins = {}
 
-        self.active_plugins = self.load_active_plugins_from_db()
-
         # plugins are found in the plugins folder,
-        # plus the default core plugin s(where default hooks and tools are defined)
+        # plus the default core plugin (where default hooks and tools are defined)
         core_plugin_folder = "cat/mad_hatter/core_plugin/"
 
         # plugin folder is "cat/plugins/" in production, "tests/mocks/mock_plugin_folder/" during tests
@@ -96,30 +93,34 @@ class Tweedledum(MadHatter):
             f"{self.__plugins_folder}*/"
         )
 
-        log.info("ACTIVE PLUGINS:")
-        log.info(self.active_plugins)
-
         # discover plugins, folder by folder
+        active_plugins = []
         for folder in all_plugin_folders:
             plugin_id = os.path.basename(os.path.normpath(folder))
             if plugin_id in self.__skip_folders:
                 continue
 
-            self.__load_plugin(folder)
-
-            if plugin_id not in self.active_plugins:
+            if not self.__load_plugin(folder):
+                log.error(f"Plugin {plugin_id} could not be loaded")
                 continue
 
             try:
                 self.plugins[plugin_id].activate(self.agent_key)
+                active_plugins.append(plugin_id)
             except Exception as e:
                 # Couldn't activate the plugin -> Deactivate it
                 self.deactivate_plugin(plugin_id)
                 raise e
 
+        crud_settings.upsert_setting_by_name(self.agent_key, Setting(name="active_plugins", value=active_plugins))
+        self.active_plugins = self.load_active_plugins_from_db()
+
+        log.info("ACTIVE PLUGINS:")
+        log.info(self.active_plugins)
+
         self._sync_hooks_tools_and_forms()
 
-    def __load_plugin(self, plugin_path: str):
+    def __load_plugin(self, plugin_path: str) -> bool:
         # Instantiate plugin.
         #   If the plugin is inactive, only manifest will be loaded
         #   If active, also settings, tools and hooks
@@ -127,10 +128,12 @@ class Tweedledum(MadHatter):
             plugin = Plugin(plugin_path)
             # if plugin is valid, keep a reference
             self.plugins[plugin.id] = plugin
+            return True
         except Exception as e:
             # Something happened while loading the plugin.
             # Print the error and go on with the others.
             log.error(str(e))
+            return False
 
     def on_plugin_activation(self, plugin_id: str):
         # Activate the plugin

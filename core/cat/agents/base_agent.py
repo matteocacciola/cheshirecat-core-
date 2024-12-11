@@ -1,5 +1,6 @@
 from typing import List
 from abc import ABC, abstractmethod
+from pydantic import Field
 
 from cat.utils import BaseModelDict
 
@@ -14,7 +15,7 @@ class AgentInput(BaseModelDict):
 
 class AgentOutput(BaseModelDict):
     output: str | None = None
-    intermediate_steps: List = []
+    intermediate_steps: List = Field(default_factory=list)
     return_direct: bool = False
     with_llm_error: bool = False
 

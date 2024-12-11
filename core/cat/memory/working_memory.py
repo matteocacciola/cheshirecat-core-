@@ -1,8 +1,8 @@
 from typing import List, Any
 from typing_extensions import deprecated
+from pydantic import Field
 
 from cat.agents import AgentInput
-from cat.convo.llm import LargeLanguageModelModality
 from cat.convo.messages import (
     Role,
     BaseMessage,
@@ -42,20 +42,20 @@ class WorkingMemory(BaseModelDict):
     user_id: str
 
     # stores conversation history
-    history: ConversationHistory | None = []
+    history: ConversationHistory | None = Field(default_factory=list)
     user_message: UserMessage | None = None
     active_form: CatForm | None = None
 
     # recalled memories attributes
     recall_query: str = ""
-    episodic_memories: List[DocumentRecall] = []
-    declarative_memories: List[DocumentRecall] = []
-    procedural_memories: List[DocumentRecall] = []
+    episodic_memories: List[DocumentRecall] = Field(default_factory=list)
+    declarative_memories: List[DocumentRecall] = Field(default_factory=list)
+    procedural_memories: List[DocumentRecall] = Field(default_factory=list)
 
     agent_input: AgentInput | None = None
 
     # track models usage
-    model_interactions: List[ModelInteraction] = []
+    model_interactions: List[ModelInteraction] = Field(default_factory=list)
 
     def __init__(self, **data: Any):
         super().__init__(**data)
@@ -130,12 +130,9 @@ class WorkingMemory(BaseModelDict):
         """
         Update the conversation history.
 
-        The methods append to the history key the last three conversation turns.
-
         Args
             who: Role, who said the message. Can either be Role.Human or Role.AI.
             content: BaseMessage, the message said.
-            why: MessageWhy, optional, the reason why the message was said. Default is None.
         """
 
         # we are sure that who is not change in the current call
@@ -198,7 +195,7 @@ class WorkingMemory(BaseModelDict):
 
         chat_history = self.history[-latest_n:]
 
-        return [convert_to_langchain_message(h, self.large_language_model_modality) for h in chat_history]
+        return [convert_to_langchain_message(h) for h in chat_history]
 
     @property
     def user_message_json(self) -> UserMessage | None:
@@ -215,7 +212,3 @@ class WorkingMemory(BaseModelDict):
             raise ValueError(f"Cheshire Cat not found for the StrayCat {self.__user.id}.")
 
         return ccat
-
-    @property
-    def large_language_model_modality(self) -> LargeLanguageModelModality:
-        return self.cheshire_cat.large_language_model_modality
