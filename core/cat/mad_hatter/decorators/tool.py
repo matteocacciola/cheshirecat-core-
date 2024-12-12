@@ -38,7 +38,7 @@ class CatTool:
     def __repr__(self) -> str:
         return f"CatTool(name={self.name}, return_direct={self.return_direct}, description={self.description})"
 
-    def run(self, input_by_llm: str, stray) -> str:
+    def run(self, input_by_llm: str, stray: "StrayCat") -> str:
         return self.func(input_by_llm, cat=stray)
 
     model_config = ConfigDict(extra = "allow")
