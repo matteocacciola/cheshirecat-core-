@@ -128,8 +128,7 @@ class HTTPAuth(ConnectionAuth):
         if current_stray:
             return current_stray
 
-        event_loop = connection.app.state.event_loop
-        stray_cat = StrayCat(user_data=user, main_loop=event_loop, agent_id=ccat.id)
+        stray_cat = StrayCat(user_data=user, agent_id=ccat.id)
         ccat.add_stray(stray_cat)
 
         return stray_cat
@@ -204,7 +203,7 @@ class WebSocketAuth(ConnectionAuth):
             return stray
 
         # Create a new stray and add it to the current cheshire cat
-        stray = StrayCat(user_data=user, main_loop=asyncio.get_running_loop(), agent_id=ccat.id, ws=connection)
+        stray = StrayCat(user_data=user, agent_id=ccat.id, ws=connection)
         ccat.add_stray(stray)
         return stray
 

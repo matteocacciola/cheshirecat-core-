@@ -1,5 +1,7 @@
 from typing import List, Any, Mapping, Dict
+import requests
 import httpx
+from pydantic import Field
 from langchain_core.callbacks import CallbackManagerForLLMRun, AsyncCallbackManagerForLLMRun
 from langchain_core.language_models.llms import LLM
 from langchain_openai.chat_models import ChatOpenAI
@@ -33,7 +35,7 @@ class LLMDefault(LLM):
 
 
 # elaborated from
-# https://python.langchain.com/en/latest/modules/models/llms/examples/custom_llm.html
+# https://python.langchain.com/docs/how_to/custom_llm/#implementation
 class LLMCustom(LLM):
     # endpoint where custom LLM service accepts requests
     url: str
@@ -42,11 +44,33 @@ class LLMCustom(LLM):
     auth_key: str = ""
 
     # optional dictionary containing custom configuration
-    options: Dict = {}
+    options: Dict = Field(default_factory=dict)
 
     @property
     def _llm_type(self) -> str:
         return "custom"
+
+    def _call(
+        self,
+        prompt: str,
+        stop: List[str] | None = None,
+        run_manager: Any | None = None,
+        **kwargs: Any,
+    ) -> str:
+        request_body = {
+            "text": prompt,
+            "auth_key": self.auth_key,
+            "options": self.options,
+        }
+
+        try:
+            response_json = requests.post(self.url, json=request_body).json()
+        except Exception as exc:
+            raise ValueError("Custom LLM endpoint error " "during http POST request") from exc
+
+        generated_text = response_json["text"]
+
+        return generated_text
 
     async def _acall(
         self,

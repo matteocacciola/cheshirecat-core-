@@ -8,7 +8,8 @@ from cat.convo.messages import (
     BaseMessage,
     CatMessage,
     UserMessage,
-    ModelInteraction,
+    LLMModelInteraction,
+    EmbedderModelInteraction,
     MessageWhy,
     ConversationHistoryItem,
     ConversationHistory,
@@ -55,7 +56,7 @@ class WorkingMemory(BaseModelDict):
     agent_input: AgentInput | None = None
 
     # track models usage
-    model_interactions: List[ModelInteraction] = Field(default_factory=list)
+    model_interactions: List[LLMModelInteraction | EmbedderModelInteraction] = Field(default_factory=list)
 
     def __init__(self, **data: Any):
         super().__init__(**data)

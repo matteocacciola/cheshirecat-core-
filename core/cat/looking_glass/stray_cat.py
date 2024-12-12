@@ -1,8 +1,6 @@
 import time
 import asyncio
 import traceback
-from asyncio import AbstractEventLoop
-
 import tiktoken
 from typing import Literal, List, Dict, Any, get_args
 from langchain.docstore.document import Document
@@ -45,7 +43,7 @@ class RecallSettings(utils.BaseModelDict):
 class StrayCat:
     """User/session based object containing working memory and a few utility pointers"""
 
-    def __init__(self, agent_id: str, main_loop: AbstractEventLoop, user_data: AuthUserInfo, ws: WebSocket = None):
+    def __init__(self, agent_id: str, user_data: AuthUserInfo, ws: WebSocket = None):
         self.__agent_id = agent_id
 
         self.__user = user_data
@@ -54,9 +52,7 @@ class StrayCat:
         # attribute to store ws connection
         self.__ws = ws
 
-        self.__main_loop = main_loop
-
-        self.__loop = asyncio.new_event_loop()
+        self.__main_loop = self.__get_main_loop()
         self.__last_message_time = time.time()
 
     def __eq__(self, other: "StrayCat") -> bool:
@@ -70,6 +66,12 @@ class StrayCat:
 
     def __repr__(self):
         return f"StrayCat(user_id={self.__user.id}, agent_id={self.__agent_id})"
+
+    def __get_main_loop(self) -> asyncio.AbstractEventLoop:
+        try:
+            return asyncio.get_running_loop()
+        except RuntimeError:
+            return asyncio.get_event_loop()
 
     def _send_ws_json(self, data: Any):
         # Run the coroutine in the main event loop in the main thread
@@ -119,8 +121,8 @@ class StrayCat:
             self._send_ws_json(
                 {"type": msg_type, "name": "GenericError", "description": str(content)}
             )
-        else:
-            self._send_ws_json({"type": msg_type, "content": content})
+            return
+        self._send_ws_json({"type": msg_type, "content": content})
 
     def send_chat_message(self, message: str | CatMessage, save=False):
         """
@@ -339,7 +341,7 @@ class StrayCat:
 
         return self.cheshire_cat.llm(prompt, caller=caller, config=RunnableConfig(callbacks=callbacks))
 
-    async def __call__(self, user_message: UserMessage) -> CatMessage:
+    def __call__(self, user_message: UserMessage) -> CatMessage:
         """
         Call the Cat instance.
         This method is called on the user's message received from the client.
@@ -392,7 +394,7 @@ class StrayCat:
 
             raise VectorMemoryError("An error occurred while recalling relevant memories.")
 
-        agent_output = await self._build_agent_output()
+        agent_output = self._build_agent_output()
         log.info(f"Agent id: {self.__agent_id}. Agent output returned to stray:")
         log.info(agent_output)
 
@@ -400,7 +402,7 @@ class StrayCat:
 
     def run_http(self, user_message: UserMessage) -> CatMessage:
         try:
-            return self.loop.run_until_complete(self.__call__(user_message))
+            return self.__call__(user_message)
         except Exception as e:
             # Log any unexpected errors
             log.error(f"Agent id: {self.__agent_id}. Error {e}")
@@ -409,7 +411,7 @@ class StrayCat:
 
     def run_websocket(self, user_message: UserMessage) -> None:
         try:
-            cat_message = self.loop.run_until_complete(self.__call__(user_message))
+            cat_message = self.__call__(user_message)
             # send message back to client via WS
             self.send_chat_message(cat_message)
         except Exception as e:
@@ -500,10 +502,10 @@ Allowed classes are:
         """Reset the connection to the API service."""
         self.__ws = connection
 
-    async def _build_agent_output(self) -> AgentOutput:
+    def _build_agent_output(self) -> AgentOutput:
         # reply with agent
         try:
-            agent_output: AgentOutput = await self.main_agent.execute(self)
+            agent_output: AgentOutput = self.main_agent.execute(self)
             if agent_output.output == utils.default_llm_answer_prompt():
                 agent_output.with_llm_error = True
         except Exception as e:
@@ -565,8 +567,6 @@ Allowed classes are:
 
     async def shutdown(self):
         await self.close_connection()
-        self.__loop.stop()
-        self.__loop.close()
 
     @property
     def user(self) -> AuthUserInfo:
@@ -623,10 +623,6 @@ Allowed classes are:
     @property
     def white_rabbit(self) -> WhiteRabbit:
         return self.lizard.white_rabbit
-
-    @property
-    def loop(self):
-        return self.__loop
 
     @property
     def is_idle(self) -> bool:

@@ -9,7 +9,7 @@ from cat import utils
 
 
 class MemoryAgent(BaseAgent):
-    async def execute(self, stray, *args, **kwargs) -> AgentOutput:
+    def execute(self, stray, *args, **kwargs) -> AgentOutput:
         prompt_prefix = kwargs.get("prompt_prefix", "")
         prompt_suffix = kwargs.get("prompt_suffix", "")
 

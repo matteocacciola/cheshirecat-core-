@@ -1,5 +1,4 @@
 import os
-import pytest
 import time
 import jwt
 
@@ -31,8 +30,7 @@ def test_refuse_issue_jwt(client):
     assert json["detail"]["error"] == "Invalid Credentials"
 
 
-@pytest.mark.asyncio  # to test async functions
-async def test_issue_jwt(client, cheshire_cat):
+def test_issue_jwt(client, cheshire_cat):
     creds = {"username": "user", "password": "user"}
 
     res = client.post("/auth/token", json=creds, headers={"agent_id": agent_id})
@@ -66,8 +64,7 @@ async def test_issue_jwt(client, cheshire_cat):
         assert False
 
 
-@pytest.mark.asyncio
-async def test_issue_jwt_for_new_user(client, secure_client, secure_client_headers):
+def test_issue_jwt_for_new_user(client, secure_client, secure_client_headers):
     # create new user
     creds = {"username": "Alice", "password": "Alice"}
 

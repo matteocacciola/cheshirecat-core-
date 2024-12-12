@@ -1,4 +1,3 @@
-import pytest
 import time
 import jwt
 
@@ -29,8 +28,7 @@ def test_refuse_issue_jwt(client):
     assert json["detail"]["error"] == "Invalid Credentials"
 
 
-@pytest.mark.asyncio  # to test async functions
-async def test_issue_jwt(client, lizard):
+def test_issue_jwt(client, lizard):
     creds = {
         "username": "admin",
         "password": get_env("CCAT_ADMIN_DEFAULT_PASSWORD"),
@@ -69,8 +67,7 @@ async def test_issue_jwt(client, lizard):
         assert False
 
 
-@pytest.mark.asyncio
-async def test_issue_jwt_for_new_admin(client, secure_client, secure_client_headers):
+def test_issue_jwt_for_new_admin(client, secure_client, secure_client_headers):
     # create new user
     creds = {"username": "Alice", "password": "Alice"}
 

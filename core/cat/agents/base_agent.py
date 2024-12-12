@@ -22,7 +22,7 @@ class AgentOutput(BaseModelDict):
 
 class BaseAgent(ABC):
     @abstractmethod
-    async def execute(self, stray, *args, **kwargs) -> AgentOutput:
+    def execute(self, stray, *args, **kwargs) -> AgentOutput:
         """
         Execute the agents.
 

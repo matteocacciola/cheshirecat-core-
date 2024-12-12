@@ -278,7 +278,6 @@ def memory(client, cheshire_cat):
 def stray_no_memory(client, cheshire_cat, lizard) -> StrayCat:
     stray_cat = StrayCat(
         user_data=AuthUserInfo(id="user_alice", name="Alice", permissions=get_base_permissions()),
-        main_loop=asyncio.new_event_loop(),
         agent_id=cheshire_cat.id
     )
 

@@ -1,13 +1,12 @@
 import inspect
 from typing import Callable, List
-from langchain_core.tools import BaseTool
 from pydantic import ConfigDict
 
 
 # All @tool decorated functions in plugins become a CatTool.
 # The difference between base langchain Tool and CatTool is that CatTool has an instance of the cat as attribute
 # (set by the plugin manager)
-class CatTool(BaseTool):
+class CatTool:
     def __init__(
         self,
         name: str,
@@ -18,11 +17,6 @@ class CatTool(BaseTool):
         examples = examples or []
 
         description = func.__doc__.strip()
-
-        # call parent constructor
-        super().__init__(
-            name=name, func=func, description=description, return_direct=return_direct
-        )
 
         self.func = func
         self.procedure_type = "tool"
@@ -44,20 +38,8 @@ class CatTool(BaseTool):
     def __repr__(self) -> str:
         return f"CatTool(name={self.name}, return_direct={self.return_direct}, description={self.description})"
 
-    # we run tools always async, even if they are not defined so in a plugin
-    def _run(self, input_by_llm: str) -> str:
-        pass # do nothing
-    
-    # we run tools always async, even if they are not defined so in a plugin
-    async def _arun(self, input_by_llm, stray):
-        # await if the tool is async
-        if inspect.iscoroutinefunction(self.func):
-            return await self.func(input_by_llm, cat=stray)
-
-        # run in executor if the tool is not async
-        return await stray.loop.run_in_executor(
-            None, self.func, input_by_llm, stray
-        )
+    def run(self, input_by_llm: str, stray) -> str:
+        return self.func(input_by_llm, cat=stray)
 
     model_config = ConfigDict(extra = "allow")
 

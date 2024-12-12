@@ -18,7 +18,7 @@ def test_job_on_idle_strays(lizard):
     ccat = lizard.get_or_create_cheshire_cat("agent_test_1")
 
     user = AuthUserInfo(id="user_queen", name="Queen", permissions=get_base_permissions())
-    stray = StrayCat(user_data=user, main_loop=loop, agent_id=ccat.id)
+    stray = StrayCat(user_data=user, agent_id=ccat.id)
     ccat.add_stray(stray)
 
     # Run the job asynchronously

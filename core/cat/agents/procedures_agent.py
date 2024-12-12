@@ -21,9 +21,9 @@ class ProceduresAgent(BaseAgent):
     form_agent = FormAgent()
     allowed_procedures: Dict[str, CatTool | CatForm] = {}
 
-    async def execute(self, stray, *args, **kwargs) -> AgentOutput:
+    def execute(self, stray, *args, **kwargs) -> AgentOutput:
         # Run active form if present
-        form_output: AgentOutput = await self.form_agent.execute(stray)
+        form_output: AgentOutput = self.form_agent.execute(stray)
         if form_output.return_direct:
             return form_output
         
@@ -33,7 +33,7 @@ class ProceduresAgent(BaseAgent):
             log.debug(f"Procedural memories retrieved: {len(procedural_memories)}.")
 
             try:
-                procedures_result = await self.execute_procedures(stray)
+                procedures_result = self.execute_procedures(stray)
                 if procedures_result.return_direct:
                     # exit agent if a return_direct procedure was executed
                     return procedures_result
@@ -54,7 +54,7 @@ class ProceduresAgent(BaseAgent):
 
         return AgentOutput()
 
-    async def execute_procedures(self, stray) -> AgentOutput:
+    def execute_procedures(self, stray) -> AgentOutput:
         """
         Execute procedures.
         Args:
@@ -86,12 +86,12 @@ class ProceduresAgent(BaseAgent):
         allowed_procedures = {p.name: p for p in plugin_manager.procedures if p.name in recalled_procedures_names}
 
         # Execute chain and obtain a choice of procedure from the LLM
-        llm_action = await self.execute_chain(stray, procedures_prompt_template, allowed_procedures)
+        llm_action = self.execute_chain(stray, procedures_prompt_template, allowed_procedures)
 
         # route execution to sub-agents
-        return await self.execute_subagents(stray, llm_action, allowed_procedures)
+        return self.execute_subagents(stray, llm_action, allowed_procedures)
 
-    async def execute_chain(
+    def execute_chain(
         self, stray, procedures_prompt_template: Any, allowed_procedures: Dict[str, CatTool | CatForm]
     ) -> LLMAction:
         """
@@ -146,7 +146,7 @@ class ProceduresAgent(BaseAgent):
 
         return llm_action
     
-    async def execute_subagents(
+    def execute_subagents(
         self, stray, llm_action: LLMAction, allowed_procedures: Dict[str, CatTool | CatForm]
     ) -> AgentOutput:
         """
@@ -169,7 +169,7 @@ class ProceduresAgent(BaseAgent):
         try:
             if Plugin.is_cat_tool(chosen_procedure):
                 # execute tool
-                tool_output = await chosen_procedure._arun(llm_action.action_input, stray=stray)
+                tool_output = chosen_procedure.run(llm_action.action_input, stray=stray)
                 return AgentOutput(
                     output=tool_output,
                     return_direct=chosen_procedure.return_direct,
@@ -183,7 +183,7 @@ class ProceduresAgent(BaseAgent):
                 # store active form in working memory
                 stray.working_memory.active_form = form_instance
                 # execute form
-                return await self.form_agent.execute(stray)
+                return self.form_agent.execute(stray)
         except Exception as e:
             log.error(f"Error executing {chosen_procedure.procedure_type} `{chosen_procedure.name}`")
             log.error(e)

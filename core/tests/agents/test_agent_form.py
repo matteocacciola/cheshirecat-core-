@@ -1,6 +1,2 @@
-import pytest
-
-
-@pytest.mark.asyncio(scope="function")
-async def test_execute_form_agent(stray):
+def test_execute_form_agent(stray):
     assert True  # TODO: this is going to be a mess

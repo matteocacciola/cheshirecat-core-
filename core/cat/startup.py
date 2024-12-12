@@ -1,4 +1,3 @@
-import asyncio
 from contextlib import asynccontextmanager
 from scalar_fastapi import get_scalar_api_reference
 from fastapi import FastAPI
@@ -49,9 +48,6 @@ async def lifespan(app: FastAPI):
 
     # load the Manager
     app.state.lizard = BillTheLizard()
-
-    # set a reference to asyncio event loop
-    app.state.event_loop = asyncio.get_running_loop()
 
     # startup message with admin, public and swagger addresses
     log.welcome()

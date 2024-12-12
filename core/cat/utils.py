@@ -330,7 +330,7 @@ def langchain_log_output(langchain_output, title):
 
 
 async def load_uploaded_file(file: UploadFile, allowed_mime_types: List[str]) -> str:
-    content_type = mimetypes.guess_type(file.filename)[0]
+    content_type, _ = mimetypes.guess_type(file.filename)
     if content_type not in allowed_mime_types:
         raise CustomValidationException(
             f'MIME type `{file.content_type}` not supported. Admitted types: {", ".join(allowed_mime_types)}'
