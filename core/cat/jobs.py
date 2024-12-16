@@ -1,20 +1,24 @@
 import asyncio
 
+from cat.looking_glass.bill_the_lizard import BillTheLizard
 
-def job_on_idle_strays(lizard: "BillTheLizard", loop) -> bool:
+
+def job_on_idle_strays() -> bool:
     """
     Remove the objects StrayCat, if idle, from the CheshireCat objects contained into the BillTheLizard.
     """
 
-    ccats = list(lizard.cheshire_cats.values())  # Create a list from the values
+    lizard = BillTheLizard()  # Get the BillTheLizard
 
-    for ccat in ccats:
-        for stray in list(ccat.strays):  # Create a copy of strays to iterate over
+    cats = list(lizard.cheshire_cats.values())  # Create a list from the values
+
+    for cat in cats:
+        for stray in list(cat.strays):  # Create a copy of strays to iterate over
             if stray.is_idle:
-                asyncio.run_coroutine_threadsafe(ccat.remove_stray(stray.user.id), loop=loop).result()
+                asyncio.run(cat.remove_stray(stray.user.id))
 
         # Check if the CheshireCat has still strays; if not, remove it
-        if not ccat.has_strays():
-            asyncio.run_coroutine_threadsafe(lizard.remove_cheshire_cat(ccat.id), loop=loop).result()
+        if not cat.has_strays():
+            asyncio.run(lizard.remove_cheshire_cat(cat.id))
 
     return True

@@ -1,5 +1,4 @@
-import asyncio
-from typing import Dict, List
+from typing import Dict
 from uuid import uuid4
 from langchain_core.embeddings import Embeddings
 
@@ -17,10 +16,8 @@ from cat.factory.custom_auth_handler import CoreAuthHandler
 from cat.factory.custom_file_manager import BaseFileManager
 from cat.factory.embedder import EmbedderFactory
 from cat.factory.file_manager import FileManagerFactory
-from cat.jobs import job_on_idle_strays
 from cat.log import log
 from cat.looking_glass.cheshire_cat import CheshireCat
-from cat.looking_glass.white_rabbit import WhiteRabbit
 from cat.mad_hatter.mad_hatter import MadHatter
 from cat.mad_hatter.tweedledum import Tweedledum
 from cat.memory.vector_memory_collection import VectorEmbedderSize
@@ -62,12 +59,6 @@ class BillTheLizard:
         self.embedder_size: VectorEmbedderSize | None = None
 
         self.file_manager: BaseFileManager | None = None
-
-        # Start scheduling system
-        self.white_rabbit = WhiteRabbit()
-        self.__check_idle_strays_job_id = self.white_rabbit.schedule_cron_job(
-            lambda: job_on_idle_strays(self, asyncio.new_event_loop()), second=int(get_env("CCAT_STRAYCAT_TIMEOUT"))
-        )
 
         self.plugin_manager = Tweedledum()
 
@@ -316,10 +307,6 @@ class BillTheLizard:
             await ccat.shutdown()
         self.__cheshire_cats = {}
 
-        self.white_rabbit.remove_job(self.__check_idle_strays_job_id)
-        self.white_rabbit.shutdown()
-
-        self.white_rabbit = None
         self.core_auth_handler = None
         self.plugin_manager = None
         self.rabbit_hole = None
@@ -340,10 +327,6 @@ class BillTheLizard:
     @property
     def has_cheshire_cats(self):
         return bool(self.__cheshire_cats)
-
-    @property
-    def job_ids(self) -> List:
-        return [self.__check_idle_strays_job_id]
 
     @property
     def mad_hatter(self) -> MadHatter:

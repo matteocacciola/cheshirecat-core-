@@ -22,7 +22,7 @@ def test_job_on_idle_strays(lizard):
     ccat.add_stray(stray)
 
     # Run the job asynchronously
-    loop.run_until_complete(async_run(loop, job_on_idle_strays, lizard, loop))
+    job_on_idle_strays()
 
     assert ccat.get_stray(stray.user.id) is None
     assert ccat.has_strays() is False

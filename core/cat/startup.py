@@ -15,8 +15,10 @@ from cat.exceptions import (
     CustomNotFoundException,
     CustomForbiddenException
 )
+from cat.jobs import job_on_idle_strays
 from cat.log import log
 from cat.looking_glass.bill_the_lizard import BillTheLizard
+from cat.looking_glass.white_rabbit import WhiteRabbit
 from cat.routes import (
     admins_router as admins,
     auth,
@@ -46,8 +48,11 @@ async def lifespan(app: FastAPI):
     # - Not using "Depends" because it only supports callables (not instances)
     # - Starlette allows this: https://www.starlette.io/applications/#storing-state-on-the-app-instance
 
-    # load the Manager
+    # load the Manager and the Job Handler
     app.state.lizard = BillTheLizard()
+    white_rabbit = WhiteRabbit()
+
+    white_rabbit.schedule_cron_job(job_on_idle_strays, second=int(get_env("CCAT_STRAYCAT_TIMEOUT")))
 
     # startup message with admin, public and swagger addresses
     log.welcome()
@@ -55,6 +60,7 @@ async def lifespan(app: FastAPI):
     yield
 
     # shutdown Manager
+    white_rabbit.shutdown()
     await app.state.lizard.shutdown()
 
     get_db().close()

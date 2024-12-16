@@ -18,6 +18,7 @@ from cat.db.vector_database import VectorDatabase, LOCAL_FOLDER_PATH
 from cat.env import get_env
 from cat.looking_glass.bill_the_lizard import BillTheLizard
 from cat.looking_glass.stray_cat import StrayCat
+from cat.looking_glass.white_rabbit import WhiteRabbit
 from cat.mad_hatter.plugin import Plugin
 from cat.startup import cheshire_cat_api
 import cat.utils as utils
@@ -148,6 +149,11 @@ def encapsulate_each_test(request, monkeypatch):
 @pytest.fixture(scope="function")
 def lizard():
     yield BillTheLizard()
+
+
+@pytest.fixture(scope="function")
+def white_rabbit():
+    yield WhiteRabbit()
 
 
 # Main fixture for the FastAPI app

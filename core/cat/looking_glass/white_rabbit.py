@@ -54,6 +54,8 @@ class WhiteRabbit:
             self._job_ended_listener, EVENT_JOB_EXECUTED | EVENT_JOB_ERROR
         )
 
+        self.jobs: List[str] = []
+
         log.info("WhiteRabbit: Starting scheduler")
 
         # Start the scheduler
@@ -83,6 +85,9 @@ class WhiteRabbit:
             )
 
     def shutdown(self):
+        for job_id in self.jobs.copy():
+            self.remove_job(job_id)
+
         if self._is_running:
             log.info("WhiteRabbit: Scheduler stopped")
             self.scheduler.shutdown(wait=False)
@@ -172,6 +177,7 @@ class WhiteRabbit:
         """
         try:
             self.scheduler.remove_job(job_id)
+            self.jobs.remove(job_id)
             log.info(f"WhiteRabbit: Removed job {job_id}")
             return True
         except Exception as e:
@@ -238,6 +244,7 @@ class WhiteRabbit:
 
         # Schedule the job
         self.scheduler.add_job(job, "date", id=job_id, run_date=schedule, kwargs=kwargs)
+        self.jobs.append(job_id)
 
         return job_id
 
@@ -303,6 +310,7 @@ class WhiteRabbit:
             seconds=seconds,
             kwargs=kwargs,
         )
+        self.jobs.append(job_id)
 
         return job_id
 
@@ -384,6 +392,7 @@ class WhiteRabbit:
             second=second,
             kwargs=kwargs,
         )
+        self.jobs.append(job_id)
 
         return job_id
 
@@ -445,5 +454,6 @@ class WhiteRabbit:
             run_date=schedule,
             kwargs={"content": content, "msg_type": "chat"},
         )
+        self.jobs.append(job_id)
 
         return job_id

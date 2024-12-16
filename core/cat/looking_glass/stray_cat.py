@@ -622,7 +622,7 @@ Allowed classes are:
 
     @property
     def white_rabbit(self) -> WhiteRabbit:
-        return self.lizard.white_rabbit
+        return WhiteRabbit()
 
     @property
     def is_idle(self) -> bool:
