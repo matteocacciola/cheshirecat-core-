@@ -13,7 +13,7 @@ router = APIRouter()
 
 
 @router.get("/settings", response_model=GetSettingsResponse)
-def get_auth_handler_settings(
+async def get_auth_handler_settings(
     cats: ContextualCats = Depends(HTTPAuth(AuthResource.AUTH_HANDLER, AuthPermission.LIST))
 ) -> GetSettingsResponse:
     """Get the list of the AuthHandlers"""
@@ -39,7 +39,7 @@ def get_auth_handler_settings(
 
 
 @router.get("/settings/{auth_handler_name}", response_model=GetSettingResponse)
-def get_auth_handler_setting(
+async def get_auth_handler_setting(
     auth_handler_name: str,
     cats: ContextualCats = Depends(HTTPAuth(AuthResource.AUTH_HANDLER, AuthPermission.LIST))
 ) -> GetSettingResponse:
@@ -60,7 +60,7 @@ def get_auth_handler_setting(
 
 
 @router.put("/settings/{auth_handler_name}", response_model=UpsertSettingResponse)
-def upsert_authenticator_setting(
+async def upsert_authenticator_setting(
     auth_handler_name: str,
     cats: ContextualCats = Depends(HTTPAuth(AuthResource.AUTH_HANDLER, AuthPermission.LIST)),
     payload: Dict = Body(...),

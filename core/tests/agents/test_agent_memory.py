@@ -1,7 +1,7 @@
 import time
 from langchain.docstore.document import Document
 
-from cat.memory.vector_memory_collection import DocumentRecall
+from cat.memory.utils import DocumentRecall
 
 
 def test_format_agent_input_on_empty_memory(stray):

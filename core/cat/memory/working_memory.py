@@ -20,7 +20,7 @@ from cat.db.cruds import history as crud_history
 from cat.experimental.form.cat_form import CatForm
 from cat.looking_glass.bill_the_lizard import BillTheLizard
 from cat.looking_glass.cheshire_cat import CheshireCat
-from cat.memory.vector_memory_collection import DocumentRecall
+from cat.memory.utils import DocumentRecall
 from cat.utils import BaseModelDict
 
 

@@ -11,7 +11,7 @@ from cat.db.database import get_db
 from cat.db.vector_database import get_vector_db
 from cat.env import get_env
 from cat.memory.long_term_memory import LongTermMemory
-from cat.memory.vector_memory_collection import VectorMemoryCollectionTypes
+from cat.memory.utils import VectorMemoryCollectionTypes
 
 from tests.utils import create_new_user, get_client_admin_headers, new_user_password
 

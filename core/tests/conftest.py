@@ -20,6 +20,7 @@ from cat.looking_glass.bill_the_lizard import BillTheLizard
 from cat.looking_glass.stray_cat import StrayCat
 from cat.looking_glass.white_rabbit import WhiteRabbit
 from cat.mad_hatter.plugin import Plugin
+from cat.memory.vector_memory_builder import VectorMemoryBuilder
 from cat.startup import cheshire_cat_api
 import cat.utils as utils
 
@@ -128,6 +129,9 @@ def encapsulate_each_test(request, monkeypatch):
 
     # delete all singletons!!!
     utils.singleton.instances = {}
+
+    memory_builder = VectorMemoryBuilder()
+    memory_builder.build()
 
     yield
 

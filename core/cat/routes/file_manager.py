@@ -15,7 +15,7 @@ router = APIRouter()
 
 # get configured Plugin File Managers and configuration schemas
 @router.get("/settings", response_model=GetSettingsResponse)
-def get_file_managers_settings(
+async def get_file_managers_settings(
     lizard: BillTheLizard = Depends(AdminConnectionAuth(AdminAuthResource.FILE_MANAGER, AuthPermission.LIST)),
 ) -> GetSettingsResponse:
     """Get the list of the Plugin File Managers and their settings"""
@@ -39,7 +39,7 @@ def get_file_managers_settings(
 
 
 @router.get("/settings/{file_manager_name}", response_model=GetSettingResponse)
-def get_file_manager_settings(
+async def get_file_manager_settings(
     file_manager_name: str,
     lizard: BillTheLizard = Depends(AdminConnectionAuth(AdminAuthResource.FILE_MANAGER, AuthPermission.READ)),
 ) -> GetSettingResponse:
@@ -62,7 +62,7 @@ def get_file_manager_settings(
 
 
 @router.put("/settings/{file_manager_name}", response_model=UpsertSettingResponse)
-def upsert_file_manager_setting(
+async def upsert_file_manager_setting(
     file_manager_name: str,
     payload: Dict = Body(...),
     lizard: BillTheLizard = Depends(AdminConnectionAuth(AdminAuthResource.FILE_MANAGER, AuthPermission.EDIT)),

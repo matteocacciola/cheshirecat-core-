@@ -19,6 +19,7 @@ from cat.jobs import job_on_idle_strays
 from cat.log import log
 from cat.looking_glass.bill_the_lizard import BillTheLizard
 from cat.looking_glass.white_rabbit import WhiteRabbit
+from cat.memory.vector_memory_builder import VectorMemoryBuilder
 from cat.routes import (
     admins_router as admins,
     auth,
@@ -53,6 +54,9 @@ async def lifespan(app: FastAPI):
     white_rabbit = WhiteRabbit()
 
     white_rabbit.schedule_cron_job(job_on_idle_strays, second=int(get_env("CCAT_STRAYCAT_TIMEOUT")))
+
+    memory_builder = VectorMemoryBuilder()
+    memory_builder.build()
 
     # startup message with admin, public and swagger addresses
     log.welcome()

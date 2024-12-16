@@ -20,7 +20,7 @@ from cat.log import log
 from cat.looking_glass.cheshire_cat import CheshireCat
 from cat.mad_hatter.mad_hatter import MadHatter
 from cat.mad_hatter.tweedledum import Tweedledum
-from cat.memory.vector_memory_collection import VectorEmbedderSize
+from cat.memory.utils import VectorEmbedderSize
 from cat.rabbit_hole import RabbitHole
 from cat.utils import singleton, get_embedder_name
 
@@ -150,7 +150,7 @@ class BillTheLizard:
 
         self.file_manager = factory.get_from_config_name(self.__key, selected_config["value"]["name"])
 
-    def replace_embedder(self, language_embedder_name: str, settings: Dict) -> ReplacedNLPConfig:
+    async def replace_embedder(self, language_embedder_name: str, settings: Dict) -> ReplacedNLPConfig:
         """
         Replace the current embedder with a new one. This method is used to change the embedder of the lizard.
 
@@ -168,20 +168,19 @@ class BillTheLizard:
         # reload the embedder of the lizard
         self.load_language_embedder()
 
-        for ccat in self.__cheshire_cats.values():
-            try:
-                # create new collections (different embedder!)
-                ccat.load_memory()
-            except Exception as e:  # restore the original Embedder
-                log.error(e)
+        try:
+            # create new collections (different embedder!)
+            await self.memory_builder.rebuild()
+        except Exception as e:  # restore the original Embedder
+            log.error(e)
 
-                # something went wrong: rollback
-                adapter.rollback_factory_config(self.__key)
+            # something went wrong: rollback
+            adapter.rollback_factory_config(self.__key)
 
-                if updater.old_setting is not None:
-                    self.replace_embedder(updater.old_setting["value"]["name"], updater.old_factory["value"])
+            if updater.old_setting is not None:
+                await self.replace_embedder(updater.old_setting["value"]["name"], updater.old_factory["value"])
 
-                raise LoadMemoryException(f"Load memory exception: {utils.explicit_error_message(e)}")
+            raise LoadMemoryException(f"Load memory exception: {utils.explicit_error_message(e)}")
 
         # recreate tools embeddings
         self.plugin_manager.find_plugins()
@@ -331,3 +330,8 @@ class BillTheLizard:
     @property
     def mad_hatter(self) -> MadHatter:
         return self.plugin_manager
+
+    @property
+    def memory_builder(self) -> "VectorMemoryBuilder":
+        from cat.memory.vector_memory_builder import VectorMemoryBuilder
+        return VectorMemoryBuilder()

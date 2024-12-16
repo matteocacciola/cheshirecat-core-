@@ -1,5 +1,4 @@
 from cat.memory.vector_memory import VectorMemory
-from cat.memory.vector_memory_collection import VectorMemoryConfig
 
 
 # This class represents the Cat long term memory (content the cat saves on disk).
@@ -15,9 +14,9 @@ class LongTermMemory:
         Vector Memory collection.
     """
 
-    def __init__(self, agent_id: str, vector_memory_config: VectorMemoryConfig):
+    def __init__(self, agent_id: str):
         # Vector based memory (will store embeddings and their metadata)
-        self.vectors = VectorMemory(agent_id, vector_memory_config)
+        self.vectors = VectorMemory(agent_id)
 
     def destroy(self) -> None:
         """Wipe all data from the long term memory."""

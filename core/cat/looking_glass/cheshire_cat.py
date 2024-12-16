@@ -29,7 +29,7 @@ from cat.log import log
 from cat.mad_hatter.mad_hatter import MadHatter
 from cat.mad_hatter.tweedledee import Tweedledee
 from cat.memory.long_term_memory import LongTermMemory
-from cat.memory.vector_memory_collection import VectorMemoryConfig
+from cat.memory.utils import VectorMemoryCollectionTypes
 from cat.utils import langchain_log_prompt, langchain_log_output, get_caller_info
 
 
@@ -199,12 +199,8 @@ class CheshireCat:
     def load_memory(self):
         """Load LongTerMemory (which loads WorkingMemory)."""
 
-        vector_memory_config = VectorMemoryConfig(
-            embedder_name=self.lizard.embedder_name, embedder_size=self.lizard.embedder_size
-        )
-
         # instantiate long term memory
-        self.memory = LongTermMemory(vector_memory_config=vector_memory_config, agent_id=self.id)
+        self.memory = LongTermMemory(agent_id=self.id)
 
     def embed_procedures(self):
         def get_key_embedded_procedures_hashes(ep):

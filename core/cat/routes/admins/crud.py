@@ -14,7 +14,7 @@ router = APIRouter()
 
 class AdminBase(BaseModel):
     username: str = Field(min_length=2)
-    permissions: Dict[str, List[str]] = get_full_admin_permissions()
+    permissions: Dict[str, List[str]] = Field(default_factory=get_full_admin_permissions)
 
     @field_validator("permissions")
     def validate_permissions(cls, v):
@@ -54,7 +54,7 @@ class AdminResponse(AdminBase):
 
 
 @router.post("/", response_model=AdminResponse)
-def create_admin(
+async def create_admin(
     new_user: AdminCreate,
     lizard: BillTheLizard = Depends(AdminConnectionAuth(AdminAuthResource.ADMINS, AuthPermission.WRITE)),
 ):
@@ -66,7 +66,7 @@ def create_admin(
 
 
 @router.get("/", response_model=List[AdminResponse])
-def read_admins(
+async def read_admins(
     skip: int = Query(default=0, description="How many admins to skip."),
     limit: int = Query(default=100, description="How many admins to return."),
     lizard: BillTheLizard = Depends(AdminConnectionAuth(AdminAuthResource.ADMINS, AuthPermission.LIST)),
@@ -78,7 +78,7 @@ def read_admins(
 
 
 @router.get("/{user_id}", response_model=AdminResponse)
-def read_admin(
+async def read_admin(
     user_id: str,
     lizard: BillTheLizard = Depends(AdminConnectionAuth(AdminAuthResource.ADMINS, AuthPermission.READ)),
 ):
@@ -90,7 +90,7 @@ def read_admin(
 
 
 @router.put("/{user_id}", response_model=AdminResponse)
-def update_admin(
+async def update_admin(
     user_id: str,
     user: AdminUpdate,
     lizard: BillTheLizard = Depends(AdminConnectionAuth(AdminAuthResource.ADMINS, AuthPermission.EDIT)),
@@ -108,7 +108,7 @@ def update_admin(
 
 
 @router.delete("/{user_id}", response_model=AdminResponse)
-def delete_admin(
+async def delete_admin(
     user_id: str,
     lizard: BillTheLizard = Depends(AdminConnectionAuth(AdminAuthResource.ADMINS, AuthPermission.DELETE)),
 ):
