@@ -25,8 +25,6 @@ from cat.utils import singleton
 @singleton
 class VectorMemoryBuilder:
     def __init__(self):
-        self.__snapshot_info = None
-
         # connects to Qdrant and creates self.__client attribute
         self.__client: Final = get_vector_db()
 
@@ -157,7 +155,7 @@ class VectorMemoryBuilder:
             + "/collections/"
             + collection_name
             + "/snapshots/"
-            + self.__snapshot_info.name
+            + snapshot_info.name
         )
         snapshot_url_out = os.path.join(folder, snapshot_info.name)
         # rename snapshots for an easier restore in the future
