@@ -29,7 +29,6 @@ from cat.log import log
 from cat.mad_hatter.mad_hatter import MadHatter
 from cat.mad_hatter.tweedledee import Tweedledee
 from cat.memory.long_term_memory import LongTermMemory
-from cat.memory.utils import VectorMemoryCollectionTypes
 from cat.utils import langchain_log_prompt, langchain_log_output, get_caller_info
 
 
