@@ -21,8 +21,8 @@ class GetConversationHistoryResponse(BaseModel):
 class PostConversationHistoryPayload(BaseModel):
     who: str
     text: str
-    images: List[str] | None = None
-    audio: List[str] | None = None
+    image: str | None = None
+    audio: str | None = None
     why: MessageWhy | None = None
 
 

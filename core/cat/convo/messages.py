@@ -99,13 +99,15 @@ class BaseMessage(BaseModelDict, ABC):
 
     Variables:
         text (str): cat message
-        images (List[str]): images or None, the eventual images in the message
-        audio (List[str]): audio or None, the eventual audio in the message
+        image: (Optional[str], default=None): image file URL or base64 data URI that represent image associated with
+            the message.
+        audio: (Optional[str], default=None): audio file URL or base64 data URI that represent audio associated with
+            the message.
     """
 
     text: str
-    images: List[str] | None = None
-    audio: List[str] | None = None
+    image: str | None = None
+    audio: str | None = None
 
 
 class CatMessage(BaseMessage):
@@ -114,8 +116,10 @@ class CatMessage(BaseMessage):
 
     Variables:
         text (str): cat message
-        images (List[str]): images or None, the eventual images in the message
-        audio (List[str]): audio or None, the eventual audio in the message
+        image: (Optional[str], default=None): image file URL or base64 data URI that represent image associated with
+            the message
+        audio: (Optional[str], default=None): audio file URL or base64 data URI that represent audio associated with
+            the message
         why (MessageWhy): why the agent replied with the message
     """
 
@@ -157,8 +161,10 @@ class UserMessage(BaseMessage):
 
     Variables:
         text (str): user message
-        images (List[str]): images or None, the eventual images in the message
-        audio (List[str]): audio or None, the eventual audio in the message
+        image: (Optional[str], default=None): image file URL or base64 data URI that represent image associated with
+            the message.
+        audio: (Optional[str], default=None): audio file URL or base64 data URI that represent audio associated with
+            the message.
     """
     pass
 
@@ -265,14 +271,10 @@ def convert_to_langchain_message(history_info: ConversationHistoryItem) -> BaseL
         return AIMessage(name=str(history_info.who), content=history_info.content.text)
 
     content = [{"type": "text", "text": history_info.content.text}]
-    if history_info.content.images:
-        content.extend([
-            {"type": "image_url", "image_url": {"url": image}} for image in history_info.content.images
-        ])
+    if history_info.content.image:
+        content.append({"type": "image_url", "image_url": {"url": history_info.content.image}})
     if history_info.content.audio:
-        content.extend([
-            {"type": "audio_url", "audio_url": {"url": audio}} for audio in history_info.content.audio
-        ])
+        content.append({"type": "audio_url", "audio_url": {"url": history_info.content.audio}})
 
     return HumanMessage(name=str(history_info.who), content=content)
 
@@ -283,8 +285,8 @@ def convert_to_cat_message(ai_message: AIMessage, why: MessageWhy) -> CatMessage
     if isinstance(content, str):
         return CatMessage(text=content, why=why)
 
-    images = []
-    audio = []
+    image = None
+    audio = None
     text = None
     for item in content:
         if isinstance(item, str):
@@ -298,11 +300,11 @@ def convert_to_cat_message(ai_message: AIMessage, why: MessageWhy) -> CatMessage
             case "text":
                 text = item
             case "image_url":
-                images.append(item["image_url"]["url"])
+                image = item["image_url"]["url"]
             case "audio_url":
-                audio.append(item["audio_url"]["url"])
+                audio = item["audio_url"]["url"]
 
-    return CatMessage(text=text, images=images, audio=audio, why=why)
+    return CatMessage(text=text, image=image, audio=audio, why=why)
 
 
 def convert_to_conversation_history(infos: List[Dict]) -> ConversationHistory:
