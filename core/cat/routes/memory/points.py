@@ -6,7 +6,6 @@ from qdrant_client.http.models import UpdateResult, Record
 from cat.auth.connection import HTTPAuth, ContextualCats
 from cat.auth.permissions import AuthPermission, AuthResource
 from cat.factory.embedder import EmbedderFactory
-from cat.memory.vector_memory_collection import VectorMemoryCollectionTypes, DocumentRecall
 from cat.routes.routes_utils import (
     MemoryPointBase,
     MemoryPoint,
@@ -15,6 +14,7 @@ from cat.routes.routes_utils import (
     memory_collection_is_accessible,
     create_dict_parser,
 )
+from cat.memory.utils import DocumentRecall, VectorMemoryCollectionTypes
 
 router = APIRouter()
 

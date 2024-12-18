@@ -38,10 +38,15 @@ class Tweedledum(MadHatter):
         self.__skip_folders = ["__pycache__", "lost+found"]
         self.__plugins_folder = utils.get_plugins_path()
 
+        # this callback is set from outside to be notified when plugin install is started
+        self.on_start_plugin_install_callback = lambda: None
         # this callback is set from outside to be notified when plugin install is completed
-        self.on_finish_plugin_install_callback = lambda: None
+        self.on_end_plugin_install_callback = lambda: None
+
+        # this callback is set from outside to be notified when plugin uninstall is started
+        self.on_start_plugin_uninstall_callback = lambda plugin_id: None
         # this callback is set from outside to be notified when plugin uninstall is completed
-        self.on_finish_plugin_uninstall_callback = lambda plugin_id: None
+        self.on_end_plugin_uninstall_callback = lambda plugin_id: None
 
         super().__init__()
 
@@ -57,7 +62,7 @@ class Tweedledum(MadHatter):
 
         # notify install has finished (the Lizard will ensure to notify the already loaded Cheshire Cats about the
         # plugin)
-        self.on_finish_plugin_install_callback()
+        self.on_end_plugin_install_callback()
 
         return plugin_id
 
@@ -76,7 +81,11 @@ class Tweedledum(MadHatter):
 
         # notify uninstall has finished (the Lizard will ensure to completely remove the plugin from the system,
         # including DB)
-        self.on_finish_plugin_uninstall_callback(plugin_id)
+        self.on_end_plugin_uninstall_callback(plugin_id)
+
+    # check if plugin exists
+    def plugin_exists(self, plugin_id: str):
+        return plugin_id in self.plugins.keys()
 
     # discover all plugins
     def find_plugins(self):

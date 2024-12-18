@@ -23,10 +23,15 @@ class Tweedledee(MadHatter):
     def reload_plugins(self):
         self.plugins = self.system_plugin_manager.plugins.copy()
 
+    # check if plugin exists
+    def plugin_exists(self, plugin_id: str):
+        self.reload_plugins()
+        return plugin_id in self.plugins.keys()
+
     def find_plugins(self):
         # plugins are already loaded when BillTheLizard is created, since its plugin manager scans the plugins folder
         # then, we just need to grab the plugins from there
-        self.plugins = self.system_plugin_manager.plugins.copy()
+        self.reload_plugins()
 
         self.active_plugins = self.load_active_plugins_from_db()
 

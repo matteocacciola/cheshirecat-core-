@@ -15,7 +15,7 @@ router = APIRouter()
 
 # get configured Embedders and configuration schemas
 @router.get("/settings", response_model=GetSettingsResponse)
-def get_embedders_settings(
+async def get_embedders_settings(
     lizard: BillTheLizard = Depends(AdminConnectionAuth(AdminAuthResource.EMBEDDER, AuthPermission.LIST)),
 ) -> GetSettingsResponse:
     """Get the list of the Embedders"""
@@ -39,7 +39,7 @@ def get_embedders_settings(
 
 
 @router.get("/settings/{embedder_name}", response_model=GetSettingResponse)
-def get_embedder_settings(
+async def get_embedder_settings(
     embedder_name: str,
     lizard: BillTheLizard = Depends(AdminConnectionAuth(AdminAuthResource.EMBEDDER, AuthPermission.READ)),
 ) -> GetSettingResponse:
@@ -60,7 +60,7 @@ def get_embedder_settings(
 
 
 @router.put("/settings/{embedder_name}", response_model=UpsertSettingResponse)
-def upsert_embedder_setting(
+async def upsert_embedder_setting(
     embedder_name: str,
     payload: Dict = Body({"openai_api_key": "your-key-here"}),
     lizard: BillTheLizard = Depends(AdminConnectionAuth(AdminAuthResource.EMBEDDER, AuthPermission.EDIT)),
@@ -73,4 +73,4 @@ def upsert_embedder_setting(
     if embedder_name not in allowed_configurations:
         raise CustomValidationException(f"{embedder_name} not supported. Must be one of {allowed_configurations}")
 
-    return lizard.replace_embedder(embedder_name, payload)
+    return await lizard.replace_embedder(embedder_name, payload)

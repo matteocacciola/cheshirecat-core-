@@ -48,7 +48,7 @@ def check_correct_websocket_reply(reply):
 
 
 def test_websocket(secure_client):
-    msg = {"text": "It's late! It's late", "images": ["tests/mocks/sample.png"]}
+    msg = {"text": "It's late! It's late", "image": "tests/mocks/sample.png"}
     # send websocket message
     res = send_websocket_message(msg, secure_client, {"apikey": api_key_ws})
 
@@ -58,7 +58,7 @@ def test_websocket(secure_client):
 def test_websocket_with_additional_items_in_message(secure_client):
     msg = {
         "text": "It's late! It's late",
-        "images": ["tests/mocks/sample.png"],
+        "image": "tests/mocks/sample.png",
         "prompt_settings": {"temperature": 0.5}
     }
     # send websocket message
@@ -73,7 +73,7 @@ def test_websocket_with_new_user(secure_client):
     user = crud_users.get_user(agent_id, str(mocked_user_id))
     assert user is None
 
-    msg = {"text": "It's late! It's late", "images": ["tests/mocks/sample.png"]}
+    msg = {"text": "It's late! It's late", "image": "tests/mocks/sample.png"}
     res = send_websocket_message(msg, secure_client, {"apikey": api_key_ws, "user_id": mocked_user_id})
 
     check_correct_websocket_reply(res)

@@ -60,4 +60,4 @@ def test_procedures_embedded(embedder, memory):
 
 def test_cheshire_cat_created_with_system_key(lizard):
     with pytest.raises(ValueError) as e:
-        lizard.get_or_create_cheshire_cat(DEFAULT_SYSTEM_KEY)
+        lizard.get_cheshire_cat(DEFAULT_SYSTEM_KEY)

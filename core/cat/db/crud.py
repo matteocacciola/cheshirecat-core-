@@ -1,7 +1,7 @@
 from enum import Enum
 from typing import List, Dict
 
-from cat.db.database import get_db
+from cat.db.database import get_db, DEFAULT_SYSTEM_KEY
 
 
 def serialize_to_redis_json(data_dict: List | Dict) -> List | Dict:
@@ -50,3 +50,7 @@ def delete(key: str, path: str | None = "$") -> None:
 def destroy(key: str) -> None:
     for k in get_db().scan_iter(key):
         get_db().delete(k)
+
+
+def get_agents_main_keys() -> List[str]:
+    return list({k.split(":")[0]for k in get_db().scan_iter("*") if k.split(":")[0] != DEFAULT_SYSTEM_KEY})

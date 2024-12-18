@@ -25,7 +25,6 @@ def get_supported_env_variables():
         "CCAT_JWT_EXPIRE_MINUTES": str(60 * 24),  # JWT expires after 1 day
         "CCAT_HTTPS_PROXY_MODE": "false",
         "CCAT_CORS_FORWARDED_ALLOW_IPS": "*",
-        "CCAT_STRAYCAT_TIMEOUT": str(59),  # in seconds
         "CCAT_RABBIT_HOLE_STORAGE_ENABLED": "false",
         "CCAT_CORS_ENABLED": "true",
     }

@@ -4,7 +4,7 @@ import time
 from copy import deepcopy
 from typing import Dict, List, Any
 from fastapi import Query, UploadFile
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 import io
 
 from cat.auth.auth_utils import issue_jwt
@@ -13,8 +13,8 @@ from cat.exceptions import CustomForbiddenException, CustomValidationException, 
 from cat.factory.base_factory import ReplacedNLPConfig
 from cat.mad_hatter.mad_hatter import MadHatter
 from cat.mad_hatter.registry import registry_search_plugins
+from cat.memory.utils import VectorMemoryCollectionTypes
 from cat.memory.vector_memory import VectorMemory
-from cat.memory.vector_memory_collection import VectorMemoryCollectionTypes
 
 
 class Plugins(BaseModel):
@@ -80,7 +80,7 @@ class DeletePluginResponse(BaseModel):
 
 class MemoryPointBase(BaseModel):
     content: str
-    metadata: Dict = {}
+    metadata: Dict = Field(default_factory=dict)
 
 
 # TODO V2: annotate all endpoints and align internal usage (no qdrant PointStruct, no langchain Document)

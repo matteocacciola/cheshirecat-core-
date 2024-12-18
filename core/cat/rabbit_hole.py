@@ -15,7 +15,7 @@ from langchain.document_loaders.blob_loaders.schema import Blob
 from cat.env import get_env
 from cat.log import log
 from cat.looking_glass.cheshire_cat import CheshireCat
-from cat.memory.vector_memory_collection import VectorMemoryCollectionTypes
+from cat.memory.utils import VectorMemoryCollectionTypes
 from cat.utils import singleton
 
 
@@ -69,7 +69,7 @@ class RabbitHole:
         log.info(f"Agent id: {ccat.id}. Preparing to load {len(vectors)} vector memories")
 
         # Check embedding size is correct
-        embedder_size = ccat.memory.vectors.declarative.embedder_size
+        embedder_size = ccat.lizard.embedder_size.text
         len_mismatch = [len(v) == embedder_size for v in vectors]
 
         if not any(len_mismatch):

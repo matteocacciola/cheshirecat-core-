@@ -20,7 +20,7 @@ from cat.db.cruds import history as crud_history
 from cat.experimental.form.cat_form import CatForm
 from cat.looking_glass.bill_the_lizard import BillTheLizard
 from cat.looking_glass.cheshire_cat import CheshireCat
-from cat.memory.vector_memory_collection import DocumentRecall
+from cat.memory.utils import DocumentRecall
 from cat.utils import BaseModelDict
 
 
@@ -99,8 +99,8 @@ class WorkingMemory(BaseModelDict):
         self,
         who: Role,
         message: str,
-        images: List[str] | None = None,
-        audio: List[str] | None = None,
+        image: str | None = None,
+        audio: str | None = None,
         why: MessageWhy | None = None,
     ):
         """
@@ -113,16 +113,16 @@ class WorkingMemory(BaseModelDict):
                 Who said the message. Can either be Role.Human or Role.AI.
             message: str
                 The message said.
-            images: List[str], optional
-                The images said. Default is None.
-            audio: List[str], optional
-                The audio said. Default is None.
+            image: (Optional[str], default=None): image file URL or base64 data URI that represent image associated with
+                the message.
+            audio: (Optional[str], default=None): audio file URL or base64 data URI that represent audio associated with
+                the message.
             why: MessageWhy, optional
                 The reason why the message was said. Default is None.
         """
 
-        message = CatMessage(text=message, images=images, audio=audio, why=why) if who == Role.AI else UserMessage(
-            text=message, images=images, audio=audio,
+        message = CatMessage(text=message, image=image, audio=audio, why=why) if who == Role.AI else UserMessage(
+            text=message, image=image, audio=audio,
         )
 
         return self.update_history(who, message)
