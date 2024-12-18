@@ -21,9 +21,7 @@ class MadHatter(ABC):
     def __init__(self):
         self.plugins: Dict[str, Plugin] = {}  # plugins dictionary
 
-        self.hooks: Dict[
-            str, List[CatHook]
-        ] = {}  # dict of active plugins hooks ( hook_name -> [CatHook, CatHook, ...])
+        self.hooks: Dict[str, List[CatHook]] = {}  # dict of active plugins hooks ( hook_name -> [CatHook, CatHook, ...])
         self.tools: List[CatTool] = []  # list of active plugins tools
         self.forms: List[CatForm] = []  # list of active plugins forms
 
@@ -59,10 +57,6 @@ class MadHatter(ABC):
 
         # notify sync has finished (the Lizard will ensure all tools are embedded in vector memory)
         self.on_finish_plugins_sync_callback()
-
-    # check if plugin exists
-    def plugin_exists(self, plugin_id: str):
-        return plugin_id in self.plugins.keys()
 
     def load_active_plugins_from_db(self):
         active_plugins = crud_settings.get_setting_by_name(self.agent_key, "active_plugins")
@@ -192,6 +186,10 @@ class MadHatter(ABC):
     @property
     def procedures(self):
         return self.tools + self.forms
+
+    @abstractmethod
+    def plugin_exists(self, plugin_id: str):
+        pass
 
     @abstractmethod
     def find_plugins(self):

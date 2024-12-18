@@ -18,7 +18,6 @@ from cat.factory.custom_auth_handler import BaseAuthHandler
 from cat.looking_glass.bill_the_lizard import BillTheLizard
 from cat.looking_glass.cheshire_cat import CheshireCat
 from cat.looking_glass.stray_cat import StrayCat
-from cat.log import log
 
 
 class ContextualCats(BaseModel):
@@ -60,7 +59,7 @@ class ConnectionAuth(ABC):
     async def __call__(self, connection: HTTPConnection) -> ContextualCats:
         agent_id = extract_agent_id_from_request(connection)
         lizard: BillTheLizard = connection.app.state.lizard
-        ccat = lizard.get_or_create_cheshire_cat(agent_id)
+        ccat = lizard.get_cheshire_cat(agent_id)
 
         user = self.get_user_from_auth_handlers(connection, lizard, ccat)
 
@@ -124,14 +123,7 @@ class HTTPAuth(ConnectionAuth):
         return user
 
     async def get_user_stray(self, ccat: CheshireCat, user: AuthUserInfo, connection: Request) -> StrayCat:
-        current_stray = ccat.get_stray(user.id)
-        if current_stray:
-            return current_stray
-
-        stray_cat = StrayCat(user_data=user, agent_id=ccat.id)
-        ccat.add_stray(stray_cat)
-
-        return stray_cat
+        return StrayCat(user_data=user, main_loop=connection.app.state.event_loop, agent_id=ccat.id)
     
     def not_allowed(self, connection: Request, **kwargs):
         raise HTTPException(status_code=403, detail={"error": "Invalid Credentials"})
@@ -191,21 +183,7 @@ class WebSocketAuth(ConnectionAuth):
         return user
 
     async def get_user_stray(self, ccat: CheshireCat, user: AuthUserInfo, connection: WebSocket) -> StrayCat:
-        stray: StrayCat = ccat.get_stray(user.id)
-        if stray:
-            await stray.close_connection()
-
-            # Set new ws connection
-            stray.reset_connection(connection)
-            log.info(
-                f"New websocket connection for user '{user.id}', the old one has been closed."
-            )
-            return stray
-
-        # Create a new stray and add it to the current cheshire cat
-        stray = StrayCat(user_data=user, agent_id=ccat.id, ws=connection)
-        ccat.add_stray(stray)
-        return stray
+        return StrayCat(user_data=user, main_loop=asyncio.get_running_loop(), agent_id=ccat.id, ws=connection)
 
     def not_allowed(self, connection: WebSocket, **kwargs):
         raise WebSocketException(code=1004, reason="Invalid Credentials")

@@ -31,7 +31,6 @@ from tests.utils import (
     jwt_secret,
     create_mock_plugin_zip,
     get_class_from_decorated_singleton,
-    async_run,
     mock_plugin_path,
     fake_timestamp,
 )
@@ -44,7 +43,6 @@ def mock_classes(monkeypatch):
     # Use in memory vector db
     def mock_connect_to_vector_memory(self, *args, **kwargs):
         return QdrantClient(":memory:")
-
     monkeypatch.setattr(
         get_class_from_decorated_singleton(VectorDatabase), "connect_to_vector_memory", mock_connect_to_vector_memory
     )
@@ -52,7 +50,6 @@ def mock_classes(monkeypatch):
     # Use a different redis client
     def mock_get_redis_client(self, *args, **kwargs):
         return redis_client
-
     monkeypatch.setattr(get_class_from_decorated_singleton(Database), "get_redis_client", mock_get_redis_client)
 
     utils.get_plugins_path = lambda: "tests/mocks/mock_plugin_folder/"
@@ -61,22 +58,20 @@ def mock_classes(monkeypatch):
     # do not check plugin dependencies at every restart
     def mock_install_requirements(self, *args, **kwargs):
         pass
-
     monkeypatch.setattr(Plugin, "_install_requirements", mock_install_requirements)
 
     # mock the agent_id in the request
-    def get_extract_agent_id_from_request(request):
-        return agent_id
-
-    auth_utils.extract_agent_id_from_request = get_extract_agent_id_from_request
+    auth_utils.extract_agent_id_from_request = lambda: agent_id
 
 
 def clean_up():
     # clean up service files and mocks
     to_be_removed = [
         "tests/mocks/mock_plugin.zip",
+        "tests/mocks/mock_plugin_fast_reply.zip",
         "tests/mocks/mock_plugin/settings.json",
         "tests/mocks/mock_plugin_folder/mock_plugin",
+        "tests/mocks/mock_plugin_folder/mock_plugin_fast_reply",
         "tests/mocks/mock_plugin/settings.py",
         "tests/mocks/empty_folder",
         "tests/data",
@@ -236,12 +231,9 @@ def just_installed_plugin(secure_client, secure_client_headers):
 
 @pytest.fixture
 def cheshire_cat(lizard):
-    cheshire_cat = lizard.get_or_create_cheshire_cat(agent_id)
+    cheshire_cat = lizard.get_cheshire_cat(agent_id)
 
     yield cheshire_cat
-
-    loop = asyncio.get_event_loop()
-    loop.run_until_complete(async_run(loop, lizard.remove_cheshire_cat, agent_id))
 
 
 @pytest.fixture
@@ -288,10 +280,9 @@ def memory(client, cheshire_cat):
 def stray_no_memory(client, cheshire_cat, lizard) -> StrayCat:
     stray_cat = StrayCat(
         user_data=AuthUserInfo(id="user_alice", name="Alice", permissions=get_base_permissions()),
+        main_loop=asyncio.new_event_loop(),
         agent_id=cheshire_cat.id
     )
-
-    cheshire_cat.add_stray(stray_cat)
 
     # install plugin
     new_plugin_zip_path = create_mock_plugin_zip(flat=True)

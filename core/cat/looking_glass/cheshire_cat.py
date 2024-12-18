@@ -1,3 +1,4 @@
+import asyncio
 import time
 from typing import Dict
 from uuid import uuid4
@@ -56,8 +57,6 @@ class CheshireCat:
         self.memory: LongTermMemory | None = None
         self.custom_auth_handler: BaseAuthHandler | None = None
 
-        self.__strays: set = set()  # set of StrayCat instances
-
         # instantiate plugin manager (loads all plugins' hooks and tools)
         self.plugin_manager = Tweedledee(self.id)
 
@@ -98,6 +97,10 @@ class CheshireCat:
     def __repr__(self):
         return f"CheshireCat(agent_id={self.id})"
 
+    def __del__(self):
+        """Cat destructor."""
+        asyncio.run(self.shutdown())
+
     def __initialize_users(self):
         user_id = str(uuid4())
 
@@ -111,56 +114,7 @@ class CheshireCat:
             }
         })
 
-    def __next_stray(self, user_id: str) -> "StrayCat":
-        """
-        Get the next stray from the Cat.
-        Args:
-            user_id: the user id
-
-        Returns:
-            The next StrayCat from the Cat
-        """
-
-        return next(
-            (stray for stray in self.__strays if stray.user.id == user_id),
-            None
-        )
-
-    def __any_stray(self, user_id: str) -> bool:
-        return any(stray.user.id == user_id for stray in self.__strays)
-
-    def add_stray(self, stray):
-        """Add a stray to the Cat."""
-
-        if not self.__any_stray(stray.user.id):
-            self.__strays.add(stray)
-
-    async def remove_stray(self, user_id: str):
-        """Remove a stray from the Cat."""
-
-        stray = self.__next_stray(user_id)
-        if not stray:
-            return
-
-        await stray.shutdown()
-
-        self.__strays.remove(stray)
-        del stray
-
-    def get_stray(self, user_id: str) -> "StrayCat":
-        """Get a stray from the Cat."""
-
-        return self.__next_stray(user_id)
-
-    def has_strays(self) -> bool:
-        return bool(self.__strays)
-
     async def shutdown(self) -> None:
-        for stray in self.__strays:
-            await stray.shutdown()
-
-        self.__strays.clear()
-
         self.memory = None
         self.custom_auth_handler = None
         self.plugin_manager = None
@@ -343,10 +297,6 @@ class CheshireCat:
     def lizard(self) -> "BillTheLizard":
         from cat.looking_glass.bill_the_lizard import BillTheLizard
         return BillTheLizard()
-
-    @property
-    def strays(self):
-        return self.__strays
 
     @property
     def embedder(self) -> Embeddings:

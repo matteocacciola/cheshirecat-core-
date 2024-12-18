@@ -1,3 +1,4 @@
+import asyncio
 from contextlib import asynccontextmanager
 from scalar_fastapi import get_scalar_api_reference
 from fastapi import FastAPI
@@ -15,7 +16,6 @@ from cat.exceptions import (
     CustomNotFoundException,
     CustomForbiddenException
 )
-from cat.jobs import job_on_idle_strays
 from cat.log import log
 from cat.looking_glass.bill_the_lizard import BillTheLizard
 from cat.looking_glass.white_rabbit import WhiteRabbit
@@ -51,9 +51,10 @@ async def lifespan(app: FastAPI):
 
     # load the Manager and the Job Handler
     app.state.lizard = BillTheLizard()
-    white_rabbit = WhiteRabbit()
+    app.state.white_rabbit = WhiteRabbit()
 
-    white_rabbit.schedule_cron_job(job_on_idle_strays, second=int(get_env("CCAT_STRAYCAT_TIMEOUT")))
+    # set a reference to asyncio event loop
+    app.state.event_loop = asyncio.get_running_loop()
 
     memory_builder = VectorMemoryBuilder()
     memory_builder.build()
@@ -64,7 +65,7 @@ async def lifespan(app: FastAPI):
     yield
 
     # shutdown Manager
-    white_rabbit.shutdown()
+    app.state.white_rabbit.shutdown()
     await app.state.lizard.shutdown()
 
     get_db().close()

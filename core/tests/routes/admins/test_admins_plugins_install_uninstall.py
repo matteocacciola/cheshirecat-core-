@@ -8,7 +8,7 @@ from tests.utils import api_key, create_mock_plugin_zip, agent_id, mock_plugin_s
 
 
 # NOTE: here we test zip upload and install
-# install from registry is in `./test_plugins_registry.py`
+# installation from registry is in `./test_plugins_registry.py`
 def test_plugin_install_from_zip(secure_client, secure_client_headers, just_installed_plugin, cheshire_cat):
     # during tests, the cat uses a different folder for plugins
     mock_plugin_final_folder = "tests/mocks/mock_plugin_folder/mock_plugin"
@@ -56,7 +56,7 @@ def test_plugin_install_from_zip(secure_client, secure_client_headers, just_inst
 
 def test_plugin_install_after_cheshire_cat_creation(lizard, secure_client, secure_client_headers):
     # create a new agent
-    ccat = lizard.get_or_create_cheshire_cat("agent_test_test")
+    ccat = lizard.get_cheshire_cat("agent_test_test")
 
     # list the plugins as an agent (new plugins are deactivated, initially): mock_plugin is not installed
     response = secure_client.get(
@@ -130,7 +130,7 @@ def test_plugin_uninstall(secure_client, secure_client_headers, just_installed_p
 
 def test_plugin_recurrent_installs(lizard, secure_client, secure_client_headers):
     # create a new agent
-    ccat = lizard.get_or_create_cheshire_cat("agent_test_test")
+    ccat = lizard.get_cheshire_cat("agent_test_test")
     ccat_headers = {"agent_id": ccat.id, "Authorization": f"Bearer {api_key}"}
 
     # manually install the plugin
@@ -166,7 +166,7 @@ def test_plugin_recurrent_installs(lizard, secure_client, secure_client_headers)
 
 def test_plugin_incremental_settings_on_recurrent_installs(lizard, secure_client, secure_client_headers):
     # create a new agent
-    ccat = lizard.get_or_create_cheshire_cat("agent_test_test")
+    ccat = lizard.get_cheshire_cat("agent_test_test")
     ccat_headers = {"agent_id": ccat.id, "Authorization": f"Bearer {api_key}"}
 
     # manually install the plugin

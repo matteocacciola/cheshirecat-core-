@@ -13,7 +13,7 @@ router = APIRouter()
 
 class UserBase(BaseModel):
     username: str = Field(min_length=2)
-    permissions: Dict[str, List[str]] = get_base_permissions()
+    permissions: Dict[str, List[str]] = Field(default_factory=get_base_permissions)
 
     @field_validator("permissions")
     def validate_permissions(cls, v):

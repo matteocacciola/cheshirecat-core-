@@ -1,4 +1,5 @@
 from typing import Dict, List
+from pydantic import Field
 
 from cat.utils import BaseModelDict, Enum
 
@@ -76,5 +77,5 @@ class AuthUserInfo(BaseModelDict):
     # - profile data
     # - custom attributes
     # - roles
-    extra: BaseModelDict = {}
+    extra: BaseModelDict = Field(default_factory=dict)
 

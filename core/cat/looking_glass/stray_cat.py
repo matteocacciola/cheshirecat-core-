@@ -1,6 +1,7 @@
 import time
 import asyncio
 import traceback
+from asyncio import AbstractEventLoop
 import tiktoken
 from typing import Literal, List, Dict, Any, get_args
 from langchain.docstore.document import Document
@@ -15,7 +16,6 @@ from cat.agents.base_agent import AgentOutput
 from cat.agents.main_agent import MainAgent
 from cat.auth.permissions import AuthUserInfo
 from cat.convo.messages import EmbedderModelInteraction, CatMessage, Role, MessageWhy, UserMessage
-from cat.env import get_env
 from cat.exceptions import VectorMemoryError
 from cat.log import log
 from cat.looking_glass.bill_the_lizard import BillTheLizard
@@ -44,7 +44,7 @@ class RecallSettings(utils.BaseModelDict):
 class StrayCat:
     """User/session based object containing working memory and a few utility pointers"""
 
-    def __init__(self, agent_id: str, user_data: AuthUserInfo, ws: WebSocket = None):
+    def __init__(self, agent_id: str, main_loop: AbstractEventLoop, user_data: AuthUserInfo, ws: WebSocket = None):
         self.__agent_id = agent_id
 
         self.__user = user_data
@@ -53,8 +53,7 @@ class StrayCat:
         # attribute to store ws connection
         self.__ws = ws
 
-        self.__main_loop = self.__get_main_loop()
-        self.__last_message_time = time.time()
+        self.__main_loop = main_loop
 
     def __eq__(self, other: "StrayCat") -> bool:
         """Check if two cats are equal."""
@@ -68,11 +67,8 @@ class StrayCat:
     def __repr__(self):
         return f"StrayCat(user_id={self.__user.id}, agent_id={self.__agent_id})"
 
-    def __get_main_loop(self) -> asyncio.AbstractEventLoop:
-        try:
-            return asyncio.get_running_loop()
-        except RuntimeError:
-            return asyncio.get_event_loop()
+    def __del__(self):
+        asyncio.run(self.__close_connection())
 
     def _send_ws_json(self, data: Any):
         # Run the coroutine in the main event loop in the main thread
@@ -487,7 +483,7 @@ Allowed classes are:
         # set 0.5 as threshold - let's see if it works properly
         return best_label if score < 0.5 else None
 
-    async def close_connection(self):
+    async def __close_connection(self):
         if not self.__ws:
             return
         try:
@@ -498,10 +494,6 @@ Allowed classes are:
 
     def nullify_connection(self):
         self.__ws = None
-
-    def reset_connection(self, connection):
-        """Reset the connection to the API service."""
-        self.__ws = connection
 
     def _build_agent_output(self) -> AgentOutput:
         # reply with agent
@@ -544,8 +536,6 @@ Allowed classes are:
         else:
             self.working_memory.update_history(who=Role.AI, content=final_output)
 
-        self.__last_message_time = time.time()
-
         return final_output
 
     def _store_user_message_in_episodic_memory(self, user_message: UserMessage):
@@ -565,9 +555,6 @@ Allowed classes are:
             user_message_embedding[0],
             doc.metadata,
         )
-
-    async def shutdown(self):
-        await self.close_connection()
 
     @property
     def user(self) -> AuthUserInfo:
@@ -615,7 +602,7 @@ Allowed classes are:
 
     @property
     def mad_hatter(self) -> Tweedledee:
-        return self.cheshire_cat.plugin_manager
+        return self.plugin_manager
 
     @property
     def main_agent(self) -> MainAgent:
@@ -624,10 +611,6 @@ Allowed classes are:
     @property
     def white_rabbit(self) -> WhiteRabbit:
         return WhiteRabbit()
-
-    @property
-    def is_idle(self) -> bool:
-        return time.time() - self.__last_message_time >= float(get_env("CCAT_STRAYCAT_TIMEOUT"))
 
     # each time we access the file handlers, plugins can intervene
     @property

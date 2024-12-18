@@ -1,3 +1,6 @@
+import asyncio
+
+from cat.auth.permissions import AuthUserInfo
 from cat.convo.messages import Role
 from cat.looking_glass.stray_cat import StrayCat
 
@@ -28,11 +31,9 @@ def test_session_creation_from_websocket(
     assert "You did not configure" in res["content"]
 
     # verify session
-    strays_user_ids = [s.user.id for s in cheshire_cat.strays]
-    assert user_id in strays_user_ids
-    stray_cat = cheshire_cat.get_stray(user_id)
-    assert isinstance(stray_cat, StrayCat)
-    assert stray_cat.user.id == user_id
+    user = AuthUserInfo(id=user_id, name=data["username"], permissions=data["permissions"])
+    stray_cat = StrayCat(user_data=user, main_loop=asyncio.new_event_loop(), agent_id=agent_id)
+
     convo = stray_cat.working_memory.history
     assert len(convo) == 2
     assert convo[0].who == Role.HUMAN
@@ -62,10 +63,8 @@ def test_session_creation_from_http(secure_client, secure_client_headers, cheshi
     assert response.status_code == 200
 
     # verify session
-    strays_user_ids = [s.user.id for s in cheshire_cat.strays]
-    assert user_id in strays_user_ids
-    stray_cat = cheshire_cat.get_stray(user_id)
-    assert isinstance(stray_cat, StrayCat)
-    assert stray_cat.user.id == user_id
+    user = AuthUserInfo(id=user_id, name=data["username"], permissions=data["permissions"])
+    stray_cat = StrayCat(user_data=user, main_loop=asyncio.new_event_loop(), agent_id=agent_id)
+
     convo = stray_cat.working_memory.history
     assert len(convo) == 0  # no ws message sent from Alice

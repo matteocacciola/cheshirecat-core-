@@ -30,7 +30,7 @@ def test_rabbithole_upload_txt(secure_client, secure_client_headers):
 
 
 def test_rabbithole_upload_pdf(lizard, secure_client, secure_client_headers):
-    lizard.get_or_create_cheshire_cat("another_agent_test")
+    lizard.get_cheshire_cat("another_agent_test")
 
     content_type = "application/pdf"
     file_name = "sample.pdf"

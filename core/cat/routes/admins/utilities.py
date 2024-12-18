@@ -34,16 +34,14 @@ async def factory_reset(
     """
 
     try:
-        for ccat in lizard.cheshire_cats.values():
-            await ccat.destroy()
+        await lizard.shutdown()
+        get_db().flushdb()
         deleted_settings = True
     except Exception as e:
         log.error(f"Error deleting settings: {e}")
         deleted_settings = False
 
     try:
-        await lizard.shutdown()
-        get_db().flushdb()
         for collection_name in VectorMemoryCollectionTypes:
             get_vector_db().delete_collection(str(collection_name))
         deleted_memories = True
@@ -81,7 +79,7 @@ async def agent_create(
 
     try:
         agent_id = extract_agent_id_from_request(request)
-        lizard.get_or_create_cheshire_cat(agent_id)
+        lizard.get_cheshire_cat(agent_id)
 
         return CreatedResponse(created=True)
     except Exception as e:
@@ -105,7 +103,6 @@ async def agent_destroy(
 
     try:
         await ccat.destroy()
-        await lizard.remove_cheshire_cat(agent_id)
         deleted_settings = True
         deleted_memories = True
     except Exception as e:
@@ -129,24 +126,9 @@ async def agent_reset(
     Reset a single agent. This will delete all settings, memories, and metadata, for the agent.
     """
 
+    result = await agent_destroy(request, lizard)
+
     agent_id = extract_agent_id_from_request(request)
-    ccat = lizard.get_cheshire_cat_from_db(agent_id)
-    if not ccat:
-        return ResetResponse(deleted_settings=False, deleted_memories=False, deleted_plugin_folders=False)
+    lizard.get_cheshire_cat(agent_id)
 
-    try:
-        await ccat.destroy()
-        await lizard.remove_cheshire_cat(agent_id)
-        lizard.get_or_create_cheshire_cat(agent_id)
-        deleted_settings = True
-        deleted_memories = True
-    except Exception as e:
-        log.error(f"Error deleting settings: {e}")
-        deleted_settings = False
-        deleted_memories = False
-
-    return ResetResponse(
-        deleted_settings=deleted_settings,
-        deleted_memories=deleted_memories,
-        deleted_plugin_folders=False,
-    )
+    return result

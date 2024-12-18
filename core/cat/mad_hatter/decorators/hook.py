@@ -10,11 +10,13 @@ class CatHook:
         self.plugin_id = plugin_id
 
     def __repr__(self) -> str:
-        return f"CatHook(name={self.name}, priority={self.priority})"
+        return f"CatHook(name={self.name}, priority={self.priority}, plugin_id={self.plugin_id}, function={self.function})"
 
 
-# @hook decorator. Any function in a plugin decorated by @hook and named properly (among list of available hooks) is used by the Cat
-# @hook priority defaults to 1, the higher the more important. Hooks in the default core plugin have all priority=0 so they are automatically overwritten from plugins
+# @hook decorator. Any function in a plugin decorated by @hook and named properly (among list of available hooks) is
+# used by the Cat
+# @hook priority defaults to 1, the higher, the more important. Hooks in the default core plugin have all priority=0 so
+# they are automatically overwritten from plugins
 def hook(*args: str | Callable, priority: int = 1) -> Callable:
     """
     Make hooks out of functions, can be used with or without arguments.

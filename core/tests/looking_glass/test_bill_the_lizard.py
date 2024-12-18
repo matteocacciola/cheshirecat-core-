@@ -28,4 +28,3 @@ async def test_shutdown(lizard, white_rabbit):
     assert lizard.file_manager is None
     assert lizard.main_agent is None
     assert lizard.embedder is None
-    assert lizard.has_cheshire_cats is False

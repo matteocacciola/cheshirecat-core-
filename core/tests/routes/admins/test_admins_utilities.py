@@ -55,8 +55,6 @@ def test_factory_reset_success(client, lizard, cheshire_cat):
     users = get_db().get(crud_users.format_key(cheshire_cat.id))
     assert users is None
 
-    assert cheshire_cat.memory is None
-
 
 def test_agent_destroy_success(client, lizard, cheshire_cat):
     creds = {
@@ -86,8 +84,6 @@ def test_agent_destroy_success(client, lizard, cheshire_cat):
 
     users = get_db().get(crud_users.format_key(cheshire_cat.id))
     assert users is None
-
-    assert cheshire_cat.memory is None
 
     qdrant_filter = Filter(must=[FieldCondition(key="tenant_id", match=MatchValue(value=cheshire_cat.id))])
     for c in VectorMemoryCollectionTypes:
