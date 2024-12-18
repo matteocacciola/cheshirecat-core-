@@ -15,7 +15,7 @@ from langchain.document_loaders.blob_loaders.schema import Blob
 from cat.env import get_env
 from cat.log import log
 from cat.looking_glass.cheshire_cat import CheshireCat
-from cat.memory.utils import VectorMemoryCollectionTypes
+from cat.memory.utils import ContentType, MultimodalContent, VectorMemoryCollectionTypes
 from cat.utils import singleton
 
 
@@ -78,7 +78,7 @@ class RabbitHole:
             )
 
         # Upsert memories in batch mode
-        ccat.memory.vectors.declarative.add_points(ids, payloads, vectors)
+        ccat.memory.vectors.declarative.add_points(ids, {ContentType.TEXT: payloads}, vectors)
 
     def ingest_file(
         self,
@@ -332,9 +332,9 @@ class RabbitHole:
             if doc.page_content != "":
                 doc_embedding = embedder.embed_documents([doc.page_content])
                 stored_point = memory.vectors.declarative.add_point(
-                    doc.page_content,
-                    doc_embedding[0],
-                    doc.metadata,
+                    content=MultimodalContent(text=doc.page_content),
+                    vectors={ContentType.TEXT: doc_embedding[0]},
+                    metadata=doc.metadata,
                 )
                 stored_points.append(stored_point)
 

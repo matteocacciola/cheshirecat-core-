@@ -1,5 +1,5 @@
 import uuid
-from typing import Any, List, Iterable, Dict, Tuple, Final
+from typing import Any, List, Dict, Tuple, Final
 from qdrant_client.qdrant_remote import QdrantRemote
 from qdrant_client.http.models import (
     Batch,
@@ -17,7 +17,7 @@ from qdrant_client.http.models import (
 
 from cat.db.vector_database import get_vector_db
 from cat.log import log
-from cat.memory.utils import DocumentRecall, to_document_recall
+from cat.memory.utils import ContentType, DocumentRecall, MultimodalContent, to_document_recall
 
 
 class VectorMemoryCollection:
@@ -87,33 +87,33 @@ class VectorMemoryCollection:
 
     def add_point(
         self,
-        content: str,
-        vector: Iterable,
+        content: MultimodalContent,
+        vectors: Dict[ContentType, List[float]],
         metadata: Dict = None,
         id: str | None = None,
         **kwargs,
     ) -> PointStruct | None:
-        """Add a point (and its metadata) to the vectorstore.
+        """
+        Add a multimodal point to the vectorstore.
 
         Args:
-            content: original text.
-            vector: Embedding vector.
-            metadata: Optional metadata dictionary associated with the text.
-            id:
-                Optional id to associate with the point. Id has to be an uuid-like string.
+            content: MultimodalContent object containing text, image and/or audio data
+            vectors: Dictionary mapping modality to its vector representation
+            metadata: Optional metadata dictionary
+            id: Optional unique identifier
 
         Returns:
-            PointStruct: The stored point.
+            PointStruct: The stored point
         """
 
         point = PointStruct(
             id=id or uuid.uuid4().hex,
             payload={
-                "page_content": content,
+                "page_content": content.model_dump(),
                 "metadata": metadata,
                 "tenant_id": self.agent_id,
             },
-            vector=vector,
+            vector={str(k): v for k, v in vectors.items()}  # Using named vectors
         )
 
         update_status = self.client.upsert(collection_name=self.collection_name, points=[point], **kwargs)
@@ -125,7 +125,7 @@ class VectorMemoryCollection:
         return None
 
     # add points in collection
-    def add_points(self, ids: List, payloads: List[Payload], vectors: List):
+    def add_points(self, ids: List, payloads: List[Payload], vectors: List) -> UpdateResult:
         """
         Upsert memories in batch mode
         Args:
@@ -140,11 +140,7 @@ class VectorMemoryCollection:
         payloads = [{**p, **{"tenant_id": self.agent_id}} for p in payloads]
         points = Batch(ids=ids, payloads=payloads, vectors=vectors)
 
-        res = self.client.upsert(
-            collection_name=self.collection_name,
-            points=points,
-        )
-        return res
+        return self.client.upsert(collection_name=self.collection_name, points=points)
 
     def delete_points_by_metadata_filter(self, metadata: Dict | None = None) -> UpdateResult:
         conditions = [self._tenant_field_condition()]
@@ -161,15 +157,15 @@ class VectorMemoryCollection:
 
     # delete point in collection
     def delete_points(self, points_ids: List) -> UpdateResult:
-        res = self.client.delete(
-            collection_name=self.collection_name,
-            points_selector=points_ids,
-        )
-        return res
+        return self.client.delete(collection_name=self.collection_name, points_selector=points_ids)
 
     # retrieve similar memories from embedding
     def recall_memories_from_embedding(
-        self, embedding: List[float], metadata: Dict | None = None, k: int | None = 5, threshold: float | None = None
+        self,
+        query_vectors: Dict[ContentType, List[float]],
+        metadata: Dict | None = None,
+        k: int | None = 5,
+        threshold: float | None =None
     ) -> List[DocumentRecall]:
         """
         Retrieve memories from the collection based on an embedding vector. The memories are sorted by similarity to the
@@ -182,10 +178,10 @@ class VectorMemoryCollection:
         parameter is None, all memories are retrieved. If the threshold parameter is None, no memories are filtered out.
 
         Args:
-            embedding: Embedding vector.
-            metadata: Dictionary containing metadata filter.
-            k: Number of memories to retrieve.
-            threshold: Similarity threshold.
+            query_vectors: Dictionary mapping modality to query vector
+            metadata: Optional metadata filter
+            k: Number of results to return
+            threshold: Optional similarity threshold
 
         Returns:
             List: List of DocumentRecall.
@@ -197,10 +193,9 @@ class VectorMemoryCollection:
                 condition for key, value in metadata.items() for condition in self._build_condition(key, value)
             ])
 
-        # retrieve memories
         memories = self.client.search(
             collection_name=self.collection_name,
-            query_vector=embedding,
+            query_vector={str(k): v for k, v in query_vectors.items()},  # Using named vectors for search
             query_filter=Filter(must=conditions),
             with_payload=True,
             with_vectors=True,
@@ -210,7 +205,7 @@ class VectorMemoryCollection:
                 quantization=QuantizationSearchParams(
                     ignore=False,
                     rescore=True,
-                    oversampling=2.0,  # Available as of v1.3.0
+                    oversampling=2.0,
                 )
             ),
         )

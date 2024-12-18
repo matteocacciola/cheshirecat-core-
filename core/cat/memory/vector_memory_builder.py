@@ -18,7 +18,7 @@ from qdrant_client.http.models import (
 from cat.db.vector_database import get_vector_db
 from cat.env import get_env
 from cat.log import log
-from cat.memory.utils import VectorMemoryCollectionTypes
+from cat.memory.utils import ContentType, VectorMemoryCollectionTypes
 from cat.utils import singleton
 
 
@@ -51,13 +51,28 @@ class VectorMemoryBuilder:
         """
 
         log.warning(f"Creating collection \"{collection_name}\" ...")
+
+        embedder_sizes = self.lizard.embedder_size
+
+        # Create vector config for each modality
+        vectors_config = {
+            str(ContentType.TEXT): VectorParams(size=embedder_sizes.text, distance=Distance.COSINE)
+        }
+
+        if embedder_sizes.image:
+            vectors_config[str(ContentType.IMAGE)] = VectorParams(
+                size=embedder_sizes.image, distance=Distance.COSINE
+            )
+
+        if embedder_sizes.audio:
+            vectors_config[str(ContentType.AUDIO)] = VectorParams(
+                size=embedder_sizes.audio, distance=Distance.COSINE
+            )
+
         self.__client.create_collection(
             collection_name=collection_name,
-            vectors_config=VectorParams(
-                size=self.lizard.embedder_size.text, distance=Distance.COSINE
-            ),
-            # hybrid mode: original vector on Disk, quantized vector in RAM
-            optimizers_config=OptimizersConfigDiff(memmap_threshold=20000),
+            vectors_config=vectors_config,
+            optimizers_config=OptimizersConfigDiff(memmap_threshold=20000, indexing_threshold=20000),
             quantization_config=ScalarQuantization(
                 scalar=ScalarQuantizationConfig(
                     type=ScalarType.INT8, quantile=0.95, always_ram=True
@@ -71,7 +86,7 @@ class VectorMemoryBuilder:
                 CreateAliasOperation(
                     create_alias=CreateAlias(
                         collection_name=collection_name,
-                        alias_name=self.lizard.embedder_name + "_" +collection_name,
+                        alias_name=self.lizard.embedder_name + "_" + collection_name,
                     )
                 )
             ]
@@ -93,6 +108,7 @@ class VectorMemoryBuilder:
             field_type: Type of the index (es. PayloadSchemaType.KEYWORD)
             collection_name: Name of the collection on which to create the index
         """
+
         try:
             self.__client.create_payload_index(
                 collection_name=collection_name,
@@ -107,28 +123,49 @@ class VectorMemoryBuilder:
             await self.__check_embedding_size(str(collection_name))
 
     async def __check_embedding_size(self, collection_name: str):
-        # having the same size does not necessarily imply being the same embedder
-        # having vectors with the same size but from different embedder in the same vector space is wrong
-        same_size = (
-            self.__client.get_collection(collection_name).config.params.vectors.size
-            == self.lizard.embedder_size
-        )
-        local_alias = self.lizard.embedder_name + "_" + collection_name
-        db_aliases = self.__client.get_collection_aliases(collection_name).aliases
+        collection_info = self.__client.get_collection(collection_name)
+        embedder_sizes = self.lizard.embedder_size
 
-        if same_size and local_alias == db_aliases[0].alias_name:
-            log.debug(f"Collection \"{collection_name}\" has the same embedder")
+        # Check if the collection exists and has the correct vector configurations
+        # Single vector configuration (legacy)
+        if (
+                hasattr(collection_info.config.params, "vectors")
+                and collection_info.config.params.vectors.size != embedder_sizes.text
+        ):
+            await self.__recreate_collection(collection_name)
             return
 
-        log.warning(f"Collection \"{collection_name}\" has different embedder")
-        # Memory snapshot saving can be turned off in the .env file with:
-        # SAVE_MEMORY_SNAPSHOTS=false
+        # Multiple vector configurations
+        vectors_config = collection_info.config.params.vectors_config
+        needs_update = False
+
+        text_lbl = str(ContentType.TEXT)
+        image_lbl = str(ContentType.IMAGE)
+        audio_lbl = str(ContentType.AUDIO)
+
+        if text_lbl in vectors_config and vectors_config[text_lbl].size != embedder_sizes.text:
+            needs_update = True
+        if embedder_sizes.image and (
+                image_lbl not in vectors_config or vectors_config[image_lbl].size != embedder_sizes.image
+        ):
+            needs_update = True
+        if embedder_sizes.audio and (
+                audio_lbl not in vectors_config or
+                vectors_config[audio_lbl].size != embedder_sizes.audio
+        ):
+            needs_update = True
+
+        if needs_update:
+            await self.__recreate_collection(collection_name)
+
+    async def __recreate_collection(self, collection_name: str):
+        """Recreate the collection with updated vector configurations"""
+        log.warning(f"Collection {collection_name} has different embedder sizes. Recreating...")
+
         if get_env("CCAT_SAVE_MEMORY_SNAPSHOTS") == "true":
-            # dump collection on disk before deleting
             await self.__save_dump(collection_name)
 
         self.__client.delete_collection(collection_name)
-        log.warning(f"Collection \"{collection_name}\" deleted")
         self.__create_collection(collection_name)
 
     # dump collection on disk before deleting

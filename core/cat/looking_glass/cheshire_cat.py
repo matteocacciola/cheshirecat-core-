@@ -30,6 +30,7 @@ from cat.log import log
 from cat.mad_hatter.mad_hatter import MadHatter
 from cat.mad_hatter.tweedledee import Tweedledee
 from cat.memory.long_term_memory import LongTermMemory
+from cat.memory.utils import ContentType, MultimodalContent, VectorMemoryConfig
 from cat.utils import langchain_log_prompt, langchain_log_output, get_caller_info
 
 
@@ -194,9 +195,9 @@ class CheshireCat:
         for t in active_triggers_to_be_embedded:
             trigger_embedding = self.lizard.embedder.embed_documents([t["content"]])
             self.memory.vectors.procedural.add_point(
-                t["content"],
-                trigger_embedding[0],
-                {
+                content=MultimodalContent(text=t["content"]),
+                vectors={ContentType.TEXT: trigger_embedding[0]},
+                metadata={
                     "source": t["source"],
                     "type": t["type"],
                     "trigger_type": t["trigger_type"],

@@ -14,7 +14,7 @@ from cat.routes.routes_utils import (
     memory_collection_is_accessible,
     create_dict_parser,
 )
-from cat.memory.utils import DocumentRecall, VectorMemoryCollectionTypes
+from cat.memory.utils import ContentType, DocumentRecall, VectorMemoryCollectionTypes
 
 router = APIRouter()
 
@@ -104,7 +104,9 @@ async def recall_memory_points_from_text(
         else:
             metadata.pop("source", None)
         return ccat.memory.vectors.collections[str(c)].recall_memories_from_embedding(
-            query_embedding, k=k, metadata=metadata
+            query_vectors={ContentType.TEXT: query_embedding},
+            k=k,
+            metadata=metadata
         )
 
     ccat = cats.cheshire_cat
